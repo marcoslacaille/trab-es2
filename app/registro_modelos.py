@@ -4,4 +4,5 @@ Importa os modelos de todos os módulos de domínio. O Alembic importa este arqu
 enxergar todas as tabelas em `Base.metadata`. Cada tarefa acrescenta aqui o módulo novo.
 """
 
+import app.eleitores.modelos  # noqa: F401
 import app.identidade.modelos  # noqa: F401
