@@ -63,6 +63,17 @@ def test_login_com_cpf_mal_formatado_responde_o_mesmo_401(cliente):
     assert resposta.json() == senha_errada.json()
 
 
+def test_login_com_cpf_de_digitos_de_outro_alfabeto_responde_o_mesmo_401(cliente):
+    """TI-03 / RN-01, RN-07 (D-010): dígitos arábico-índicos recebem o 401 genérico."""
+    criar_chefe()
+    senha_errada = _entrar(cliente, CPF_CHEFE, "Senha@Errada1")
+
+    resposta = _entrar(cliente, "٢٩١٤١٧٧٧٦٣٨", SENHA_CHEFE)
+
+    assert resposta.status_code == 401
+    assert resposta.json() == senha_errada.json()
+
+
 def test_rota_protegida_sem_token_responde_401_com_www_authenticate(cliente):
     """TI-04 / RN-06: sem token, 401 NAO_AUTENTICADO e o cabeçalho WWW-Authenticate."""
     resposta = cliente.get("/api/v1/auth/me")
