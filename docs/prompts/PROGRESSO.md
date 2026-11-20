@@ -10,7 +10,7 @@ Marque `[x]` quando a tarefa estiver integrada na `main` (o agente marca no últ
 - [x] 04 — Candidatos e partidos
 - [x] 05 — Eleições
 - [x] 06 — Candidaturas
-- [ ] 07 — Votação: base (tabelas, trigger, domínio, cédula)
+- [x] 07 — Votação: base (tabelas, trigger, domínio, cédula)
 - [ ] 08 — Votação: API
 - [ ] 09 — Sigilo e concorrência
 - [ ] 10 — Apuração
