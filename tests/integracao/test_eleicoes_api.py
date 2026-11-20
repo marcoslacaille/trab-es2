@@ -1,9 +1,18 @@
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 from sqlalchemy import text
 
 from app.compartilhado.banco import SessionLocal
-from tests.auxiliares import nova_eleicao
+from tests.auxiliares import eleicao_aberta_com_candidatos, nova_candidatura, nova_eleicao
 
 ELEICOES = "/api/v1/eleicoes"
+FUSO = ZoneInfo("America/Sao_Paulo")
+
+
+def instante(texto: str) -> datetime:
+    """Lê o carimbo da resposta; o fuso (UTC ou Brasília) não importa, só o instante."""
+    return datetime.fromisoformat(texto)
 
 
 def rels(corpo: dict) -> list[str]:
@@ -14,7 +23,8 @@ def rels(corpo: dict) -> list[str]:
 def marcar_encerrada(eleicao_id: int) -> None:
     """Muda o status direto no banco, só para montar o cenário do filtro (TI-17).
 
-    Abrir e encerrar pela API exige candidatura, que só chega na tarefa 06. As datas respeitam
+    Só monta o cenário (uma segunda eleição já ENCERRADA, sem precisar de 2 candidaturas por
+    cargo no 2º turno); nenhuma regra é contornada. As datas respeitam
     `ck_eleicoes_status_coerente`.
     """
     with SessionLocal() as sessao:
@@ -107,6 +117,21 @@ def test_ti11_chefe_edita_eleicao_agendada(cliente, cabecalho_chefe):
     assert corpo["status"] == "AGENDADA"
 
 
+def test_ti11_editar_eleicao_aberta_da_409(cliente, cabecalho_chefe):
+    """TI-11 / RN-14: editar uma eleição ABERTA → 409 `ELEICAO_NAO_EDITAVEL`, sem alterar nada."""
+    eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)
+
+    resposta = cliente.patch(
+        f"{ELEICOES}/1", json={"horario_encerramento": "18:00"}, headers=cabecalho_chefe
+    )
+
+    assert resposta.status_code == 409
+    assert resposta.json()["erro"]["codigo"] == "ELEICAO_NAO_EDITAVEL"
+    assert cliente.get(f"{ELEICOES}/1", headers=cabecalho_chefe).json()["horario_encerramento"] == (
+        "17:00:00"
+    )
+
+
 def test_ti11_edicao_passa_de_novo_pelas_regras_de_agendamento(cliente, cabecalho_chefe):
     """RN-11 e RN-12 na edição: janela invertida, data passada e data/turno repetidos."""
     nova_eleicao(cliente, cabecalho_chefe)
@@ -148,6 +173,34 @@ def test_ti11_so_o_chefe_edita(cliente, cabecalho_chefe, cabecalho_eleitor):
     assert resposta.status_code == 403
 
 
+def test_ti12_abrir_na_data_e_janela_deixa_aberta_com_link_encerrar(
+    cliente, cabecalho_chefe, relogio
+):
+    """TI-12 / RN-15: abrir na data e janela → ABERTA, `aberta_em` preenchido, link `encerrar`."""
+    nova_eleicao(cliente, cabecalho_chefe)
+    nova_candidatura(cliente, cabecalho_chefe)
+
+    resposta = cliente.post(f"{ELEICOES}/1/abertura", headers=cabecalho_chefe)
+
+    assert resposta.status_code == 200, resposta.text
+    corpo = resposta.json()
+    assert corpo["status"] == "ABERTA"
+    assert instante(corpo["aberta_em"]) == datetime(2026, 11, 25, 10, 0, tzinfo=FUSO)
+    assert corpo["encerrada_em"] is None
+    assert rels(corpo) == ["self", "encerrar", "apuracao-parcial"]
+
+
+def test_ti12_abre_exatamente_no_horario_de_abertura(cliente, cabecalho_chefe, relogio):
+    """RN-15: o horário de abertura é inclusivo (abre às 08:00 em ponto)."""
+    nova_eleicao(cliente, cabecalho_chefe)
+    nova_candidatura(cliente, cabecalho_chefe)
+    relogio.avancar(hours=-2)
+
+    resposta = cliente.post(f"{ELEICOES}/1/abertura", headers=cabecalho_chefe)
+
+    assert resposta.status_code == 200, resposta.text
+
+
 def test_ti13_abrir_sem_candidaturas_da_409(cliente, cabecalho_chefe):
     """TI-13 / RN-15: abrir na data e na janela, mas sem candidaturas → 409 `SEM_CANDIDATURAS`."""
     nova_eleicao(cliente, cabecalho_chefe)
@@ -183,6 +236,56 @@ def test_ti14_abrir_fora_da_janela_da_409(cliente, cabecalho_chefe, relogio):
     assert (depois.status_code, depois.json()["erro"]["codigo"]) == (409, "FORA_DA_JANELA")
 
 
+def test_ti15_abrir_com_outra_eleicao_aberta_da_409(cliente, cabecalho_chefe):
+    """TI-15 / RN-16: com uma eleição ABERTA, abrir outra → 409 `OUTRA_ELEICAO_ABERTA`."""
+    eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)
+    nova_eleicao(cliente, cabecalho_chefe, turno=2)
+    nova_candidatura(cliente, cabecalho_chefe, eleicao_id=2, numero="10")
+    nova_candidatura(cliente, cabecalho_chefe, eleicao_id=2, numero="20")
+
+    resposta = cliente.post(f"{ELEICOES}/2/abertura", headers=cabecalho_chefe)
+
+    assert resposta.status_code == 409
+    assert resposta.json()["erro"]["codigo"] == "OUTRA_ELEICAO_ABERTA"
+    assert cliente.get(f"{ELEICOES}/2", headers=cabecalho_chefe).json()["status"] == "AGENDADA"
+
+
+def test_ti15_depois_de_encerrar_a_primeira_a_segunda_abre(cliente, cabecalho_chefe):
+    """RN-16: a trava é só enquanto há outra ABERTA; encerrada a primeira, a segunda abre."""
+    eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)
+    nova_eleicao(cliente, cabecalho_chefe, turno=2)
+    nova_candidatura(cliente, cabecalho_chefe, eleicao_id=2, numero="10")
+    nova_candidatura(cliente, cabecalho_chefe, eleicao_id=2, numero="20")
+
+    cliente.post(f"{ELEICOES}/1/encerramento", headers=cabecalho_chefe)
+    resposta = cliente.post(f"{ELEICOES}/2/abertura", headers=cabecalho_chefe)
+
+    assert resposta.status_code == 200, resposta.text
+
+
+def test_ti16_encerrar_aberta_funciona_e_reabrir_encerrada_da_409(
+    cliente, cabecalho_chefe, relogio
+):
+    """TI-16 / RN-13, RN-18: encerra a ABERTA (a qualquer hora); reabrir a ENCERRADA → 409."""
+    eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)
+    relogio.avancar(hours=9)  # 19:00, depois do horário previsto: encerrar vale a qualquer hora
+
+    encerrada = cliente.post(f"{ELEICOES}/1/encerramento", headers=cabecalho_chefe)
+    reabrir = cliente.post(f"{ELEICOES}/1/abertura", headers=cabecalho_chefe)
+    encerrar_de_novo = cliente.post(f"{ELEICOES}/1/encerramento", headers=cabecalho_chefe)
+
+    assert encerrada.status_code == 200, encerrada.text
+    corpo = encerrada.json()
+    assert corpo["status"] == "ENCERRADA"
+    assert instante(corpo["aberta_em"]) == datetime(2026, 11, 25, 10, 0, tzinfo=FUSO)
+    assert instante(corpo["encerrada_em"]) == datetime(2026, 11, 25, 19, 0, tzinfo=FUSO)
+    assert rels(corpo) == ["self", "resultado"]
+    for resposta in (reabrir, encerrar_de_novo):
+        assert resposta.status_code == 409
+        assert resposta.json()["erro"]["codigo"] == "TRANSICAO_INVALIDA"
+        assert resposta.json()["erro"]["detalhes"] == {"status": "ENCERRADA"}
+
+
 def test_abertura_e_encerramento_so_para_o_chefe_e_com_eleicao_existente(
     cliente, cabecalho_chefe, cabecalho_eleitor
 ):
@@ -199,11 +302,7 @@ def test_abertura_e_encerramento_so_para_o_chefe_e_com_eleicao_existente(
 
 
 def test_encerrar_eleicao_agendada_da_409(cliente, cabecalho_chefe):
-    """RN-13 / RN-18: só se encerra uma ABERTA; a AGENDADA responde `TRANSICAO_INVALIDA`.
-
-    O caso completo do TI-16 (encerrar a ABERTA, reabrir a ENCERRADA) depende de candidatura
-    e entra na tarefa 06.
-    """
+    """RN-13 / RN-18: só se encerra uma ABERTA; a AGENDADA responde `TRANSICAO_INVALIDA`."""
     nova_eleicao(cliente, cabecalho_chefe)
 
     resposta = cliente.post(f"{ELEICOES}/1/encerramento", headers=cabecalho_chefe)
