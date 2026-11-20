@@ -3,7 +3,7 @@ from datetime import date
 import pytest
 
 from app.compartilhado.dominio import Cargo, numero_valido_para_cargo
-from app.compartilhado.validadores import calcular_idade, cpf_valido, normalizar_cpf
+from app.compartilhado.validadores import calcular_idade, cpf_valido, normalizar_cpf, so_digitos
 
 # Quantidade de dígitos de cada cargo, escrita aqui de propósito (e não lida de
 # DIGITOS_POR_CARGO), para o teste conferir a regra e não repetir o código.
@@ -53,6 +53,20 @@ def test_recusa_cpf_com_letras_ou_tamanho_errado_na_normalizacao(valor):
     assert normalizar_cpf(valor) == ""
 
 
+def test_recusa_cpf_com_digitos_de_outro_alfabeto():
+    """TU-04 / RN-07 (D-010): dígitos arábico-índicos não são dígitos de CPF."""
+    cpf_arabico = "٢٩١٤١٧٧٧٦٣٨"
+
+    assert normalizar_cpf(cpf_arabico) == ""
+    assert cpf_valido(cpf_arabico) is False
+
+
+@pytest.mark.parametrize(("texto", "esperado"), [("0123456789", True), ("٢٩", False), ("", False)])
+def test_so_digitos_aceita_apenas_ascii(texto, esperado):
+    """D-010: só os dígitos de 0 a 9 valem; texto vazio e outros alfabetos, não."""
+    assert so_digitos(texto) is esperado
+
+
 @pytest.mark.parametrize(
     ("nascimento", "referencia", "idade"),
     [
@@ -83,3 +97,8 @@ def _casos_de_numero_por_cargo():
 def test_valida_numero_conforme_os_digitos_do_cargo(cargo, numero, esperado):
     """TU-06 / RN-42: só dígitos, sem zero à esquerda, na quantidade exata do cargo."""
     assert numero_valido_para_cargo(numero, cargo) is esperado
+
+
+def test_recusa_numero_com_digitos_de_outro_alfabeto():
+    """TU-06 / RN-42 (D-010): '١٠' tem 2 dígitos arábico-índicos, mas não é um número válido."""
+    assert numero_valido_para_cargo("١٠", Cargo.PRESIDENTE) is False
