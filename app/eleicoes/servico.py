@@ -22,6 +22,7 @@ from app.eleicoes.dominio import (
     StatusEleicao,
     validar_abertura,
     validar_agendamento,
+    validar_candidatura,
     validar_edicao,
     validar_encerramento,
 )
@@ -212,6 +213,19 @@ def _conferir_candidato(sessao: Session, candidato_id: int) -> None:
         )
 
 
+def _conferir_regras_da_candidatura(
+    sessao: Session,
+    eleicao: Eleicao,
+    cargo: Cargo,
+    numero: str,
+    ignorando_id: int | None = None,
+) -> None:
+    """RN-42, RN-45 e RN-43, nesta ordem. `ignorando_id` é a candidatura em edição."""
+    quantidade = repositorio.contar_candidaturas_no_cargo(sessao, eleicao.id, cargo, ignorando_id)
+    validar_candidatura(_resumir(eleicao), cargo, numero, quantidade)
+    _conferir_numero_livre(sessao, eleicao.id, cargo, numero, ignorando_id)
+
+
 def _conferir_numero_livre(
     sessao: Session, eleicao_id: int, cargo: Cargo, numero: str, ignorando_id: int | None = None
 ) -> None:
@@ -254,16 +268,18 @@ def _detalhar(sessao: Session, candidaturas: list[Candidatura]) -> list[Candidat
 def criar_candidatura(
     sessao: Session, eleicao_id: int, dados: NovaCandidaturaDados, agora: datetime
 ) -> CandidaturaDetalhada:
-    """Cria uma candidatura pela raiz do agregado e faz commit (RN-40, RN-43, RN-44, RN-46).
+    """Cria uma candidatura pela raiz do agregado e faz commit (RN-40 a RN-46).
 
     Trava a eleição; só AGENDADA (RN-40). Candidato e partido precisam existir (RN-46, 422).
+    Número com os dígitos do cargo (RN-42) e, no 2º turno, só Governador e Presidente com no
+    máximo 2 candidaturas por cargo (RN-45), via `validar_candidatura`.
     Número já usado no cargo → 409 `NUMERO_JA_UTILIZADO` (RN-43); candidato que já tem
     candidatura na eleição → 409 `CANDIDATURA_DUPLICADA` (RN-44).
     """
     eleicao = _eleicao_editavel(sessao, eleicao_id)
     _conferir_candidato(sessao, dados.candidato_id)
     _conferir_partido(sessao, dados.partido_id)
-    _conferir_numero_livre(sessao, eleicao.id, dados.cargo, dados.numero)
+    _conferir_regras_da_candidatura(sessao, eleicao, dados.cargo, dados.numero)
     if repositorio.existe_candidatura_do_candidato(sessao, eleicao.id, dados.candidato_id):
         raise ConflitoDeEstado(
             "Este candidato já tem candidatura nesta eleição.", codigo="CANDIDATURA_DUPLICADA"
@@ -295,7 +311,7 @@ def editar_candidatura(
     numero = _ou(alteracoes.numero, candidatura.numero)
     partido_id = _ou(alteracoes.partido_id, candidatura.partido_id)
     _conferir_partido(sessao, partido_id)
-    _conferir_numero_livre(sessao, eleicao.id, cargo, numero, ignorando_id=candidatura.id)
+    _conferir_regras_da_candidatura(sessao, eleicao, cargo, numero, ignorando_id=candidatura.id)
     candidatura.cargo = cargo.value
     candidatura.numero = numero
     candidatura.partido_id = partido_id
