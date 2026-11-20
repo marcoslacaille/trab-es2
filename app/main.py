@@ -9,6 +9,7 @@ from app.compartilhado.banco import obter_sessao
 from app.compartilhado.erros import registrar_tratadores
 from app.compartilhado.openapi import DESCRICAO_API, TAGS
 from app.eleicoes.rotas import roteador as rotas_eleicoes
+from app.eleicoes.rotas import roteador_candidaturas as rotas_candidaturas
 from app.eleitores.rotas import roteador as rotas_eleitores
 from app.identidade.rotas import roteador as rotas_identidade
 
@@ -25,6 +26,7 @@ registrar_tratadores(app)
 PREFIXO = "/api/v1"
 app.include_router(rotas_identidade, prefix=PREFIXO)
 app.include_router(rotas_eleicoes, prefix=PREFIXO)
+app.include_router(rotas_candidaturas, prefix=PREFIXO)
 app.include_router(rotas_eleitores, prefix=PREFIXO)
 app.include_router(rotas_candidatos, prefix=PREFIXO)
 

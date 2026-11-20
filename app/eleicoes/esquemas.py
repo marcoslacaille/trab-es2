@@ -5,7 +5,13 @@ from typing import Annotated
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints
 
-from app.eleicoes.dominio import EleicaoResumo, StatusEleicao, links_da_eleicao
+from app.compartilhado.dominio import Cargo
+from app.eleicoes.dominio import (
+    CandidaturaDetalhada,
+    EleicaoResumo,
+    StatusEleicao,
+    links_da_eleicao,
+)
 
 
 def _sem_fuso(horario: time) -> time:
@@ -133,4 +139,92 @@ class EleicaoResposta(BaseModel):
                 LinkResposta(rel=link.rel, metodo=link.metodo, href=link.href)
                 for link in links_da_eleicao(eleicao, perfil)
             ],
+        )
+
+
+# ---------------------------------------------------------------- candidaturas
+
+Numero = Annotated[str, Field(max_length=20, description="Só dígitos, na quantidade do cargo.")]
+
+
+class NovaCandidatura(BaseModel):
+    """Dados para criar uma candidatura (RN-40). Campos desconhecidos são recusados."""
+
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {"candidato_id": 1, "partido_id": 1, "cargo": "PRESIDENTE", "numero": "10"}
+        },
+    )
+
+    candidato_id: int = Field(gt=0, description="Candidato que disputa (RN-46: precisa existir).")
+    partido_id: int = Field(gt=0, description="Partido pelo qual disputa (RN-46: precisa existir).")
+    cargo: Cargo = Field(description="Um dos 5 cargos (RN-41).")
+    numero: Numero
+
+
+class AlteracaoCandidatura(BaseModel):
+    """O que pode mudar numa candidatura: cargo, número e partido. Candidato e eleição, não."""
+
+    model_config = ConfigDict(extra="forbid", json_schema_extra={"example": {"numero": "11"}})
+
+    cargo: Cargo | None = None
+    numero: Numero | None = None
+    partido_id: int | None = Field(default=None, gt=0)
+
+
+class CandidatoDaCandidatura(BaseModel):
+    """Candidato como aparece na candidatura."""
+
+    id: int
+    nome_urna: str
+
+
+class PartidoDaCandidatura(BaseModel):
+    """Partido como aparece na candidatura."""
+
+    id: int
+    sigla: str
+    numero: int
+
+
+class CandidaturaResposta(BaseModel):
+    """Uma candidatura com os dados de exibição do candidato e do partido."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "id": 1,
+                "eleicao_id": 1,
+                "cargo": "PRESIDENTE",
+                "numero": "10",
+                "candidato": {"id": 1, "nome_urna": "Carlos Lima"},
+                "partido": {"id": 1, "sigla": "PINO", "numero": 10},
+            }
+        }
+    )
+
+    id: int
+    eleicao_id: int
+    cargo: Cargo
+    numero: str
+    candidato: CandidatoDaCandidatura
+    partido: PartidoDaCandidatura
+
+    @classmethod
+    def de_candidatura(cls, candidatura: CandidaturaDetalhada) -> "CandidaturaResposta":
+        """Monta a resposta a partir da candidatura detalhada do serviço."""
+        return cls(
+            id=candidatura.id,
+            eleicao_id=candidatura.eleicao_id,
+            cargo=candidatura.cargo,
+            numero=candidatura.numero,
+            candidato=CandidatoDaCandidatura(
+                id=candidatura.candidato_id, nome_urna=candidatura.nome_urna
+            ),
+            partido=PartidoDaCandidatura(
+                id=candidatura.partido_id,
+                sigla=candidatura.partido_sigla,
+                numero=candidatura.partido_numero,
+            ),
         )
