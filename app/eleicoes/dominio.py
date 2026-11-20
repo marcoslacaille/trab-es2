@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, time
 from enum import StrEnum
 
+from app.compartilhado.dominio import Cargo
 from app.compartilhado.erros import ConflitoDeEstado, DadosInvalidos
 
 PREFIXO_DA_API = "/api/v1"
@@ -117,5 +118,75 @@ def validar_edicao(status: StatusEleicao) -> None:
         raise ConflitoDeEstado(
             "Só uma eleição AGENDADA pode ser alterada.",
             codigo="ELEICAO_NAO_EDITAVEL",
+            detalhes={"status": status.value},
+        )
+
+
+def validar_abertura(
+    eleicao: EleicaoResumo,
+    agora: datetime,
+    existe_outra_aberta: bool,
+    candidaturas_por_cargo: dict[Cargo, int],
+) -> None:
+    """RN-13, RN-15, RN-16 e RN-17: confere se a eleição pode ser aberta agora.
+
+    Confere nesta ordem, e a primeira falha é a devolvida (todas são 409): status AGENDADA
+    (`TRANSICAO_INVALIDA`); nenhuma outra eleição aberta (`OUTRA_ELEICAO_ABERTA`); hoje é a data
+    da eleição (`FORA_DA_DATA`); horário entre a abertura (inclusive) e o encerramento
+    (exclusive) (`FORA_DA_JANELA`); ao menos uma candidatura (`SEM_CANDIDATURAS`); no 2º turno,
+    exatamente 2 candidaturas em cada cargo disputado (`SEGUNDO_TURNO_INCOMPLETO`).
+    `candidaturas_por_cargo` só traz os cargos que têm candidatura.
+    """
+    if eleicao.status != StatusEleicao.AGENDADA:
+        raise ConflitoDeEstado(
+            "Só uma eleição AGENDADA pode ser aberta.",
+            codigo="TRANSICAO_INVALIDA",
+            detalhes={"status": eleicao.status.value},
+        )
+    if existe_outra_aberta:
+        raise ConflitoDeEstado("Já existe outra eleição aberta.", codigo="OUTRA_ELEICAO_ABERTA")
+    if agora.date() != eleicao.data:
+        raise ConflitoDeEstado(
+            "A eleição só pode ser aberta no dia dela.",
+            codigo="FORA_DA_DATA",
+            detalhes={"data_da_eleicao": eleicao.data.isoformat()},
+        )
+    if not eleicao.horario_abertura <= agora.time() < eleicao.horario_encerramento:
+        raise ConflitoDeEstado(
+            "A eleição só pode ser aberta dentro da janela de votação.",
+            codigo="FORA_DA_JANELA",
+            detalhes={
+                "horario_abertura": eleicao.horario_abertura.isoformat(),
+                "horario_encerramento": eleicao.horario_encerramento.isoformat(),
+            },
+        )
+    if sum(candidaturas_por_cargo.values()) == 0:
+        raise ConflitoDeEstado(
+            "A eleição precisa de pelo menos uma candidatura para ser aberta.",
+            codigo="SEM_CANDIDATURAS",
+        )
+    if eleicao.turno == 2:
+        incompletos = [
+            cargo.value
+            for cargo, quantidade in candidaturas_por_cargo.items()
+            if quantidade != CANDIDATURAS_DO_SEGUNDO_TURNO_POR_CARGO
+        ]
+        if incompletos:
+            raise ConflitoDeEstado(
+                "No 2º turno, cada cargo disputado precisa ter exatamente 2 candidaturas.",
+                codigo="SEGUNDO_TURNO_INCOMPLETO",
+                detalhes={"cargos": sorted(incompletos)},
+            )
+
+
+def validar_encerramento(status: StatusEleicao) -> None:
+    """RN-13 e RN-18: só se encerra uma eleição ABERTA, a qualquer hora.
+
+    Levanta `ConflitoDeEstado` com `TRANSICAO_INVALIDA` (409).
+    """
+    if status != StatusEleicao.ABERTA:
+        raise ConflitoDeEstado(
+            "Só uma eleição ABERTA pode ser encerrada.",
+            codigo="TRANSICAO_INVALIDA",
             detalhes={"status": status.value},
         )
