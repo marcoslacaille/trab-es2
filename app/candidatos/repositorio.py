@@ -1,9 +1,44 @@
 """Consultas SQLAlchemy somente nas tabelas `candidatos` e `partidos`. Sem regra e sem commit."""
 
+from collections.abc import Iterable
+
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from app.candidatos.modelos import Partido
+from app.candidatos.modelos import Candidato, Partido
+
+
+def buscar_candidato_por_id(sessao: Session, candidato_id: int) -> Candidato | None:
+    return sessao.get(Candidato, candidato_id)
+
+
+def buscar_candidato_por_usuario_id(sessao: Session, usuario_id: int) -> Candidato | None:
+    return sessao.scalars(select(Candidato).where(Candidato.usuario_id == usuario_id)).first()
+
+
+def buscar_candidatos_por_usuarios_ids(
+    sessao: Session, usuarios_ids: Iterable[int]
+) -> list[Candidato]:
+    """Todos os candidatos desses usuários, numa única consulta."""
+    consulta = select(Candidato).where(Candidato.usuario_id.in_(list(usuarios_ids)))
+    return list(sessao.scalars(consulta))
+
+
+def buscar_candidatos_por_ids(sessao: Session, ids: Iterable[int]) -> list[Candidato]:
+    """Todos os candidatos com esses ids, numa única consulta."""
+    return list(sessao.scalars(select(Candidato).where(Candidato.id.in_(list(ids)))))
+
+
+def inserir_candidato(sessao: Session, candidato: Candidato) -> None:
+    """Adiciona o candidato e faz `flush` para o banco gerar o `id` (e conferir as restrições)."""
+    sessao.add(candidato)
+    sessao.flush()
+
+
+def remover_candidato(sessao: Session, candidato: Candidato) -> None:
+    """Apaga o candidato e faz `flush`, para uma chave estrangeira violada aparecer já aqui."""
+    sessao.delete(candidato)
+    sessao.flush()
 
 
 def buscar_partido_por_id(sessao: Session, partido_id: int) -> Partido | None:
