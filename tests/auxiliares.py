@@ -14,9 +14,13 @@ from app.identidade.dominio import Perfil
 CPF_CHEFE = "29141777638"
 SENHA_CHEFE = "Chefe@2026"
 SENHA_ELEITOR = "Eleitor@123"
+SENHA_CANDIDATO = "Candidato@123"
 
 # Cada chamada de `novo_eleitor` pega o próximo número, para CPF e título nunca se repetirem.
 _sequencia_de_eleitores = count(1)
+# Mesma ideia para candidatos (semente de CPF diferente da dos eleitores) e para partidos.
+_sequencia_de_candidatos = count(5_000)
+_sequencia_de_partidos = count(10)
 
 
 def _digito_verificador(nove_ou_dez_digitos: str) -> str:
@@ -88,3 +92,43 @@ def cabecalho_eleitor(cliente: TestClient, cabecalho_chefe: dict[str, str]) -> d
     resposta = novo_eleitor(cliente, cabecalho_chefe)
     assert resposta.status_code == 201, resposta.text
     return login(cliente, resposta.json()["cpf"], SENHA_ELEITOR)
+
+
+def novo_partido(cliente: TestClient, cabecalho: dict[str, str], **sobrescritas):
+    """Cadastra um partido pela API com dados válidos e devolve a resposta HTTP.
+
+    Cada chamada usa um número (10, 11, ...), uma sigla e um nome novos. Os testes passam
+    `sobrescritas` para provocar erros (ex.: `numero=10` repetido), por isso a resposta vem sem
+    nenhuma conferência de status.
+    """
+    numero = next(_sequencia_de_partidos)
+    dados = {"sigla": f"P{numero}", "nome": f"Partido de Teste {numero}", "numero": numero}
+    dados.update(sobrescritas)
+    return cliente.post("/api/v1/partidos", json=dados, headers=cabecalho)
+
+
+def novo_candidato(cliente: TestClient, cabecalho: dict[str, str], **sobrescritas):
+    """Cadastra um candidato pela API com dados válidos e devolve a resposta HTTP.
+
+    Cada chamada usa um CPF e um nome novos. A senha padrão é `SENHA_CANDIDATO`. Os testes
+    passam `sobrescritas` para provocar erros (ex.: `nome_urna="Jo"`), por isso a resposta vem
+    sem nenhuma conferência de status.
+    """
+    numero = next(_sequencia_de_candidatos)
+    dados = {
+        "nome": f"Candidato de Teste {numero}",
+        "nome_urna": f"Candidato {numero}",
+        "cpf": gerar_cpf(numero),
+        "data_nascimento": "1968-03-05",
+        "senha": SENHA_CANDIDATO,
+    }
+    dados.update(sobrescritas)
+    return cliente.post("/api/v1/candidatos", json=dados, headers=cabecalho)
+
+
+@pytest.fixture
+def cabecalho_candidato(cliente: TestClient, cabecalho_chefe: dict[str, str]) -> dict[str, str]:
+    """Cadastra um candidato (pelo Chefe) e devolve o cabeçalho de autenticação dele."""
+    resposta = novo_candidato(cliente, cabecalho_chefe)
+    assert resposta.status_code == 201, resposta.text
+    return login(cliente, resposta.json()["cpf"], SENHA_CANDIDATO)
