@@ -150,3 +150,59 @@ def nova_eleicao(cliente: TestClient, cabecalho: dict[str, str], **sobrescritas)
     }
     dados.update(sobrescritas)
     return cliente.post("/api/v1/eleicoes", json=dados, headers=cabecalho)
+
+
+def nova_candidatura(
+    cliente: TestClient, cabecalho: dict[str, str], eleicao_id: int = 1, **sobrescritas
+):
+    """Cria uma candidatura pela API e devolve a resposta HTTP.
+
+    Por padrão: Presidente, número `10`, e um candidato e um partido novos (criados pela API
+    com o mesmo cabeçalho, que precisa ser o do Chefe). Os testes passam `sobrescritas`
+    (`candidato_id`, `partido_id`, `cargo`, `numero`) para provocar erros, por isso a resposta
+    vem sem nenhuma conferência de status.
+    """
+    dados = dict(sobrescritas)
+    if "candidato_id" not in dados:
+        candidato = novo_candidato(cliente, cabecalho)
+        assert candidato.status_code == 201, candidato.text
+        dados["candidato_id"] = candidato.json()["id"]
+    if "partido_id" not in dados:
+        partido = novo_partido(cliente, cabecalho)
+        assert partido.status_code == 201, partido.text
+        dados["partido_id"] = partido.json()["id"]
+    dados.setdefault("cargo", "PRESIDENTE")
+    dados.setdefault("numero", "10")
+    return cliente.post(
+        f"/api/v1/eleicoes/{eleicao_id}/candidaturas", json=dados, headers=cabecalho
+    )
+
+
+def eleicao_aberta_com_candidatos(cliente: TestClient, cabecalho_chefe: dict[str, str]) -> dict:
+    """Eleição de 25/11/2026 (08:00 às 17:00), com candidaturas, já ABERTA (relógio às 10:00).
+
+    Presidente 10 e 20, Senador 101 e 202, todos por um mesmo partido. Devolve os ids:
+    `{"eleicao_id": 1, "partido_id": 1, "candidaturas": {"PRESIDENTE": {"10": 1, "20": 2},
+    "SENADOR": {"101": 3, "202": 4}}}`.
+    """
+    eleicao = nova_eleicao(cliente, cabecalho_chefe)
+    assert eleicao.status_code == 201, eleicao.text
+    eleicao_id = eleicao.json()["id"]
+    partido = novo_partido(cliente, cabecalho_chefe)
+    assert partido.status_code == 201, partido.text
+    partido_id = partido.json()["id"]
+    candidaturas: dict[str, dict[str, int]] = {}
+    for cargo, numero in [
+        ("PRESIDENTE", "10"),
+        ("PRESIDENTE", "20"),
+        ("SENADOR", "101"),
+        ("SENADOR", "202"),
+    ]:
+        resposta = nova_candidatura(
+            cliente, cabecalho_chefe, eleicao_id, partido_id=partido_id, cargo=cargo, numero=numero
+        )
+        assert resposta.status_code == 201, resposta.text
+        candidaturas.setdefault(cargo, {})[numero] = resposta.json()["id"]
+    abertura = cliente.post(f"/api/v1/eleicoes/{eleicao_id}/abertura", headers=cabecalho_chefe)
+    assert abertura.status_code == 200, abertura.text
+    return {"eleicao_id": eleicao_id, "partido_id": partido_id, "candidaturas": candidaturas}

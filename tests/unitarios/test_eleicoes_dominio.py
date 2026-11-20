@@ -13,6 +13,7 @@ from app.eleicoes.dominio import (
     links_da_eleicao,
     validar_abertura,
     validar_agendamento,
+    validar_candidatura,
     validar_edicao,
     validar_encerramento,
 )
@@ -283,3 +284,57 @@ def test_tu18_links_por_perfil_e_status(perfil, status):
     links = links_da_eleicao(eleicao, perfil)
 
     assert [(link.rel, link.metodo, link.href) for link in links] == LINKS_ESPERADOS[perfil, status]
+
+
+# ---------------------------------------------------------------- TU-17: candidatura
+
+
+def test_tu17_segundo_turno_recusa_senador():
+    """TU-17 / RN-45: no 2º turno só há Governador e Presidente."""
+    with pytest.raises(ConflitoDeEstado) as erro:
+        validar_candidatura(uma_eleicao(turno=2), Cargo.SENADOR, "101", quantidade_no_cargo=0)
+
+    assert erro.value.codigo == "CARGO_NAO_PERMITIDO_NO_TURNO"
+
+
+def test_tu17_segundo_turno_recusa_terceira_candidatura_no_cargo():
+    """TU-17 / RN-45: com 2 candidaturas no cargo, a terceira é recusada; a segunda passa."""
+    eleicao = uma_eleicao(turno=2)
+
+    validar_candidatura(eleicao, Cargo.PRESIDENTE, "20", quantidade_no_cargo=1)
+    with pytest.raises(ConflitoDeEstado) as erro:
+        validar_candidatura(eleicao, Cargo.PRESIDENTE, "30", quantidade_no_cargo=2)
+
+    assert erro.value.codigo == "LIMITE_SEGUNDO_TURNO"
+
+
+def test_tu17_primeiro_turno_nao_tem_restricao_de_cargo_nem_de_quantidade():
+    """RN-45 só vale no 2º turno: no 1º, Senador e um 5º candidato a Presidente passam."""
+    eleicao = uma_eleicao(turno=1)
+
+    validar_candidatura(eleicao, Cargo.SENADOR, "101", quantidade_no_cargo=0)
+    validar_candidatura(eleicao, Cargo.PRESIDENTE, "50", quantidade_no_cargo=4)
+
+
+@pytest.mark.parametrize(
+    ("cargo", "numero"),
+    [
+        (Cargo.PRESIDENTE, "1"),
+        (Cargo.GOVERNADOR, "05"),
+        (Cargo.SENADOR, "10"),
+        (Cargo.DEPUTADO_FEDERAL, "12a4"),
+        (Cargo.DEPUTADO_ESTADUAL, "123456"),
+    ],
+)
+def test_tu17_numero_com_digitos_errados_e_recusado(cargo, numero):
+    """RN-42: dígitos errados, zero à esquerda ou letras → 422 `NUMERO_INVALIDO_PARA_CARGO`."""
+    with pytest.raises(DadosInvalidos) as erro:
+        validar_candidatura(uma_eleicao(), cargo, numero, quantidade_no_cargo=0)
+
+    assert erro.value.codigo == "NUMERO_INVALIDO_PARA_CARGO"
+
+
+def test_tu17_numero_invalido_vem_antes_das_regras_do_segundo_turno():
+    """Ordem das conferências: o número é conferido primeiro (RN-42, depois RN-45)."""
+    with pytest.raises(DadosInvalidos):
+        validar_candidatura(uma_eleicao(turno=2), Cargo.SENADOR, "1", quantidade_no_cargo=0)

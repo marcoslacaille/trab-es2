@@ -3,6 +3,8 @@ from datetime import datetime
 from tests.auxiliares import (
     SENHA_CANDIDATO,
     gerar_cpf,
+    nova_candidatura,
+    nova_eleicao,
     novo_candidato,
     novo_partido,
 )
@@ -335,3 +337,31 @@ def test_excluir_candidato_inexistente_da_404_e_eleitor_nao_exclui(
     assert inexistente.status_code == 404
     assert _codigo(inexistente) == "CANDIDATO_NAO_ENCONTRADO"
     assert do_eleitor.status_code == 403
+
+
+def test_excluir_candidato_com_candidatura_da_409_e_so_depois_de_remover_a_candidatura(
+    cliente, cabecalho_chefe
+):
+    """TI-29 / RN-33: com candidatura → 409 `EXCLUSAO_BLOQUEADA`; sem ela → 204.
+
+    Confirma que a FK `fk_candidaturas_candidato_id_candidatos` tem o nome que o serviço espera
+    (D-053): se tivesse outro, o erro seria o genérico `CONFLITO_DE_DADOS`.
+    """
+    nova_eleicao(cliente, cabecalho_chefe)
+    candidatura = nova_candidatura(cliente, cabecalho_chefe).json()
+    candidato_id = candidatura["candidato"]["id"]
+    rota = f"{ROTA_CANDIDATOS}/{candidato_id}"
+
+    bloqueada = cliente.delete(rota, headers=cabecalho_chefe)
+
+    assert bloqueada.status_code == 409
+    assert _codigo(bloqueada) == "EXCLUSAO_BLOQUEADA"
+    assert cliente.get(rota, headers=cabecalho_chefe).status_code == 200  # nada foi apagado
+
+    remocao = cliente.delete(
+        f"/api/v1/eleicoes/1/candidaturas/{candidatura['id']}", headers=cabecalho_chefe
+    )
+    liberada = cliente.delete(rota, headers=cabecalho_chefe)
+
+    assert remocao.status_code == 204
+    assert liberada.status_code == 204
