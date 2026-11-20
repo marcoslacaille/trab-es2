@@ -101,7 +101,8 @@ def novo_partido(cliente: TestClient, cabecalho: dict[str, str], **sobrescritas)
     `sobrescritas` para provocar erros (ex.: `numero=10` repetido), por isso a resposta vem sem
     nenhuma conferência de status.
     """
-    numero = next(_sequencia_de_partidos)
+    # O contador vale para a sessão de testes toda; o número do partido vai de 10 a 99.
+    numero = 10 + (next(_sequencia_de_partidos) - 10) % 90
     dados = {"sigla": f"P{numero}", "nome": f"Partido de Teste {numero}", "numero": numero}
     dados.update(sobrescritas)
     return cliente.post("/api/v1/partidos", json=dados, headers=cabecalho)
@@ -206,3 +207,30 @@ def eleicao_aberta_com_candidatos(cliente: TestClient, cabecalho_chefe: dict[str
     abertura = cliente.post(f"/api/v1/eleicoes/{eleicao_id}/abertura", headers=cabecalho_chefe)
     assert abertura.status_code == 200, abertura.text
     return {"eleicao_id": eleicao_id, "partido_id": partido_id, "candidaturas": candidaturas}
+
+
+def votar(
+    cliente: TestClient,
+    cabecalho: dict[str, str],
+    eleicao_id: int,
+    cargo: str,
+    numero: str | None = None,
+    branco: bool = False,
+):
+    """Vota em dois passos (registro e confirmação) e devolve a resposta da confirmação.
+
+    Com `branco=True` usa o modo BRANCO; senão digita o `numero`. Se o registro falhar,
+    devolve a resposta do registro (os testes conferem o status e o código do erro).
+    """
+    pedido = {"cargo": cargo, "modo": "BRANCO" if branco else "NUMERO"}
+    if not branco:
+        pedido["numero"] = numero
+    base = f"/api/v1/votacao/eleicoes/{eleicao_id}/votos"
+    registro = cliente.post(f"{base}/registro", json=pedido, headers=cabecalho)
+    if registro.status_code != 200:
+        return registro
+    return cliente.post(
+        f"{base}/confirmacao",
+        json={"token_cedula": registro.json()["token_cedula"]},
+        headers=cabecalho,
+    )
