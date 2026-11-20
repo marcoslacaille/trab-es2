@@ -3,7 +3,16 @@
 import re
 from datetime import date
 
-FORMATO_CPF = re.compile(r"^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$")
+FORMATO_CPF = re.compile(r"^[0-9]{3}\.?[0-9]{3}\.?[0-9]{3}-?[0-9]{2}$")
+
+
+def so_digitos(texto: str) -> bool:
+    """Diz se o texto tem só dígitos de 0 a 9 (ASCII).
+
+    `str.isdigit()` sozinho aceita dígitos de outros alfabetos (como os arábico-índicos),
+    que o banco e o `int()` tratam de outro jeito. Por isso exigimos também `isascii()`.
+    """
+    return texto.isascii() and texto.isdigit()
 
 
 def normalizar_cpf(valor: str) -> str:
@@ -13,7 +22,7 @@ def normalizar_cpf(valor: str) -> str:
     """
     if not FORMATO_CPF.match(valor.strip()):
         return ""
-    return re.sub(r"\D", "", valor)
+    return re.sub(r"[^0-9]", "", valor)
 
 
 def cpf_valido(cpf: str) -> bool:
@@ -21,7 +30,7 @@ def cpf_valido(cpf: str) -> bool:
 
     Espera o CPF já normalizado (só dígitos). Recusa tamanho errado e dígitos todos iguais.
     """
-    if len(cpf) != 11 or not cpf.isdigit() or cpf == cpf[0] * 11:
+    if len(cpf) != 11 or not so_digitos(cpf) or cpf == cpf[0] * 11:
         return False
     for tamanho in (9, 10):
         soma = sum(int(cpf[i]) * (tamanho + 1 - i) for i in range(tamanho))
