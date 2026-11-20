@@ -42,6 +42,7 @@ roteador_candidaturas = APIRouter(tags=["Candidaturas"])
 
 UsuarioChefe = Annotated[UsuarioAutenticado, Depends(exige_perfil(Perfil.CHEFE_SECAO))]
 UsuarioLogado = Annotated[UsuarioAutenticado, Depends(obter_usuario_atual)]
+UsuarioCandidato = Annotated[UsuarioAutenticado, Depends(exige_perfil(Perfil.CANDIDATO))]
 IdDaEleicao = Annotated[int, Path(gt=0, description="Identificador da eleição.")]
 IdDaCandidatura = Annotated[int, Path(gt=0, description="Identificador da candidatura.")]
 
@@ -254,3 +255,20 @@ def remover_candidatura(
 ) -> Response:
     servico.remover_candidatura(sessao, eleicao_id, candidatura_id)
     return Response(status_code=204)
+
+
+@roteador_candidaturas.get(
+    "/candidaturas/minhas",
+    response_model=list[CandidaturaResposta],
+    summary="Lista as candidaturas do candidato logado",
+    description="O Candidato vê as próprias candidaturas, em todas as eleições (RN-47).",
+    responses=respostas_de_erro(401, 403),
+)
+def listar_minhas_candidaturas(
+    usuario: UsuarioCandidato,
+    sessao: Annotated[Session, Depends(obter_sessao)],
+) -> list[CandidaturaResposta]:
+    return [
+        CandidaturaResposta.de_candidatura(candidatura)
+        for candidatura in servico.candidaturas_do_usuario(sessao, usuario.id)
+    ]
