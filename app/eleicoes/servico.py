@@ -349,3 +349,29 @@ def listar_candidaturas(
     """
     _ou_nao_encontrada(repositorio.buscar_por_id(sessao, eleicao_id))
     return _detalhar(sessao, repositorio.listar_candidaturas(sessao, eleicao_id, cargo))
+
+
+def candidaturas_do_usuario(sessao: Session, usuario_id: int) -> list[CandidaturaDetalhada]:
+    """As candidaturas do candidato logado, em todas as eleições (RN-47).
+
+    Ordenadas por eleição, cargo e número. Credencial sem candidato (por exemplo, um eleitor)
+    devolve lista vazia; quem barra o acesso é a rota (só o perfil CANDIDATO).
+    """
+    candidato = servico_candidatos.obter_candidato_do_usuario(sessao, usuario_id)
+    if candidato is None:
+        return []
+    candidaturas = _detalhar(
+        sessao, repositorio.listar_candidaturas_do_candidato(sessao, candidato.id)
+    )
+    return sorted(candidaturas, key=lambda c: c.eleicao_id)
+
+
+def buscar_candidatura_por_numero(
+    sessao: Session, eleicao_id: int, cargo: Cargo, numero: str
+) -> CandidaturaDetalhada | None:
+    """A candidatura que usa este número neste cargo da eleição, ou `None`.
+
+    Usada pela votação para decidir entre voto NOMINAL (existe) e NULO (não existe).
+    """
+    candidatura = repositorio.buscar_candidatura_por_numero(sessao, eleicao_id, cargo, numero)
+    return _detalhar(sessao, [candidatura])[0] if candidatura else None
