@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import text
 
 from app.compartilhado.banco import engine
+from app.compartilhado.relogio import obter_agora
 from app.main import app
 
 TABELAS_DO_PUBLIC = """
@@ -51,12 +52,11 @@ class RelogioDeTeste:
 
 @pytest.fixture
 def relogio():
-    """Relógio congelado em 25/11/2026 às 10:00 (horário de Brasília).
-
-    Ainda não é ligado à aplicação: o `app.dependency_overrides[obter_agora]` entra na
-    tarefa 01, quando `app/compartilhado/relogio.py` passar a existir.
-    """
-    return RelogioDeTeste(datetime(2026, 11, 25, 10, 0, tzinfo=ZoneInfo("America/Sao_Paulo")))
+    """Congela o tempo em 25/11/2026 às 10:00 (horário de Brasília)."""
+    relogio = RelogioDeTeste(datetime(2026, 11, 25, 10, 0, tzinfo=ZoneInfo("America/Sao_Paulo")))
+    app.dependency_overrides[obter_agora] = relogio
+    yield relogio
+    app.dependency_overrides.pop(obter_agora, None)
 
 
 @pytest.fixture
