@@ -1,0 +1,83 @@
+"""Consultas SQLAlchemy somente nas tabelas `eleicoes` e `candidaturas`. Sem regra e sem commit."""
+
+from datetime import date
+
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from app.compartilhado.dominio import Cargo
+from app.eleicoes.dominio import StatusEleicao
+from app.eleicoes.modelos import Candidatura, Eleicao
+
+
+def buscar_por_id(sessao: Session, eleicao_id: int) -> Eleicao | None:
+    return sessao.get(Eleicao, eleicao_id)
+
+
+def obter_com_trava_exclusiva(sessao: Session, eleicao_id: int) -> Eleicao | None:
+    """`SELECT ... FOR UPDATE`: trava a linha da eleição até o fim da transação.
+
+    Toda alteração no agregado começa por aqui, então duas alterações nunca se cruzam. Espera as
+    travas compartilhadas das confirmações de voto em andamento terminarem (seção 9.5).
+    """
+    consulta = (
+        select(Eleicao)
+        .where(Eleicao.id == eleicao_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    return sessao.scalars(consulta).first()
+
+
+def obter_com_trava_compartilhada(sessao: Session, eleicao_id: int) -> Eleicao | None:
+    """`SELECT ... FOR SHARE`: vários leitores seguram a linha juntos, mas ninguém a altera.
+
+    Usada pela votação: enquanto um voto é confirmado, a eleição não pode ser encerrada.
+    """
+    consulta = (
+        select(Eleicao)
+        .where(Eleicao.id == eleicao_id)
+        .with_for_update(read=True)
+        .execution_options(populate_existing=True)
+    )
+    return sessao.scalars(consulta).first()
+
+
+def existe_eleicao_aberta(sessao: Session) -> bool:
+    """Há alguma eleição com status ABERTA?"""
+    consulta = select(Eleicao.id).where(Eleicao.status == StatusEleicao.ABERTA.value).limit(1)
+    return sessao.scalar(consulta) is not None
+
+
+def existe_eleicao_na_data_e_turno(
+    sessao: Session, data: date, turno: int, ignorando_id: int | None = None
+) -> bool:
+    """Já há uma eleição nesta data e turno? `ignorando_id` exclui a própria eleição na edição."""
+    consulta = select(Eleicao.id).where(Eleicao.data == data, Eleicao.turno == turno)
+    if ignorando_id is not None:
+        consulta = consulta.where(Eleicao.id != ignorando_id)
+    return sessao.scalar(consulta.limit(1)) is not None
+
+
+def contar_candidaturas_por_cargo(sessao: Session, eleicao_id: int) -> dict[Cargo, int]:
+    """Quantas candidaturas a eleição tem em cada cargo. Cargos sem candidatura ficam de fora."""
+    consulta = (
+        select(Candidatura.cargo, func.count())
+        .where(Candidatura.eleicao_id == eleicao_id)
+        .group_by(Candidatura.cargo)
+    )
+    return {Cargo(cargo): quantidade for cargo, quantidade in sessao.execute(consulta)}
+
+
+def listar(sessao: Session, status: StatusEleicao | None) -> list[Eleicao]:
+    """Todas as eleições (ou só as do status pedido), da mais antiga para a mais nova."""
+    consulta = select(Eleicao).order_by(Eleicao.data, Eleicao.turno, Eleicao.id)
+    if status is not None:
+        consulta = consulta.where(Eleicao.status == status.value)
+    return list(sessao.scalars(consulta))
+
+
+def inserir(sessao: Session, eleicao: Eleicao) -> None:
+    """Adiciona a eleição e faz `flush` para o banco gerar o `id` (e conferir as restrições)."""
+    sessao.add(eleicao)
+    sessao.flush()
