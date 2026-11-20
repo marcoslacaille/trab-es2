@@ -7,7 +7,12 @@ from dataclasses import dataclass
 from datetime import date, datetime, time
 from enum import StrEnum
 
-from app.compartilhado.dominio import Cargo
+from app.compartilhado.dominio import (
+    CARGOS_DO_SEGUNDO_TURNO,
+    DIGITOS_POR_CARGO,
+    Cargo,
+    numero_valido_para_cargo,
+)
 from app.compartilhado.erros import ConflitoDeEstado, DadosInvalidos
 
 PREFIXO_DA_API = "/api/v1"
@@ -216,6 +221,39 @@ def validar_abertura(
                 codigo="SEGUNDO_TURNO_INCOMPLETO",
                 detalhes={"cargos": sorted(incompletos)},
             )
+
+
+def validar_candidatura(
+    eleicao: EleicaoResumo, cargo: Cargo, numero: str, quantidade_no_cargo: int
+) -> None:
+    """RN-42 e RN-45: confere o número e, no 2º turno, o cargo e o limite de candidaturas.
+
+    `quantidade_no_cargo` é quantas candidaturas o cargo já tem na eleição, sem contar a que
+    está sendo editada. Confere nesta ordem: número com os dígitos do cargo e sem zero à
+    esquerda (`NUMERO_INVALIDO_PARA_CARGO`, 422); no 2º turno, só Governador e Presidente
+    (`CARGO_NAO_PERMITIDO_NO_TURNO`, 409) e no máximo 2 por cargo (`LIMITE_SEGUNDO_TURNO`, 409).
+    """
+    if not numero_valido_para_cargo(numero, cargo):
+        raise DadosInvalidos(
+            f"O número {numero!r} não tem os dígitos do cargo {cargo.value}.",
+            codigo="NUMERO_INVALIDO_PARA_CARGO",
+            detalhes={"cargo": cargo.value, "digitos": DIGITOS_POR_CARGO[cargo]},
+        )
+    if eleicao.turno != 2:
+        return
+    if cargo not in CARGOS_DO_SEGUNDO_TURNO:
+        raise ConflitoDeEstado(
+            "No 2º turno só há Governador e Presidente.",
+            codigo="CARGO_NAO_PERMITIDO_NO_TURNO",
+            detalhes={"cargo": cargo.value},
+        )
+    if quantidade_no_cargo >= CANDIDATURAS_DO_SEGUNDO_TURNO_POR_CARGO:
+        raise ConflitoDeEstado(
+            f"No 2º turno cada cargo tem no máximo {CANDIDATURAS_DO_SEGUNDO_TURNO_POR_CARGO} "
+            "candidaturas.",
+            codigo="LIMITE_SEGUNDO_TURNO",
+            detalhes={"cargo": cargo.value},
+        )
 
 
 def validar_encerramento(status: StatusEleicao) -> None:
