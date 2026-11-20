@@ -1,0 +1,32 @@
+services:
+  banco:
+    image: postgres:16-alpine
+    container_name: eleicao-banco
+    environment:
+      POSTGRES_USER: eleicao
+      POSTGRES_PASSWORD: eleicao
+      POSTGRES_DB: eleicao
+    ports:
+      - "5432:5432"
+    volumes:
+      - dados_banco:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eleicao -d eleicao"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  banco_teste:
+    image: postgres:16-alpine
+    container_name: eleicao-banco-teste
+    environment:
+      POSTGRES_USER: eleicao
+      POSTGRES_PASSWORD: eleicao
+      POSTGRES_DB: eleicao_teste
+    ports:
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+
+volumes:
+  dados_banco:
