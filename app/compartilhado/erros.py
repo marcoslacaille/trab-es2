@@ -8,6 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.exc import IntegrityError
+from starlette.exceptions import HTTPException as ErroHttpDoFramework
 
 registro = logging.getLogger(__name__)
 
@@ -134,6 +135,12 @@ CONFLITO_DE_DADOS = TraducaoDeRestricao(
     "CONFLITO_DE_DADOS", 409, "Os dados enviados conflitam com os já gravados."
 )
 
+# Erros que o próprio FastAPI levanta (rota inexistente, método não permitido): código e mensagem.
+ERROS_DO_FRAMEWORK = {
+    404: ("ROTA_NAO_ENCONTRADA", "Rota não encontrada."),
+    405: ("METODO_NAO_PERMITIDO", "Método não permitido para esta rota."),
+}
+
 # Primeiro item do `loc` do Pydantic: de onde veio o campo. Não interessa a quem usa a API.
 _ORIGENS_DO_CAMPO = {"body", "query", "path", "header", "cookie"}
 
@@ -166,7 +173,7 @@ def _nome_do_campo(localizacao: tuple) -> str:
 
 
 def registrar_tratadores(app: FastAPI) -> None:
-    """Registra no app os 4 tratadores de erro (seção 5 do PLANO)."""
+    """Registra no app os 5 tratadores de erro (seção 5 do PLANO)."""
 
     @app.exception_handler(ErroDeNegocio)
     async def tratar_erro_de_negocio(requisicao: Request, erro: ErroDeNegocio) -> JSONResponse:
@@ -191,6 +198,17 @@ def registrar_tratadores(app: FastAPI) -> None:
         return _resposta_de_erro(
             422, "DADOS_INVALIDOS", "Dados inválidos na requisição.", {"campos": campos}
         )
+
+    @app.exception_handler(ErroHttpDoFramework)
+    async def tratar_erro_http_do_framework(
+        requisicao: Request, erro: ErroHttpDoFramework
+    ) -> JSONResponse:
+        # Cobre também a HTTPException do FastAPI (subclasse desta). O cabeçalho `Allow` do 405
+        # e outros cabeçalhos que o framework mandou são mantidos.
+        codigo, mensagem = ERROS_DO_FRAMEWORK.get(
+            erro.status_code, ("ERRO_HTTP", "Erro na requisição.")
+        )
+        return _resposta_de_erro(erro.status_code, codigo, mensagem, cabecalhos=erro.headers)
 
     @app.exception_handler(IntegrityError)
     async def tratar_erro_de_integridade(requisicao: Request, erro: IntegrityError) -> JSONResponse:
