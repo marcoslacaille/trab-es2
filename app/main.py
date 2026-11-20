@@ -6,10 +6,15 @@ from sqlalchemy.orm import Session
 
 from app.compartilhado.banco import obter_sessao
 from app.compartilhado.erros import registrar_tratadores
+from app.compartilhado.openapi import DESCRICAO_API, TAGS
 
 app = FastAPI(
     title="API de Simulação de Eleição Eletrônica",
     version="1.0.0",
+    description=DESCRICAO_API,
+    openapi_tags=TAGS,
+    # operationId legível no Swagger (ex.: "abrir"); os nomes das funções de rota são únicos.
+    generate_unique_id_function=lambda rota: rota.name,
 )
 registrar_tratadores(app)
 
