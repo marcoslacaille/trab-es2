@@ -190,3 +190,34 @@ def validar_encerramento(status: StatusEleicao) -> None:
             codigo="TRANSICAO_INVALIDA",
             detalhes={"status": status.value},
         )
+
+
+def links_da_eleicao(eleicao: EleicaoResumo, perfil: str) -> list[Link]:
+    """RN-19 (HATEOAS): as ações que o perfil pode fazer na eleição, dado o status dela.
+
+    `self` sempre aparece. O resto segue a tabela da seção 9.5 do PLANO: o Chefe edita, gerencia
+    candidaturas e abre a AGENDADA, e encerra a ABERTA; Eleitor e Candidato veem a apuração
+    parcial da ABERTA (o Eleitor também a cédula); todos veem o resultado da ENCERRADA.
+    """
+    base = f"{PREFIXO_DA_API}/eleicoes/{eleicao.id}"
+    apuracao = f"{PREFIXO_DA_API}/apuracao/eleicoes/{eleicao.id}"
+    links = [Link("self", "GET", base)]
+
+    if eleicao.status == StatusEleicao.AGENDADA and perfil == CHEFE_SECAO:
+        links += [
+            Link("editar", "PATCH", base),
+            Link("candidaturas", "GET", f"{base}/candidaturas"),
+            Link("nova-candidatura", "POST", f"{base}/candidaturas"),
+            Link("abrir", "POST", f"{base}/abertura"),
+        ]
+    if eleicao.status == StatusEleicao.ABERTA:
+        if perfil == CHEFE_SECAO:
+            links.append(Link("encerrar", "POST", f"{base}/encerramento"))
+        if perfil == ELEITOR:
+            cedula = f"{PREFIXO_DA_API}/votacao/eleicoes/{eleicao.id}/cedula"
+            links.append(Link("cedula", "GET", cedula))
+        if perfil in (CHEFE_SECAO, ELEITOR, CANDIDATO):
+            links.append(Link("apuracao-parcial", "GET", f"{apuracao}/parcial"))
+    if eleicao.status == StatusEleicao.ENCERRADA:
+        links.append(Link("resultado", "GET", f"{apuracao}/resultado"))
+    return links
