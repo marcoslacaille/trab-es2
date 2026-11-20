@@ -81,3 +81,89 @@ def inserir(sessao: Session, eleicao: Eleicao) -> None:
     """Adiciona a eleição e faz `flush` para o banco gerar o `id` (e conferir as restrições)."""
     sessao.add(eleicao)
     sessao.flush()
+
+
+def buscar_candidatura(sessao: Session, eleicao_id: int, candidatura_id: int) -> Candidatura | None:
+    """A candidatura, se ela pertence a esta eleição."""
+    consulta = select(Candidatura).where(
+        Candidatura.id == candidatura_id, Candidatura.eleicao_id == eleicao_id
+    )
+    return sessao.scalars(consulta).first()
+
+
+def listar_candidaturas(
+    sessao: Session, eleicao_id: int, cargo: Cargo | None = None
+) -> list[Candidatura]:
+    """As candidaturas da eleição (ou só as do cargo pedido). A ordem final é do serviço."""
+    consulta = select(Candidatura).where(Candidatura.eleicao_id == eleicao_id)
+    if cargo is not None:
+        consulta = consulta.where(Candidatura.cargo == cargo.value)
+    return list(sessao.scalars(consulta))
+
+
+def listar_candidaturas_do_candidato(sessao: Session, candidato_id: int) -> list[Candidatura]:
+    """Todas as candidaturas de um candidato, em qualquer eleição."""
+    consulta = select(Candidatura).where(Candidatura.candidato_id == candidato_id)
+    return list(sessao.scalars(consulta))
+
+
+def buscar_candidatura_por_numero(
+    sessao: Session, eleicao_id: int, cargo: Cargo, numero: str
+) -> Candidatura | None:
+    """A candidatura que usa este número neste cargo da eleição, se houver."""
+    consulta = select(Candidatura).where(
+        Candidatura.eleicao_id == eleicao_id,
+        Candidatura.cargo == cargo.value,
+        Candidatura.numero == numero,
+    )
+    return sessao.scalars(consulta).first()
+
+
+def contar_candidaturas_no_cargo(
+    sessao: Session, eleicao_id: int, cargo: Cargo, ignorando_id: int | None = None
+) -> int:
+    """Quantas candidaturas o cargo tem na eleição (`ignorando_id` exclui a que está em edição)."""
+    consulta = select(func.count()).where(
+        Candidatura.eleicao_id == eleicao_id, Candidatura.cargo == cargo.value
+    )
+    if ignorando_id is not None:
+        consulta = consulta.where(Candidatura.id != ignorando_id)
+    return sessao.scalar(consulta) or 0
+
+
+def existe_numero_no_cargo(
+    sessao: Session,
+    eleicao_id: int,
+    cargo: Cargo,
+    numero: str,
+    ignorando_id: int | None = None,
+) -> bool:
+    """Já há candidatura com este número neste cargo da eleição (RN-43)?"""
+    consulta = select(Candidatura.id).where(
+        Candidatura.eleicao_id == eleicao_id,
+        Candidatura.cargo == cargo.value,
+        Candidatura.numero == numero,
+    )
+    if ignorando_id is not None:
+        consulta = consulta.where(Candidatura.id != ignorando_id)
+    return sessao.scalar(consulta.limit(1)) is not None
+
+
+def existe_candidatura_do_candidato(sessao: Session, eleicao_id: int, candidato_id: int) -> bool:
+    """O candidato já tem candidatura nesta eleição (RN-44)?"""
+    consulta = select(Candidatura.id).where(
+        Candidatura.eleicao_id == eleicao_id, Candidatura.candidato_id == candidato_id
+    )
+    return sessao.scalar(consulta.limit(1)) is not None
+
+
+def inserir_candidatura(sessao: Session, candidatura: Candidatura) -> None:
+    """Adiciona a candidatura e faz `flush` para o banco gerar o `id` e conferir as restrições."""
+    sessao.add(candidatura)
+    sessao.flush()
+
+
+def remover_candidatura(sessao: Session, candidatura: Candidatura) -> None:
+    """Apaga a candidatura e faz `flush`."""
+    sessao.delete(candidatura)
+    sessao.flush()
