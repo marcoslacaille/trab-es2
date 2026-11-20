@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.compartilhado.banco import obter_sessao
 from app.compartilhado.erros import registrar_tratadores
 from app.compartilhado.openapi import DESCRICAO_API, TAGS
+from app.eleitores.rotas import roteador as rotas_eleitores
 from app.identidade.rotas import roteador as rotas_identidade
 
 app = FastAPI(
@@ -21,6 +22,7 @@ registrar_tratadores(app)
 
 PREFIXO = "/api/v1"
 app.include_router(rotas_identidade, prefix=PREFIXO)
+app.include_router(rotas_eleitores, prefix=PREFIXO)
 
 
 @app.get("/health", tags=["Sistema"], summary="Verifica se a API e o banco estão no ar")
