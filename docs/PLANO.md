@@ -1,5 +1,7 @@
 # Receita completa — Sistema de Eleição Eletrônica (FastAPI + PostgreSQL)
 
+Fonte da verdade: este arquivo no repositório. Quando ele e uma linha `ACEITA` de `docs/DECISOES.md` divergirem, vale a decisão até a próxima consolidação.
+
 Versão de 19/11/2026
 
 ## 0. Como usar este documento
@@ -148,6 +150,7 @@ O código será avaliado com a régua da disciplina (Ousterhout nas aulas 02 a 0
 ### Regras de estilo
 
 - Funções com no máximo \~40 linhas e no máximo 5 parâmetros; acima disso, agrupe em uma `dataclass`.
+  - Exceção aceita (D-013): `identidade.servico.criar_credencial(sessao, cpf, nome, senha, perfil, agora)` tem 6 parâmetros. A assinatura é a da seção 9.2, chamada pelos módulos `eleitores` e `candidatos`, e uma `dataclass` só para isso seria classite.
 - Tipagem em todas as assinaturas públicas.
 - Docstring em toda função pública: o que faz, regras (RN-xx) e erros que pode levantar.
 - Comentários explicam o **porquê**, não o quê.
@@ -178,30 +181,30 @@ Python 3.12 + FastAPI + SQLAlchemy 2 (síncrono) + PostgreSQL 16 em Docker, test
 `requirements.txt` (execução):
 
 ```text
-fastapi
-uvicorn[standard]
-pydantic
-pydantic-settings
-sqlalchemy>=2.0
-psycopg[binary]>=3.1
-alembic
-bcrypt
-pyjwt
-tzdata
-python-multipart
+fastapi==0.165.0
+uvicorn[standard]==0.54.0
+pydantic==2.14.4
+pydantic-settings==2.16.3
+sqlalchemy==2.1.9
+psycopg[binary]==3.3.9
+alembic==1.20.1
+bcrypt==5.0.0
+pyjwt==2.15.1
+tzdata==2026.6
+python-multipart==0.0.34
 ```
 
 `requirements-dev.txt` (desenvolvimento e testes):
 
 ```text
 -r requirements.txt
-pytest
-pytest-cov
-httpx
-ruff
+pytest==9.2.0
+pytest-cov==7.1.0
+httpx==0.28.1
+ruff==0.17.6
 ```
 
-O agente instala, confirma que tudo funciona e **fixa as versões exatas instaladas** (`pacote==x.y.z`) nos dois arquivos. `python-multipart` é necessário porque o login usa formulário OAuth2.
+As versões acima são as **fixadas** (`pacote==x.y.z`) na tarefa 00, depois de instaladas e testadas; trocar uma versão é decisão do grupo. `python-multipart` é necessário porque o login usa formulário OAuth2.
 
 ### `docker-compose.yml`
 
@@ -303,6 +306,10 @@ requires-python = ">=3.12"
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+
+[tool.ruff.format]
+# Os .md (como o docs/PLANO.md) têm trechos de código só para leitura; não são código do projeto.
+exclude = ["*.md"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM"]
@@ -451,7 +458,8 @@ Tratadores registrados no `main.py`:
 1. `ErroDeNegocio` → `status_http` da classe + corpo `{"erro": {"codigo", "mensagem", "detalhes"}}`; em 401, cabeçalho `WWW-Authenticate: Bearer`.
 2. `RequestValidationError` (Pydantic) → 422, código `DADOS_INVALIDOS`, `detalhes.campos` = lista de `{campo, mensagem}`.
 3. `IntegrityError` não tratado → 409, código mapeado pelo nome da restrição (tabela na seção 6) ou `CONFLITO_DE_DADOS`.
-4. `Exception` → 500, código `ERRO_INTERNO`, mensagem genérica; detalhes só no log, nunca na resposta.
+4. `HTTPException` do Starlette (os erros do próprio framework; a `HTTPException` do FastAPI é subclasse dela) → 404 `ROTA_NAO_ENCONTRADA` ("Rota não encontrada."), 405 `METODO_NAO_PERMITIDO` ("Método não permitido para esta rota.") e qualquer outro status `ERRO_HTTP` ("Erro na requisição."), sempre no mesmo corpo `{"erro": {...}}`. Os cabeçalhos que o framework mandou (como o `Allow` do 405) são mantidos.
+5. `Exception` → 500, código `ERRO_INTERNO`, mensagem genérica; detalhes só no log, nunca na resposta.
 
 ### Estrutura de pastas
 
@@ -467,7 +475,7 @@ eleicao-api/
 │   │   ├── relogio.py           # agora(), obter_agora (dependência injetável)
 │   │   ├── dominio.py           # Cargo, DIGITOS_POR_CARGO (núcleo compartilhado)
 │   │   ├── validadores.py       # CPF, só dígitos, idade
-│   │   ├── paginacao.py         # Paginacao, Pagina[T]
+│   │   ├── paginacao.py         # Paginacao, obter_paginacao, Pagina[T]
 │   │   └── openapi.py           # respostas_de_erro(...), descrição das tags
 │   ├── identidade/   modelos, repositorio, dominio, senhas, tokens, servico, dependencias, esquemas, rotas
 │   ├── eleitores/    modelos, repositorio, dominio, servico, esquemas, rotas
@@ -481,11 +489,13 @@ eleicao-api/
 │       └── exportar_openapi.py
 ├── migrations/                  # Alembic: env.py e versions/
 ├── tests/
+│   ├── __init__.py              # tests/ e cada subpasta têm __init__.py: assim `tests.auxiliares`
+│   │                            # pode ser importado e arquivos de mesmo nome em pastas diferentes não conflitam
 │   ├── conftest.py
 │   ├── auxiliares.py            # fábricas de dados e helpers de login
-│   ├── unitarios/               # sem banco e sem HTTP
-│   ├── integracao/              # API + PostgreSQL de teste
-│   └── arquitetura/             # fronteiras, rotas protegidas, OpenAPI atualizado
+│   ├── unitarios/               # sem banco e sem HTTP (com __init__.py)
+│   ├── integracao/              # API + PostgreSQL de teste (com __init__.py)
+│   └── arquitetura/             # fronteiras, rotas protegidas, OpenAPI atualizado (com __init__.py)
 ├── docs/
 │   ├── PLANO.md                 # este documento
 │   ├── ARQUITETURA.md
@@ -799,18 +809,20 @@ Todos os `criado_em`, `atualizado_em`, `aberta_em` e `encerrada_em` são preench
 
 O serviço verifica antes (mensagem clara) e o banco garante depois (corrida e bugs). Se a restrição disparar, `compartilhado/erros.py` traduz pelo nome dela (`exc.orig.diag.constraint_name`):
 
-| Restrição | Código de erro | HTTP |
-| --- | --- | --- |
-| `uq_usuarios_cpf` | `CPF_JA_CADASTRADO` | 409 |
-| `uq_eleitores_titulo_eleitor` | `TITULO_JA_CADASTRADO` | 409 |
-| `uq_partidos_sigla`, `uq_partidos_numero`, `uq_partidos_nome` | `PARTIDO_DUPLICADO` | 409 |
-| `uq_eleicoes_data_turno` | `ELEICAO_DUPLICADA` | 409 |
-| `uq_eleicoes_uma_aberta` | `OUTRA_ELEICAO_ABERTA` | 409 |
-| `uq_candidaturas_eleicao_id_cargo_numero` | `NUMERO_JA_UTILIZADO` | 409 |
-| `uq_candidaturas_eleicao_id_candidato_id` | `CANDIDATURA_DUPLICADA` | 409 |
-| `pk_registros_votacao` | `VOTO_JA_REGISTRADO` | 409 |
-| `fk_registros_votacao_eleitor_id_eleitores` (ao excluir eleitor) | `EXCLUSAO_BLOQUEADA` | 409 |
-| `fk_candidaturas_candidato_id_candidatos` (ao excluir candidato) | `EXCLUSAO_BLOQUEADA` | 409 |
+| Restrição | Código de erro | HTTP | Mensagem |
+| --- | --- | --- | --- |
+| `uq_usuarios_cpf` | `CPF_JA_CADASTRADO` | 409 | "Já existe um usuário com este CPF." |
+| `uq_eleitores_titulo_eleitor` | `TITULO_JA_CADASTRADO` | 409 | "Já existe um eleitor com este título de eleitor." |
+| `uq_partidos_sigla`, `uq_partidos_numero`, `uq_partidos_nome` | `PARTIDO_DUPLICADO` | 409 | "Já existe um partido com esta sigla, nome ou número." |
+| `uq_eleicoes_data_turno` | `ELEICAO_DUPLICADA` | 409 | "Já existe uma eleição nesta data e turno." |
+| `uq_eleicoes_uma_aberta` | `OUTRA_ELEICAO_ABERTA` | 409 | "Já existe outra eleição aberta." |
+| `uq_candidaturas_eleicao_id_cargo_numero` | `NUMERO_JA_UTILIZADO` | 409 | "Este número já é usado por outra candidatura neste cargo." |
+| `uq_candidaturas_eleicao_id_candidato_id` | `CANDIDATURA_DUPLICADA` | 409 | "Este candidato já tem candidatura nesta eleição." |
+| `pk_registros_votacao` | `VOTO_JA_REGISTRADO` | 409 | "O eleitor já votou neste cargo nesta eleição." |
+| `fk_registros_votacao_eleitor_id_eleitores` (ao excluir eleitor) | `EXCLUSAO_BLOQUEADA` | 409 | "Não é possível excluir: há registros que dependem deste." |
+| `fk_candidaturas_candidato_id_candidatos` (ao excluir candidato) | `EXCLUSAO_BLOQUEADA` | 409 | "Não é possível excluir: há registros que dependem deste." |
+
+Restrição que não está na tabela, ou que o driver não nomeia, vira `CONFLITO_DE_DADOS` (409, "Os dados enviados conflitam com os já gravados."). No código, cada linha é uma `TraducaoDeRestricao` (código, status e mensagem em português) em `ERROS_POR_RESTRICAO`.
 
 ### Política de exclusão
 
@@ -832,7 +844,7 @@ O serviço verifica antes (mensagem clara) e o banco garante depois (corrida e b
 | `0004_eleicoes_candidaturas` | 5 | `eleicoes` (com índice parcial), `candidaturas` |
 | `0005_votacao` | 6 | `registros_votacao`, `votos`, função e triggers |
 
-Gere com `alembic revision --autogenerate -m "..."`, **revise o arquivo gerado** (o autogenerate não cria trigger e pode errar o índice parcial) e teste `alembic upgrade head` e `alembic downgrade -1`.
+Gere com `python -m alembic revision --autogenerate --rev-id 0001 -m "identidade"` (use `0002`, `0003`... nas próximas). O `--rev-id` é necessário para o arquivo se chamar `0001_identidade`: o `file_template` do `alembic.ini` já é `<número>_<descrição>`, mas o Alembic só gera o número se ele for informado. **Revise o arquivo gerado** (o autogenerate não cria trigger e pode errar o índice parcial) e teste `alembic upgrade head` e `alembic downgrade -1`.
 
 ### Limitação conhecida do sigilo (para o README)
 
@@ -855,10 +867,10 @@ Não há autocadastro. Cada pessoa tem exatamente um perfil (decisão D04).
 ### Fluxo do login (`POST /api/v1/auth/login`)
 
 1. Recebe um formulário OAuth2 (`application/x-www-form-urlencoded`): `username` = CPF (com ou sem pontuação), `password` = senha. Esse formato faz o botão **Authorize** do Swagger funcionar.
-2. Normaliza o CPF (só dígitos). Se o formato for inválido, responde o mesmo 401 genérico (não ajuda quem tenta adivinhar CPFs).
-3. Busca o usuário pelo CPF.
-4. Se não existir, **ainda assim** confere a senha contra um hash fictício, para a resposta levar o mesmo tempo, e responde 401 `CREDENCIAIS_INVALIDAS` ("CPF ou senha inválidos.").
-5. Se a senha não conferir, o mesmo 401 com a mesma mensagem.
+2. Normaliza o CPF (só dígitos, de 0 a 9). Se o formato for inválido, **não consulta o banco** e segue como se o usuário não existisse (não ajuda quem tenta adivinhar CPFs).
+3. Se o formato for válido, busca o usuário pelo CPF.
+4. Se não houver usuário (CPF mal formatado ou inexistente), **ainda assim** confere a senha contra um hash fictício, para a resposta levar o mesmo tempo, e responde 401 `CREDENCIAIS_INVALIDAS` ("CPF ou senha inválidos.").
+5. Se a senha não conferir, o mesmo 401 com a mesma mensagem. Senha com mais de 72 bytes nunca confere (a comparação é feita mesmo assim, só para gastar o mesmo tempo).
 6. Se conferir, gera o token e responde 200 com `access_token`, `token_type: "bearer"`, `expira_em` e `usuario` (`id`, `nome`, `perfil`).
 
 ### Token de acesso
@@ -871,16 +883,23 @@ Não há autocadastro. Cada pessoa tem exatamente um perfil (decisão D04).
 | `iat` / `exp` | Emissão e expiração (60 minutos), com o relógio real |
 | Algoritmo | HS256 com `JWT_SEGREDO` (mínimo 32 caracteres). Na leitura, `algorithms=["HS256"]` é sempre explícito (bloqueia o truque do `alg: none`). |
 
+`ler_token_acesso` devolve o ID do usuário. Qualquer falha vira 401 `TOKEN_INVALIDO`: assinatura, audiência ou expiração inválidas, claim obrigatório ausente e também um `sub` que não é número inteiro (`ValueError`).
+
 ### Código de referência
+
+Os três arquivos abaixo são o código real do repositório (tarefa 02).
 
 `app/identidade/senhas.py`:
 
 ```python
+"""Hash de senhas com bcrypt. Só este módulo conhece o bcrypt (ocultação de informação)."""
+
 from functools import lru_cache
 
 import bcrypt
 
 from app.compartilhado.config import obter_configuracao
+from app.identidade.dominio import BYTES_MAXIMOS_SENHA
 
 
 def gerar_hash(senha: str) -> str:
@@ -890,7 +909,17 @@ def gerar_hash(senha: str) -> str:
 
 
 def senha_confere(senha: str, senha_hash: str) -> bool:
-    return bcrypt.checkpw(senha.encode("utf-8"), senha_hash.encode("utf-8"))
+    """Diz se a senha corresponde ao hash (RN-01).
+
+    Senha com mais de 72 bytes nunca confere (nenhuma senha assim é aceita no cadastro, RN-05).
+    O bcrypt recusa esse tamanho com erro, então a comparação é feita mesmo assim, só para
+    gastar o mesmo tempo, e o resultado é sempre falso.
+    """
+    dados = senha.encode("utf-8")
+    if len(dados) > BYTES_MAXIMOS_SENHA:
+        bcrypt.checkpw(dados[:BYTES_MAXIMOS_SENHA], senha_hash.encode("utf-8"))
+        return False
+    return bcrypt.checkpw(dados, senha_hash.encode("utf-8"))
 
 
 @lru_cache
@@ -902,6 +931,8 @@ def hash_ficticio() -> str:
 `app/identidade/tokens.py`:
 
 ```python
+"""Token JWT de acesso. Só este módulo conhece o JWT de acesso (ocultação de informação)."""
+
 from datetime import UTC, datetime, timedelta
 
 import jwt
@@ -911,32 +942,56 @@ from app.compartilhado.erros import NaoAutenticado
 from app.identidade.dominio import Perfil
 
 ALGORITMO = "HS256"
+# A audiência impede que o token da cédula seja usado como token de acesso, e vice-versa.
 AUDIENCIA_ACESSO = "eleicao-api:acesso"
 
 
 def criar_token_acesso(usuario_id: int, perfil: Perfil) -> tuple[str, datetime]:
-    cfg = obter_configuracao()
+    """Emite o token de acesso (RN-02). Devolve o token e o instante em que ele expira.
+
+    O `perfil` vai no token só como informação: a autorização usa o perfil do banco.
+    """
+    configuracao = obter_configuracao()
+    # Relógio real (e não o injetável): o JWT é validado pela biblioteca com o relógio real.
     emitido_em = datetime.now(UTC)
-    expira_em = emitido_em + timedelta(minutes=cfg.jwt_expiracao_minutos)
-    dados = {"sub": str(usuario_id), "perfil": perfil.value, "aud": AUDIENCIA_ACESSO,
-             "iat": emitido_em, "exp": expira_em}
-    return jwt.encode(dados, cfg.jwt_segredo, algorithm=ALGORITMO), expira_em
+    expira_em = emitido_em + timedelta(minutes=configuracao.jwt_expiracao_minutos)
+    dados = {
+        "sub": str(usuario_id),  # o PyJWT exige texto
+        "perfil": perfil.value,
+        "aud": AUDIENCIA_ACESSO,
+        "iat": emitido_em,
+        "exp": expira_em,
+    }
+    token = jwt.encode(dados, configuracao.jwt_segredo, algorithm=ALGORITMO)
+    return token, expira_em
 
 
 def ler_token_acesso(token: str) -> int:
-    """Valida assinatura, audiência e expiração. Devolve o ID do usuário."""
-    cfg = obter_configuracao()
+    """Valida assinatura, audiência e expiração (RN-02). Devolve o ID do usuário.
+
+    Levanta `NaoAutenticado` (`TOKEN_INVALIDO`, 401) se o token não servir.
+    """
+    configuracao = obter_configuracao()
     try:
-        dados = jwt.decode(token, cfg.jwt_segredo, algorithms=[ALGORITMO],
-                           audience=AUDIENCIA_ACESSO, options={"require": ["sub", "exp", "aud"]})
-    except jwt.InvalidTokenError as erro:
+        dados = jwt.decode(
+            token,
+            configuracao.jwt_segredo,
+            algorithms=[ALGORITMO],  # explícito: bloqueia o truque do `alg: none`
+            audience=AUDIENCIA_ACESSO,
+            options={"require": ["sub", "exp", "aud"]},
+        )
+        return int(dados["sub"])
+    except (jwt.InvalidTokenError, ValueError) as erro:
         raise NaoAutenticado("Token inválido ou expirado.", codigo="TOKEN_INVALIDO") from erro
-    return int(dados["sub"])
 ```
 
 `app/identidade/dependencias.py`:
 
 ```python
+"""Dependências FastAPI de autenticação, usadas pelas rotas de todos os módulos."""
+
+from typing import Annotated
+
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
@@ -946,32 +1001,42 @@ from app.compartilhado.erros import AcessoNegado, NaoAutenticado
 from app.identidade import servico, tokens
 from app.identidade.dominio import Perfil, UsuarioAutenticado
 
-# auto_error=False: nós mesmos respondemos 401 no formato padrão de erro da API
+# auto_error=False: nós mesmos respondemos 401 no formato padrão de erro da API.
 esquema_oauth2 = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
 
 def obter_usuario_atual(
-    token: str | None = Depends(esquema_oauth2),
-    sessao: Session = Depends(obter_sessao),
+    token: Annotated[str | None, Depends(esquema_oauth2)],
+    sessao: Annotated[Session, Depends(obter_sessao)],
 ) -> UsuarioAutenticado:
-    """Toda rota protegida depende desta função (RN-06)."""
+    """Toda rota protegida depende desta função (RN-06).
+
+    RN-02: o token prova quem você é, mas o usuário é recarregado do banco a cada requisição;
+    quem foi excluído depois do login perde o acesso na hora.
+    """
     if not token:
         raise NaoAutenticado("Autenticação necessária.", codigo="NAO_AUTENTICADO")
     usuario = servico.obter_usuario(sessao, tokens.ler_token_acesso(token))
-    if usuario is None:  # usuário excluído depois do login
+    if usuario is None:
         raise NaoAutenticado("Token inválido ou expirado.", codigo="TOKEN_INVALIDO")
     return usuario
 
 
 def exige_perfil(*perfis_permitidos: Perfil):
-    """Cria uma dependência que só deixa passar os perfis informados (RN-03)."""
+    """Cria uma dependência que só deixa passar os perfis informados (RN-03).
 
-    def verificar(usuario: UsuarioAutenticado = Depends(obter_usuario_atual)) -> UsuarioAutenticado:
+    Uso numa rota: `Depends(exige_perfil(Perfil.CHEFE_SECAO))`. Quem tem outro perfil recebe
+    403 `PERFIL_NAO_AUTORIZADO`; sem login, 401 (a mesma de `obter_usuario_atual`).
+    """
+
+    def verificar(
+        usuario: Annotated[UsuarioAutenticado, Depends(obter_usuario_atual)],
+    ) -> UsuarioAutenticado:
         if usuario.perfil not in perfis_permitidos:
             raise AcessoNegado(
                 "Seu perfil não tem permissão para esta operação.",
                 codigo="PERFIL_NAO_AUTORIZADO",
-                detalhes={"perfis_permitidos": [p.value for p in perfis_permitidos]},
+                detalhes={"perfis_permitidos": [perfil.value for perfil in perfis_permitidos]},
             )
         return usuario
 
@@ -979,12 +1044,12 @@ def exige_perfil(*perfis_permitidos: Perfil):
 
 
 # uso numa rota:
-# def abrir(..., usuario: UsuarioAutenticado = Depends(exige_perfil(Perfil.CHEFE_SECAO))):
+# def abrir(..., usuario: Annotated[UsuarioAutenticado, Depends(exige_perfil(Perfil.CHEFE_SECAO))]):
 ```
 
 ### Senhas
 
-- Mínimo de 8 caracteres e máximo de **72 bytes** em UTF-8 (limite do bcrypt; versões recentes recusam senhas maiores). Não pode ser só espaços.
+- Mínimo de 8 caracteres e máximo de **72 bytes** em UTF-8 (limite do bcrypt; versões recentes recusam senhas maiores). Não pode ser só espaços. No login, `senha_confere` devolve falso para senha acima de 72 bytes (o bcrypt 5 levantaria `ValueError`, que viraria 500 e mudaria o tempo de resposta).
 - Custo do bcrypt configurável: 12 em uso normal, 4 nos testes (senão os testes ficam lentos).
 - Nenhuma resposta, log ou mensagem de erro contém senha ou hash.
 
@@ -1038,7 +1103,9 @@ São 58 regras, cada uma com código, lugar no código, erro e origem. **Origem*
 | RN-05 | Senha entre 8 caracteres e 72 bytes, não pode ser só espaços; guardada apenas como hash bcrypt. | `identidade.dominio.validar_senha` | `SENHA_INVALIDA` (422) | D |
 | RN-06 | Toda rota exige autenticação, exceto login, health e documentação. | `identidade.dependencias` | `NAO_AUTENTICADO` (401) | E |
 | RN-07 | CPF válido (11 dígitos, dígitos verificadores corretos, não todos iguais) e único entre todos os usuários. Aceita com ou sem pontuação e grava só dígitos. | `compartilhado.validadores`, `identidade.servico` | `CPF_INVALIDO` (422), `CPF_JA_CADASTRADO` (409) | D |
-| RN-08 | Nome com 3 a 120 caracteres (ignorando espaços nas pontas). | Esquemas | `DADOS_INVALIDOS` (422) | D |
+| RN-08 | Nome com 3 a 120 caracteres (ignorando espaços nas pontas). | Esquemas e `identidade.servico` | `DADOS_INVALIDOS` (422) | D |
+
+A RN-08 também é conferida em `identidade.servico` (`criar_credencial` e `atualizar_credencial`), porque o script `criar_chefe` não passa por esquema; lá o nome é gravado sem os espaços das pontas.
 
 ### Eleições
 
@@ -1126,7 +1193,7 @@ Cada caso de uso abaixo vira uma função pública do `servico.py`, na ordem de 
 
 ### 9.1 Peças compartilhadas
 
-**Relógio injetável** (`app/compartilhado/relogio.py`). Toda rota que depende de data ou hora recebe `agora: datetime = Depends(obter_agora)` e repassa ao serviço. Nos testes, `app.dependency_overrides[obter_agora]` congela o tempo.
+**Relógio injetável** (`app/compartilhado/relogio.py`). Toda rota que depende de data ou hora recebe `agora: Annotated[datetime, Depends(obter_agora)]` e repassa ao serviço. Nos testes, `app.dependency_overrides[obter_agora]` congela o tempo.
 
 ```python
 from datetime import datetime
@@ -1145,25 +1212,42 @@ def obter_agora() -> datetime:
     return agora()
 ```
 
-**Validadores** (`app/compartilhado/validadores.py`):
+**Validadores** (`app/compartilhado/validadores.py`). Só valem os dígitos ASCII de 0 a 9: `\d` e `isdigit()` sozinhos aceitam dígitos de outros alfabetos (como os arábico-índicos), que o banco trata de outro jeito; por isso o formato usa `[0-9]` e existe `so_digitos` (D-010).
 
 ```python
+"""Validadores puros (sem banco e sem HTTP) usados por vários módulos."""
+
 import re
 from datetime import date
 
-FORMATO_CPF = re.compile(r"^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$")
+FORMATO_CPF = re.compile(r"^[0-9]{3}\.?[0-9]{3}\.?[0-9]{3}-?[0-9]{2}$")
+
+
+def so_digitos(texto: str) -> bool:
+    """Diz se o texto tem só dígitos de 0 a 9 (ASCII).
+
+    `str.isdigit()` sozinho aceita dígitos de outros alfabetos (como os arábico-índicos),
+    que o banco e o `int()` tratam de outro jeito. Por isso exigimos também `isascii()`.
+    """
+    return texto.isascii() and texto.isdigit()
 
 
 def normalizar_cpf(valor: str) -> str:
-    """Aceita '529.982.247-25' ou '52998224725' e devolve só os dígitos."""
+    """Aceita '529.982.247-25' ou '52998224725' e devolve só os dígitos (RN-07).
+
+    Devolve texto vazio se o formato não for de um CPF (letras, tamanho errado etc.).
+    """
     if not FORMATO_CPF.match(valor.strip()):
         return ""
-    return re.sub(r"\D", "", valor)
+    return re.sub(r"[^0-9]", "", valor)
 
 
 def cpf_valido(cpf: str) -> bool:
-    """Confere os dois dígitos verificadores (RN-07)."""
-    if len(cpf) != 11 or not cpf.isdigit() or cpf == cpf[0] * 11:
+    """Confere os dois dígitos verificadores (RN-07).
+
+    Espera o CPF já normalizado (só dígitos). Recusa tamanho errado e dígitos todos iguais.
+    """
+    if len(cpf) != 11 or not so_digitos(cpf) or cpf == cpf[0] * 11:
         return False
     for tamanho in (9, 10):
         soma = sum(int(cpf[i]) * (tamanho + 1 - i) for i in range(tamanho))
@@ -1174,6 +1258,10 @@ def cpf_valido(cpf: str) -> bool:
 
 
 def calcular_idade(nascimento: date, referencia: date) -> int:
+    """Idade completa, em anos, na data de referência (base da RN-22).
+
+    Quem nasceu em 29/02 só faz aniversário em 01/03 nos anos não bissextos.
+    """
     ja_fez_aniversario = (referencia.month, referencia.day) >= (nascimento.month, nascimento.day)
     return referencia.year - nascimento.year - (0 if ja_fez_aniversario else 1)
 ```
@@ -1182,6 +1270,8 @@ def calcular_idade(nascimento: date, referencia: date) -> int:
 
 ```python
 from enum import StrEnum
+
+from app.compartilhado.validadores import so_digitos
 
 
 class Cargo(StrEnum):
@@ -1204,18 +1294,27 @@ CARGOS_DO_SEGUNDO_TURNO = {Cargo.GOVERNADOR, Cargo.PRESIDENTE}
 
 
 def numero_valido_para_cargo(numero: str, cargo: Cargo) -> bool:
-    """Só dígitos, sem zero à esquerda, na quantidade do cargo (RN-42)."""
-    return numero.isdigit() and numero[0] != "0" and len(numero) == DIGITOS_POR_CARGO[cargo]
+    """Só dígitos (0 a 9, ASCII), sem zero à esquerda, na quantidade do cargo (RN-42)."""
+    return so_digitos(numero) and numero[0] != "0" and len(numero) == DIGITOS_POR_CARGO[cargo]
 ```
+
+**Paginação** (`app/compartilhado/paginacao.py`). `Paginacao` é uma `dataclass` imutável com `pagina` e `tamanho` e a propriedade `deslocamento` (`(pagina - 1) * tamanho`: quantos itens pular na consulta). `obter_paginacao` é a dependência FastAPI que lê `pagina` (≥ 1, padrão 1) e `tamanho` (1 a 100, padrão 20) da query e devolve uma `Paginacao`; as rotas de listagem a recebem com `Annotated[Paginacao, Depends(obter_paginacao)]` e a repassam ao serviço. `Pagina[T]` é a resposta genérica de toda listagem: `itens`, `pagina`, `tamanho` e `total` (total do filtro, somando todas as páginas).
 
 ### 9.2 Identidade
 
-- **`autenticar(sessao, cpf, senha)`**: fluxo da seção 7 (RN-01). Devolve token, expiração e `UsuarioAutenticado`.
-- **`criar_credencial(sessao, cpf, nome, senha, perfil, agora) -> int`** (sem commit): normaliza e valida o CPF (RN-07, 422); valida a senha (RN-05); se o CPF já existe, 409 `CPF_JA_CADASTRADO`; insere com hash; `sessao.flush()` para obter o id; devolve o id.
-- **`atualizar_credencial(sessao, usuario_id, agora, nome=None, senha=None)`** (sem commit): altera só o que veio; nova senha passa por RN-05 e vira hash; atualiza `atualizado_em`.
-- **`remover_credencial(sessao, usuario_id)`** (sem commit).
+- **`autenticar(sessao, cpf, senha) -> ResultadoDoLogin`**: fluxo da seção 7 (RN-01). Devolve a `dataclass` `ResultadoDoLogin` (token, expiração e `UsuarioAutenticado`). Não grava nada, então não faz commit.
+- **`criar_credencial(sessao, cpf, nome, senha, perfil, agora) -> int`** (sem commit; os 6 parâmetros são uma exceção aceita à regra dos 5, seção 3): normaliza e valida o CPF (RN-07, 422); valida o nome (RN-08, 422 `DADOS_INVALIDOS`) e o grava sem os espaços das pontas; valida a senha (RN-05); se o CPF já existe, 409 `CPF_JA_CADASTRADO`; insere com hash; `sessao.flush()` para obter o id; devolve o id.
+- **`atualizar_credencial(sessao, usuario_id, agora, nome=None, senha=None)`** (sem commit): altera só o que veio; o nome passa por RN-08, a nova senha por RN-05 e vira hash; atualiza `atualizado_em`. CPF e perfil nunca mudam (RN-03). Se o `usuario_id` não existe, levanta `LookupError`: quem chama já conhece o usuário, então a ausência é uma inconsistência interna (vira 500 `ERRO_INTERNO`), e não um erro do usuário da API.
+- **`remover_credencial(sessao, usuario_id)`** (sem commit): apaga o usuário; os tokens dele deixam de valer na hora (RN-02). Com `usuario_id` inexistente levanta `LookupError`, pelo mesmo motivo.
 - **`obter_usuario(sessao, usuario_id) -> UsuarioAutenticado | None`** e **`obter_usuarios(sessao, ids) -> dict[int, UsuarioAutenticado]`**.
 - **`listar_usuarios(sessao, perfil, nome, paginacao) -> Pagina[UsuarioAutenticado]`**: filtra por perfil e por nome (`ILIKE '%nome%'`), ordena por nome. Usado pelas listagens de eleitores e candidatos.
+
+**Contratos** (`identidade/esquemas.py` e `identidade/dominio.py`):
+
+- `UsuarioResposta`: `id`, `nome` e `perfil`. Vai dentro da resposta do login.
+- `UsuarioLogadoResposta`: `id`, `nome`, `cpf` (só dígitos) e `perfil`. Resposta de `GET /auth/me`.
+- `LoginResposta`: `access_token`, `token_type` (sempre `"bearer"`), `expira_em` (UTC) e `usuario` (`UsuarioResposta`).
+- `ResultadoDoLogin` (`dataclass` de `dominio.py`): `access_token`, `expira_em` e `usuario` (`UsuarioAutenticado`). É o que `autenticar` devolve e a rota converte em `LoginResposta`.
 
 ### 9.3 Eleitores
 
@@ -1486,6 +1585,14 @@ Detalhes de implementação:
 }
 ```
 
+`usuario` é um `UsuarioResposta` (`id`, `nome`, `perfil`) e `token_type` é sempre `"bearer"`. O corpo todo é uma `LoginResposta`.
+
+**Usuário logado**: `GET /api/v1/auth/me`, resposta `UsuarioLogadoResposta` (acrescenta o `cpf`, só dígitos; nunca traz senha nem hash).
+
+```json
+{"id": 1, "nome": "Chefe da Seção", "cpf": "29141777638", "perfil": "CHEFE_SECAO"}
+```
+
 **Criar eleição**: `POST /api/v1/eleicoes`
 
 ```json
@@ -1636,16 +1743,22 @@ Erro de validação do Pydantic, reformatado pelo tratador:
 {"erro": {"codigo": "DADOS_INVALIDOS", "mensagem": "Dados inválidos na requisição.", "detalhes": {"campos": [{"campo": "cpf", "mensagem": "CPF inválido."}]}}}
 ```
 
+`detalhes.campos` traz um item por problema. `campo` é o caminho do campo: o `loc` do Pydantic sem o prefixo `body`, `query` ou `path`, unido por ponto (ex.: `cpf`, `pagina`). `mensagem` é o `msg` do Pydantic sem o prefixo "Value error, ". As mensagens dos nossos validadores são em português; as nativas do Pydantic continuam em inglês (ex.: "Field required").
+
+Os erros do próprio framework seguem o mesmo formato: rota inexistente dá 404 `ROTA_NAO_ENCONTRADA` e método não permitido dá 405 `METODO_NAO_PERMITIDO` (com o cabeçalho `Allow`).
+
 ### Catálogo de códigos de erro
 
 | HTTP | Códigos |
 | --- | --- |
 | 401 | `NAO_AUTENTICADO`, `TOKEN_INVALIDO`, `CREDENCIAIS_INVALIDAS` |
 | 403 | `PERFIL_NAO_AUTORIZADO`, `ELEITOR_NAO_APTO`, `SEM_CANDIDATURA_NA_ELEICAO`, `CARGO_NAO_PERMITIDO` |
-| 404 | `ELEICAO_NAO_ENCONTRADA`, `ELEITOR_NAO_ENCONTRADO`, `CANDIDATO_NAO_ENCONTRADO`, `CANDIDATURA_NAO_ENCONTRADA` |
+| 404 | `ELEICAO_NAO_ENCONTRADA`, `ELEITOR_NAO_ENCONTRADO`, `CANDIDATO_NAO_ENCONTRADO`, `CANDIDATURA_NAO_ENCONTRADA`, `ROTA_NAO_ENCONTRADA` |
+| 405 | `METODO_NAO_PERMITIDO` |
 | 409 | `CPF_JA_CADASTRADO`, `TITULO_JA_CADASTRADO`, `PARTIDO_DUPLICADO`, `ELEICAO_DUPLICADA`, `TRANSICAO_INVALIDA`, `ELEICAO_NAO_EDITAVEL`, `FORA_DA_DATA`, `FORA_DA_JANELA`, `SEM_CANDIDATURAS`, `OUTRA_ELEICAO_ABERTA`, `SEGUNDO_TURNO_INCOMPLETO`, `NUMERO_JA_UTILIZADO`, `CANDIDATURA_DUPLICADA`, `CARGO_NAO_PERMITIDO_NO_TURNO`, `LIMITE_SEGUNDO_TURNO`, `EXCLUSAO_BLOQUEADA`, `ELEICAO_NAO_ABERTA`, `JANELA_ENCERRADA`, `VOTO_JA_REGISTRADO`, `APURACAO_INDISPONIVEL`, `CONFLITO_DE_DADOS` |
 | 422 | `DADOS_INVALIDOS`, `CPF_INVALIDO`, `SENHA_INVALIDA`, `IDADE_MINIMA`, `DATA_NO_PASSADO`, `JANELA_INVALIDA`, `NUMERO_INVALIDO_PARA_CARGO`, `REFERENCIA_INEXISTENTE`, `CARGO_NAO_DISPUTADO`, `CEDULA_INVALIDA`, `CEDULA_EXPIRADA` |
 | 500 | `ERRO_INTERNO` |
+| Outros status do framework | `ERRO_HTTP` |
 
 Critério: **401** = não sei quem você é; **403** = sei quem você é e você não pode; **404** = o recurso do caminho não existe; **409** = o pedido é válido mas conflita com o estado atual; **422** = o pedido em si está errado.
 
@@ -1715,14 +1828,16 @@ Exemplo de rota bem documentada:
     responses=respostas_de_erro(401, 403, 404, 409),
 )
 def abrir(
-    eleicao_id: int = Path(gt=0),
-    usuario: UsuarioAutenticado = Depends(exige_perfil(Perfil.CHEFE_SECAO)),
-    sessao: Session = Depends(obter_sessao),
-    agora: datetime = Depends(obter_agora),
+    eleicao_id: Annotated[int, Path(gt=0)],
+    usuario: Annotated[UsuarioAutenticado, Depends(exige_perfil(Perfil.CHEFE_SECAO))],
+    sessao: Annotated[Session, Depends(obter_sessao)],
+    agora: Annotated[datetime, Depends(obter_agora)],
 ) -> EleicaoResposta:
     eleicao = servico.abrir_eleicao(sessao, eleicao_id, agora)
     return EleicaoResposta.de_eleicao(eleicao, usuario.perfil)
 ```
+
+Em todo o projeto as dependências e os parâmetros de rota usam o estilo `Annotated[Tipo, Depends(...)]` (o ruff acusa B008 quando o `Depends` entra como valor padrão do parâmetro; D-004).
 
 No `FastAPI(...)` do `main.py`, use também `generate_unique_id_function=lambda rota: rota.name`, para os `operationId` ficarem legíveis (`abrir`, `registrar_voto`). Os nomes das funções de rota precisam ser únicos no projeto.
 
@@ -1811,13 +1926,17 @@ from sqlalchemy import text
 from app.compartilhado.banco import engine
 from app.compartilhado.relogio import obter_agora
 from app.main import app
+from tests.auxiliares import cabecalho_chefe  # noqa: F401  (registra a fixture)
 
-TABELAS = "votos, registros_votacao, candidaturas, eleicoes, partidos, candidatos, eleitores, usuarios"
+TABELAS_DO_PUBLIC = """
+    SELECT tablename FROM pg_tables
+    WHERE schemaname = 'public' AND tablename <> 'alembic_version'
+"""
 
 
 @pytest.fixture(scope="session", autouse=True)
 def banco_migrado():
-    """Recria o esquema uma vez por execução, com as migrações reais (constraints e trigger inclusos)."""
+    """Recria o esquema uma vez por execução, com as migrações reais (constraints e trigger)."""
     config = Config("alembic.ini")
     command.downgrade(config, "base")
     command.upgrade(config, "head")
@@ -1825,9 +1944,16 @@ def banco_migrado():
 
 @pytest.fixture(autouse=True)
 def banco_limpo():
-    """Cada teste começa com o banco vazio. TRUNCATE não dispara o trigger de imutabilidade."""
+    """Cada teste começa com o banco vazio. TRUNCATE não dispara o trigger de imutabilidade.
+
+    As tabelas são descobertas no próprio banco (todas do schema public, menos a
+    alembic_version), então a fixture funciona mesmo quando ainda não existe nenhuma tabela.
+    """
     with engine.begin() as conexao:
-        conexao.execute(text(f"TRUNCATE {TABELAS} RESTART IDENTITY CASCADE"))
+        tabelas = conexao.execute(text(TABELAS_DO_PUBLIC)).scalars().all()
+        if tabelas:
+            lista = ", ".join(f'"{tabela}"' for tabela in tabelas)
+            conexao.execute(text(f"TRUNCATE {lista} RESTART IDENTITY CASCADE"))
 
 
 class RelogioDeTeste:
@@ -1855,14 +1981,16 @@ def cliente(relogio):
     return TestClient(app)
 ```
 
+A fixture `banco_limpo` **descobre as tabelas no próprio banco** (todas do schema `public`, menos `alembic_version`) e só faz `TRUNCATE` se houver alguma. Assim não há lista fixa de tabelas para manter e a fixture já funciona na tarefa 00, quando ainda não existe tabela.
+
 O `migrations/env.py` lê a URL de `obter_configuracao().database_url`, então nos testes ele já usa o banco de teste.
 
 `tests/auxiliares.py` (fábricas que deixam cada teste com 5 a 10 linhas):
 
-- `gerar_cpf(semente: int) -> str`: CPF válido e determinístico (mesmo algoritmo da seção 9).
-- `criar_chefe()`: cria o Chefe direto pelo serviço de identidade e faz commit.
+- `gerar_cpf(semente: int) -> str`: CPF válido e determinístico (mesmo algoritmo da seção 9); pula o CPF de dígitos todos iguais (RN-07).
+- `criar_chefe(cpf=CPF_CHEFE, senha=SENHA_CHEFE, agora_=None) -> int`: cria o Chefe direto pelo serviço de identidade, faz commit e devolve o id. `CPF_CHEFE` (`29141777638`) e `SENHA_CHEFE` (`Chefe@2026`) são constantes do mesmo arquivo.
 - `login(cliente, cpf, senha) -> dict`: devolve o cabeçalho `{"Authorization": "Bearer ..."}`.
-- Fixtures `cabecalho_chefe`, `cabecalho_eleitor`, `cabecalho_candidato`.
+- Fixtures `cabecalho_chefe`, `cabecalho_eleitor`, `cabecalho_candidato`. Elas ficam em `tests/auxiliares.py` e são registradas por um `import` em `tests/integracao/conftest.py` (o pytest só descobre fixtures de `conftest.py` ou importadas; por isso o `# noqa: F401`). Toda fixture nova de `auxiliares.py` precisa ser importada ali também.
 - `novo_eleitor`, `novo_partido`, `novo_candidato`, `nova_eleicao`, `nova_candidatura`: chamam a API com dados válidos padrão e aceitam sobrescritas (`novo_eleitor(cliente, cab, data_nascimento="2015-01-01")`).
 - `eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)`: eleição em 25/11/2026 das 08:00 às 17:00, Presidente 10 e 20, Senador 101 e 202, já aberta. Devolve os ids.
 - `votar(cliente, cabecalho, eleicao_id, cargo, numero=None, branco=False)`: registro + confirmação (helper de teste; a API continua sem flags).
