@@ -10,7 +10,7 @@ from sqlalchemy import text
 from app.compartilhado.banco import engine
 from app.compartilhado.relogio import obter_agora
 from app.main import app
-from tests.auxiliares import cabecalho_chefe  # noqa: F401  (registra a fixture)
+from tests.auxiliares import cabecalho_chefe, cabecalho_eleitor  # noqa: F401  (registra as fixtures)
 
 TABELAS_DO_PUBLIC = """
     SELECT tablename FROM pg_tables
