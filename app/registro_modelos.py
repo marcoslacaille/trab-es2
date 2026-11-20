@@ -8,3 +8,4 @@ import app.candidatos.modelos  # noqa: F401
 import app.eleicoes.modelos  # noqa: F401
 import app.eleitores.modelos  # noqa: F401
 import app.identidade.modelos  # noqa: F401
+import app.votacao.modelos  # noqa: F401
