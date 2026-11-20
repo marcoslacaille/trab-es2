@@ -5,5 +5,6 @@ enxergar todas as tabelas em `Base.metadata`. Cada tarefa acrescenta aqui o mód
 """
 
 import app.candidatos.modelos  # noqa: F401
+import app.eleicoes.modelos  # noqa: F401
 import app.eleitores.modelos  # noqa: F401
 import app.identidade.modelos  # noqa: F401
