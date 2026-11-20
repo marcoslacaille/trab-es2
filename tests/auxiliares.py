@@ -132,3 +132,21 @@ def cabecalho_candidato(cliente: TestClient, cabecalho_chefe: dict[str, str]) ->
     resposta = novo_candidato(cliente, cabecalho_chefe)
     assert resposta.status_code == 201, resposta.text
     return login(cliente, resposta.json()["cpf"], SENHA_CANDIDATO)
+
+
+def nova_eleicao(cliente: TestClient, cabecalho: dict[str, str], **sobrescritas):
+    """Cria uma eleição pela API com dados válidos e devolve a resposta HTTP.
+
+    Por padrão: 25/11/2026 (o dia do relógio de teste), 1º turno, das 08:00 às 17:00. Os testes
+    passam `sobrescritas` para provocar erros (ex.: `turno=2`), por isso a resposta vem sem
+    nenhuma conferência de status.
+    """
+    dados = {
+        "descricao": "Eleições Gerais 2026 — 1º turno",
+        "data": "2026-11-25",
+        "turno": 1,
+        "horario_abertura": "08:00",
+        "horario_encerramento": "17:00",
+    }
+    dados.update(sobrescritas)
+    return cliente.post("/api/v1/eleicoes", json=dados, headers=cabecalho)
