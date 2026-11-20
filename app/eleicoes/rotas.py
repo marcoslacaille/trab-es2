@@ -94,3 +94,42 @@ def alterar_eleicao(
     alteracoes = AlteracoesEleicao(**alteracao.model_dump())
     eleicao = servico.editar_eleicao(sessao, eleicao_id, alteracoes, agora)
     return EleicaoResposta.model_validate(eleicao)
+
+
+@roteador.post(
+    "/{eleicao_id}/abertura",
+    response_model=EleicaoResposta,
+    dependencies=somente_chefe,
+    summary="Abre a votação",
+    description=(
+        "Muda a eleição de AGENDADA para ABERTA. Só no dia e dentro da janela, com pelo menos "
+        "uma candidatura e nenhuma outra eleição aberta; no 2º turno, exatamente 2 candidaturas "
+        "por cargo (RN-10, RN-13, RN-15 a RN-17)."
+    ),
+    responses=respostas_de_erro(401, 403, 404, 409, 422),
+)
+def abrir_eleicao(
+    eleicao_id: IdDaEleicao,
+    sessao: Annotated[Session, Depends(obter_sessao)],
+    agora: Annotated[datetime, Depends(obter_agora)],
+) -> EleicaoResposta:
+    return EleicaoResposta.model_validate(servico.abrir_eleicao(sessao, eleicao_id, agora))
+
+
+@roteador.post(
+    "/{eleicao_id}/encerramento",
+    response_model=EleicaoResposta,
+    dependencies=somente_chefe,
+    summary="Encerra a votação",
+    description=(
+        "Muda a eleição de ABERTA para ENCERRADA, a qualquer hora (antes ou depois do horário "
+        "previsto). Depois disso nenhum voto novo entra (RN-10, RN-13, RN-18)."
+    ),
+    responses=respostas_de_erro(401, 403, 404, 409, 422),
+)
+def encerrar_eleicao(
+    eleicao_id: IdDaEleicao,
+    sessao: Annotated[Session, Depends(obter_sessao)],
+    agora: Annotated[datetime, Depends(obter_agora)],
+) -> EleicaoResposta:
+    return EleicaoResposta.model_validate(servico.encerrar_eleicao(sessao, eleicao_id, agora))
