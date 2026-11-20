@@ -11,7 +11,7 @@ Marque `[x]` quando a tarefa estiver integrada na `main` (o agente marca no últ
 - [x] 05 — Eleições
 - [x] 06 — Candidaturas
 - [x] 07 — Votação: base (tabelas, trigger, domínio, cédula)
-- [ ] 08 — Votação: API
+- [x] 08 — Votação: API
 - [ ] 09 — Sigilo e concorrência
 - [ ] 10 — Apuração
 - [ ] 11 — Qualidade transversal
@@ -24,5 +24,3 @@ Marque `[x]` quando a tarefa estiver integrada na `main` (o agente marca no últ
 Tudo o que foi feito e não estava prescrito no PLANO (lacunas, desvios, extras, conflitos e riscos) fica em [`docs/DECISOES.md`](../DECISOES.md), numerado e com status. As decisões das tarefas 00 a 02 que estavam aqui foram migradas para lá (D-001 a D-027).
 
 Aqui ficam só os avisos de curto prazo entre tarefas, como testes adiados para uma tarefa seguinte.
-
-- **TI-24 ficou para a tarefa 08** (excluir eleitor que já votou → 409 `EXCLUSAO_BLOQUEADA`): precisa da tabela `registros_votacao`, que só existe a partir da tarefa 07. O código de `excluir_eleitor` já trata o `IntegrityError` dessa FK (ver D-041).
