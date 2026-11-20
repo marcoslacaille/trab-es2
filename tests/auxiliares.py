@@ -1,6 +1,7 @@
 """Fábricas de dados e helpers de login para os testes (seção 12 do PLANO)."""
 
 from datetime import datetime
+from itertools import count
 
 import pytest
 from fastapi.testclient import TestClient
@@ -12,6 +13,10 @@ from app.identidade.dominio import Perfil
 
 CPF_CHEFE = "29141777638"
 SENHA_CHEFE = "Chefe@2026"
+SENHA_ELEITOR = "Eleitor@123"
+
+# Cada chamada de `novo_eleitor` pega o próximo número, para CPF e título nunca se repetirem.
+_sequencia_de_eleitores = count(1)
 
 
 def _digito_verificador(nove_ou_dez_digitos: str) -> str:
@@ -56,3 +61,30 @@ def cabecalho_chefe(cliente: TestClient) -> dict[str, str]:
     """Cria o Chefe da Seção e devolve o cabeçalho de autenticação dele."""
     criar_chefe()
     return login(cliente, CPF_CHEFE, SENHA_CHEFE)
+
+
+def novo_eleitor(cliente: TestClient, cabecalho: dict[str, str], **sobrescritas):
+    """Cadastra um eleitor pela API com dados válidos e devolve a resposta HTTP.
+
+    Cada chamada usa um CPF e um título novos. A senha padrão é `SENHA_ELEITOR`. Os testes
+    passam `sobrescritas` para provocar erros (ex.: `data_nascimento="2015-01-01"`), por isso a
+    resposta vem sem nenhuma conferência de status.
+    """
+    numero = next(_sequencia_de_eleitores)
+    dados = {
+        "nome": f"Eleitor de Teste {numero}",
+        "cpf": gerar_cpf(numero),
+        "titulo_eleitor": str(100_000_000_000 + numero),
+        "data_nascimento": "1990-04-12",
+        "senha": SENHA_ELEITOR,
+    }
+    dados.update(sobrescritas)
+    return cliente.post("/api/v1/eleitores", json=dados, headers=cabecalho)
+
+
+@pytest.fixture
+def cabecalho_eleitor(cliente: TestClient, cabecalho_chefe: dict[str, str]) -> dict[str, str]:
+    """Cadastra um eleitor (pelo Chefe) e devolve o cabeçalho de autenticação dele."""
+    resposta = novo_eleitor(cliente, cabecalho_chefe)
+    assert resposta.status_code == 201, resposta.text
+    return login(cliente, resposta.json()["cpf"], SENHA_ELEITOR)
