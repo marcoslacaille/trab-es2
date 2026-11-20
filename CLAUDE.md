@@ -20,6 +20,7 @@ Stack: Python 3.12, FastAPI, SQLAlchemy 2 (síncrono), Alembic, PostgreSQL 16 (D
 9. Fronteiras entre módulos (seção 5): um módulo só importa `app.<outro>.servico` (e `app.identidade.dependencias` nas rotas); nunca acessa tabelas, modelos ou repositórios de outro módulo. Serviços devolvem `dataclass`es, nunca objetos ORM.
 10. Nunca coloque segredos no código nem versione o `.env`.
 11. **Registro de decisões:** tudo o que você fizer e não estiver prescrito no PLANO nem na tarefa (lacuna que você preencheu, desvio do PLANO, extra, conflito entre trechos do PLANO, risco percebido, mudança de ambiente ou de processo) vira uma linha nova no fim da tabela de `docs/DECISOES.md`, com o próximo ID, o tipo, o impacto e o status `ABERTA`. Faça isso no commit da mudança ou no último da tarefa. Nunca apague nem reescreva linhas antigas.
+12. Antes de começar uma tarefa, leia em `docs/DECISOES.md` todas as linhas com status `ABERTA` ou `ACEITA` que tocam os módulos da tarefa. Se o PLANO e uma dessas linhas divergirem, siga a linha e avise no resumo.
 
 ## Fluxo de cada tarefa
 
@@ -32,7 +33,7 @@ Stack: Python 3.12, FastAPI, SQLAlchemy 2 (síncrono), Alembic, PostgreSQL 16 (D
    - `.venv\Scripts\python.exe -m pytest`
 5. Faça os commits indicados na tarefa (Conventional Commits em português, um assunto por commit). Não faça merge na `main` e não faça push: isso é com o grupo.
 6. Marque a tarefa em `docs/prompts/PROGRESSO.md` (no último commit).
-7. Termine com um resumo curto: arquivos criados, RNs implementadas, IDs dos testes adicionados, como rodar, e qualquer pendência ou decisão que precise de revisão humana (os IDs novos de `docs/DECISOES.md`).
+7. Termine com um resumo curto: arquivos criados, RNs implementadas, IDs dos testes adicionados, como rodar, e qualquer pendência ou decisão que precise de revisão humana. Liste as decisões novas de `docs/DECISOES.md` (os IDs) **ordenadas por impacto** (Alto, Médio, Baixo).
 
 ## Ambiente (Windows)
 
