@@ -1,4 +1,4 @@
-"""votacao: cria registros_votacao e votos, sem ligação entre si
+"""votacao: cria registros_votacao e votos (sem ligação entre si) e o trigger de imutabilidade
 
 Revision ID: 0005
 Revises: 0004
@@ -20,8 +20,29 @@ CARGOS_VALIDOS = (
 )
 
 
+FUNCAO_IMPEDIR_ALTERACAO = """
+CREATE FUNCTION impedir_alteracao_de_voto() RETURNS trigger AS $$
+BEGIN
+    RAISE EXCEPTION 'Votos e registros de votação confirmados são imutáveis';
+END;
+$$ LANGUAGE plpgsql
+"""
+
+TRIGGER_VOTOS = """
+CREATE TRIGGER trg_votos_imutaveis
+    BEFORE UPDATE OR DELETE ON votos
+    FOR EACH ROW EXECUTE FUNCTION impedir_alteracao_de_voto()
+"""
+
+TRIGGER_REGISTROS = """
+CREATE TRIGGER trg_registros_votacao_imutaveis
+    BEFORE UPDATE OR DELETE ON registros_votacao
+    FOR EACH ROW EXECUTE FUNCTION impedir_alteracao_de_voto()
+"""
+
+
 def upgrade() -> None:
-    """Cria `registros_votacao` (quem votou) e `votos` (o quê), sem coluna que as una."""
+    """Cria as tabelas (quem votou e o quê, sem coluna que as una) e o trigger de imutabilidade."""
     op.create_table(
         "registros_votacao",
         sa.Column("eleitor_id", sa.BigInteger(), nullable=False),
@@ -79,10 +100,17 @@ def upgrade() -> None:
     op.create_index(
         "ix_votos_apuracao", "votos", ["eleicao_id", "cargo", "candidatura_id"], unique=False
     )
+    # O autogenerate não cria trigger: voto e registro confirmados nunca mudam (RN-59).
+    op.execute(FUNCAO_IMPEDIR_ALTERACAO)
+    op.execute(TRIGGER_VOTOS)
+    op.execute(TRIGGER_REGISTROS)
 
 
 def downgrade() -> None:
-    """Remove `votos` e `registros_votacao`."""
+    """Remove os triggers e a função, depois `votos` e `registros_votacao`."""
+    op.execute("DROP TRIGGER trg_registros_votacao_imutaveis ON registros_votacao")
+    op.execute("DROP TRIGGER trg_votos_imutaveis ON votos")
+    op.execute("DROP FUNCTION impedir_alteracao_de_voto()")
     op.drop_index("ix_votos_apuracao", table_name="votos")
     op.drop_table("votos")
     op.drop_index(op.f("ix_registros_votacao_eleicao_id"), table_name="registros_votacao")
