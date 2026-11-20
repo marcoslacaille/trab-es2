@@ -43,6 +43,7 @@ Cada membro deve commitar com o próprio usuário Git (`git config user.name` e 
 | 00 | `00-fundacao.md` | Estrutura, dependências, Docker, Alembic, `/health`, CI | 0 | `chore/fundacao` |
 | 01 | `01-compartilhado.md` | Erros padronizados, relógio, validadores, `Cargo`, paginação | 1 | `feat/compartilhado` |
 | 02 | `02-identidade.md` | Usuários, login, JWT, perfis, script do Chefe | 2 | `feat/identidade` |
+| 02b | `02b-consolidar-decisoes.md` | Consolida as decisões das tarefas 00 a 02: atualiza o PLANO e faz duas correções (dígitos ASCII, erros 404 e 405) | — | `docs/consolidar-decisoes-00-02` |
 | 03 | `03-eleitores.md` | CRUD de eleitores | 3 | `feat/eleitores` |
 | 04 | `04-candidatos-partidos.md` | CRUD de candidatos e cadastro de partidos | 4 | `feat/candidatos` |
 | 05 | `05-eleicoes.md` | Eleições: cadastro, edição, abertura, encerramento, HATEOAS | 5 (parte 1) | `feat/eleicoes` |
@@ -60,6 +61,11 @@ Prompts de apoio (use quando precisar):
 
 - `EXTRA-explicar-codigo.md`: pede ao agente para explicar um módulo como numa arguição.
 - `EXTRA-corrigir-erro.md`: para quando um teste ou comando falhar.
+- `EXTRA-consolidar-decisoes.md`: rodada de consolidação das decisões (veja a seção abaixo).
+
+## Rodada de consolidação
+
+A cada 2 ou 3 tarefas (ou sempre que uma tarefa registrar uma decisão de impacto Médio ou Alto em `docs/DECISOES.md`), roda-se o `EXTRA-consolidar-decisoes.md` numa sessão nova. O agente lista as linhas `ABERTA` por impacto, o grupo decide cada uma, e só então o agente atualiza o PLANO, faz as correções aprovadas e muda o status das linhas. Cada rodada vira uma tarefa `NNb` (como a `02b`) e é integrada na `main` antes da tarefa seguinte.
 
 ## Divisão no grupo (seção 13 do PLANO)
 

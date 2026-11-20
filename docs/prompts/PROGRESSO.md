@@ -5,6 +5,7 @@ Marque `[x]` quando a tarefa estiver integrada na `main` (o agente marca no últ
 - [x] 00 — Fundação do repositório
 - [x] 01 — Módulo compartilhado
 - [x] 02 — Identidade (login, JWT, perfis)
+- [x] 02b — Consolidação das decisões 00 a 02
 - [ ] 03 — Eleitores
 - [ ] 04 — Candidatos e partidos
 - [ ] 05 — Eleições

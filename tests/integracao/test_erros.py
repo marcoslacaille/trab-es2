@@ -8,7 +8,7 @@ from types import SimpleNamespace
 from typing import Annotated
 
 import pytest
-from fastapi import APIRouter, FastAPI, Query
+from fastapi import APIRouter, FastAPI, HTTPException, Query
 from fastapi.testclient import TestClient
 from pydantic import BaseModel, ConfigDict, field_validator
 from sqlalchemy.exc import IntegrityError
@@ -86,6 +86,10 @@ def criar_app_de_teste() -> FastAPI:
     @roteador.get("/integridade-sem-nome")
     def violar_restricao_sem_nome():
         raise IntegrityError("INSERT ...", {}, Exception("erro sem diagnóstico"))
+
+    @roteador.get("/status-http/{codigo}")
+    def levantar_erro_http(codigo: int):
+        raise HTTPException(status_code=codigo, detail="texto do framework em inglês")
 
     @roteador.get("/falha")
     def falhar():
@@ -252,3 +256,42 @@ def test_excecao_inesperada_responde_500_sem_vazar_a_mensagem_original(
     assert "segredo123" not in resposta.text
     assert "RuntimeError" not in resposta.text
     assert "segredo123" in caplog.text
+
+
+def test_rota_inexistente_responde_404_no_formato_padrao(cliente):
+    """Seção 10 (D-011): o 404 do framework também usa {"erro": {...}}, e não {"detail": ...}."""
+    resposta = cliente.get("/rota-que-nao-existe")
+
+    assert resposta.status_code == 404
+    assert resposta.json() == {
+        "erro": {
+            "codigo": "ROTA_NAO_ENCONTRADA",
+            "mensagem": "Rota não encontrada.",
+            "detalhes": {},
+        }
+    }
+
+
+def test_metodo_nao_permitido_responde_405_no_formato_padrao(cliente):
+    """Seção 10 (D-011): o 405 do framework usa o formato padrão e mantém o cabeçalho Allow."""
+    resposta = cliente.delete("/health")
+
+    assert resposta.status_code == 405
+    assert resposta.json() == {
+        "erro": {
+            "codigo": "METODO_NAO_PERMITIDO",
+            "mensagem": "Método não permitido para esta rota.",
+            "detalhes": {},
+        }
+    }
+    assert "GET" in resposta.headers["Allow"]
+
+
+def test_outro_erro_http_do_framework_vira_erro_http(cliente_de_erros):
+    """Seção 10 (D-011): qualquer outro status do framework vira ERRO_HTTP, sem repassar o texto."""
+    resposta = cliente_de_erros.get("/status-http/400")
+
+    assert resposta.status_code == 400
+    assert resposta.json() == {
+        "erro": {"codigo": "ERRO_HTTP", "mensagem": "Erro na requisição.", "detalhes": {}}
+    }
