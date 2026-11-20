@@ -6,9 +6,11 @@ from app.identidade import servico
 from app.identidade.dominio import Perfil
 from tests.auxiliares import (
     SENHA_ELEITOR,
+    eleicao_aberta_com_candidatos,
     gerar_cpf,
     login,
     novo_eleitor,
+    votar,
 )
 
 ROTA = "/api/v1/eleitores"
@@ -206,6 +208,19 @@ def test_excluir_eleitor_que_nao_votou_apaga_tambem_a_credencial(cliente, cabeca
     consulta = cliente.get(f"{ROTA}/{eleitor['id']}", headers=cabecalho_chefe)
     assert consulta.status_code == 404
     assert _codigo(consulta) == "ELEITOR_NAO_ENCONTRADO"
+
+
+def test_excluir_eleitor_que_ja_votou_da_409(cliente, cabecalho_chefe, cabecalho_eleitor):
+    """TI-24 / RN-24: quem já votou não pode ser excluído (409 `EXCLUSAO_BLOQUEADA`)."""
+    eleicao = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)["eleicao_id"]
+    assert votar(cliente, cabecalho_eleitor, eleicao, "PRESIDENTE", "10").status_code == 201
+    eleitor = cliente.get(f"{ROTA}/eu", headers=cabecalho_eleitor).json()
+
+    resposta = cliente.delete(f"{ROTA}/{eleitor['id']}", headers=cabecalho_chefe)
+
+    assert resposta.status_code == 409
+    assert _codigo(resposta) == "EXCLUSAO_BLOQUEADA"
+    assert cliente.get(f"{ROTA}/{eleitor['id']}", headers=cabecalho_chefe).status_code == 200
 
 
 def test_listar_filtra_por_nome_e_pagina(cliente, cabecalho_chefe):
