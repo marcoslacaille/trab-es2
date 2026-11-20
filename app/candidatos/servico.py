@@ -1,16 +1,61 @@
 """Casos de uso de candidatos e partidos. É a única porta de entrada do módulo para os outros.
 
-As funções chamadas pelas rotas fazem `commit` no final.
+O nome e o CPF do candidato ficam na credencial: este módulo os pede a `identidade.servico` e
+nunca lê a tabela `usuarios`. As funções chamadas pelas rotas fazem `commit` no final.
 """
 
 from datetime import datetime
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.candidatos import repositorio
-from app.candidatos.dominio import NovoPartidoDados, PartidoResumo, validar_partido
-from app.candidatos.modelos import Partido
-from app.compartilhado.erros import ConflitoDeEstado
+from app.candidatos.dominio import (
+    AlteracoesCandidato,
+    CandidatoDetalhado,
+    CandidatoResumo,
+    NovoCandidatoDados,
+    NovoPartidoDados,
+    PartidoResumo,
+    validar_nascimento_do_candidato,
+    validar_nome_de_urna,
+    validar_partido,
+)
+from app.candidatos.modelos import Candidato, Partido
+from app.compartilhado.erros import ConflitoDeEstado, NaoEncontrado, nome_da_restricao
+from app.compartilhado.paginacao import Pagina, Paginacao
+
+# Um módulo só importa `servico` de outro (seção 5). `Perfil` e `UsuarioAutenticado` chegam
+# por aí porque `identidade.servico` já os importa de seu `dominio` (mesmo caso de `eleitores`).
+from app.identidade import servico as servico_identidade
+
+# Restrição que impede apagar quem tem candidatura (a tabela nasce na tarefa 05).
+FK_CANDIDATO_COM_CANDIDATURA = "fk_candidaturas_candidato_id_candidatos"
+
+
+def _detalhar(
+    candidato: Candidato, usuario: servico_identidade.UsuarioAutenticado
+) -> CandidatoDetalhado:
+    """Junta os dados do candidato com nome e CPF da credencial. O ORM não sai do módulo."""
+    return CandidatoDetalhado(
+        id=candidato.id,
+        usuario_id=candidato.usuario_id,
+        nome=usuario.nome,
+        nome_urna=candidato.nome_urna,
+        cpf=usuario.cpf,
+        data_nascimento=candidato.data_nascimento,
+        criado_em=candidato.criado_em,
+    )
+
+
+def _resumir_candidato(candidato: Candidato) -> CandidatoResumo:
+    """Converte o modelo no resumo do domínio. O ORM não sai do módulo."""
+    return CandidatoResumo(
+        id=candidato.id,
+        usuario_id=candidato.usuario_id,
+        nome_urna=candidato.nome_urna,
+        data_nascimento=candidato.data_nascimento,
+    )
 
 
 def _resumir_partido(partido: Partido) -> PartidoResumo:
@@ -18,6 +63,149 @@ def _resumir_partido(partido: Partido) -> PartidoResumo:
     return PartidoResumo(
         id=partido.id, sigla=partido.sigla, nome=partido.nome, numero=partido.numero
     )
+
+
+def _obter_modelo(sessao: Session, candidato_id: int) -> Candidato:
+    """Busca o candidato ou levanta 404 `CANDIDATO_NAO_ENCONTRADO`."""
+    candidato = repositorio.buscar_candidato_por_id(sessao, candidato_id)
+    if candidato is None:
+        raise NaoEncontrado("Candidato não encontrado.", codigo="CANDIDATO_NAO_ENCONTRADO")
+    return candidato
+
+
+def _com_credencial(sessao: Session, candidato: Candidato) -> CandidatoDetalhado:
+    """Completa o candidato com a credencial. Credencial ausente é inconsistência (500)."""
+    usuarios = servico_identidade.obter_usuarios(sessao, [candidato.usuario_id])
+    usuario = usuarios.get(candidato.usuario_id)
+    if usuario is None:
+        raise LookupError(f"O candidato {candidato.id} não tem credencial.")
+    return _detalhar(candidato, usuario)
+
+
+def cadastrar_candidato(
+    sessao: Session, dados: NovoCandidatoDados, agora: datetime
+) -> CandidatoDetalhado:
+    """Cadastra o candidato junto com a credencial dele e faz commit (RN-31).
+
+    RN-31: nome de urna de 3 a 30 caracteres e nascimento no passado (`DADOS_INVALIDOS`, 422).
+    RN-07, RN-08 e RN-05: CPF, nome e senha são conferidos por `identidade.criar_credencial`,
+    na mesma transação: se algo falhar, nada fica gravado pela metade.
+    """
+    nome_urna = validar_nome_de_urna(dados.nome_urna)
+    validar_nascimento_do_candidato(dados.data_nascimento, agora.date())
+
+    usuario_id = servico_identidade.criar_credencial(
+        sessao, dados.cpf, dados.nome, dados.senha, servico_identidade.Perfil.CANDIDATO, agora
+    )
+    candidato = Candidato(
+        usuario_id=usuario_id,
+        nome_urna=nome_urna,
+        data_nascimento=dados.data_nascimento,
+        criado_em=agora,
+    )
+    repositorio.inserir_candidato(sessao, candidato)
+    sessao.commit()
+    return _com_credencial(sessao, candidato)
+
+
+def listar_candidatos(
+    sessao: Session, nome: str | None, paginacao: Paginacao
+) -> Pagina[CandidatoDetalhado]:
+    """Lista os candidatos, filtrando por parte do nome e ordenados por nome (RN-30).
+
+    A paginação e o filtro de nome ficam com `identidade.listar_usuarios`; aqui só se buscam,
+    numa única consulta, os candidatos desses usuários.
+    """
+    usuarios = servico_identidade.listar_usuarios(
+        sessao, servico_identidade.Perfil.CANDIDATO, nome, paginacao
+    )
+    candidatos = repositorio.buscar_candidatos_por_usuarios_ids(
+        sessao, [u.id for u in usuarios.itens]
+    )
+    por_usuario = {candidato.usuario_id: candidato for candidato in candidatos}
+    return Pagina[CandidatoDetalhado](
+        itens=[_detalhar(por_usuario[u.id], u) for u in usuarios.itens if u.id in por_usuario],
+        pagina=usuarios.pagina,
+        tamanho=usuarios.tamanho,
+        total=usuarios.total,
+    )
+
+
+def obter_candidato(sessao: Session, candidato_id: int) -> CandidatoDetalhado:
+    """Consulta um candidato (RN-30). Levanta 404 `CANDIDATO_NAO_ENCONTRADO` se não existir."""
+    return _com_credencial(sessao, _obter_modelo(sessao, candidato_id))
+
+
+def atualizar_candidato(
+    sessao: Session, candidato_id: int, alteracoes: AlteracoesCandidato, agora: datetime
+) -> CandidatoDetalhado:
+    """Altera nome, nome de urna, nascimento e/ou senha do candidato e faz commit (RN-31).
+
+    Nome e senha vão para `identidade.atualizar_credencial` (RN-08 e RN-05). O CPF nunca muda
+    (RN-33).
+    """
+    candidato = _obter_modelo(sessao, candidato_id)
+    if alteracoes.nome_urna is not None:
+        candidato.nome_urna = validar_nome_de_urna(alteracoes.nome_urna)
+    if alteracoes.data_nascimento is not None:
+        validar_nascimento_do_candidato(alteracoes.data_nascimento, agora.date())
+        candidato.data_nascimento = alteracoes.data_nascimento
+    if alteracoes.nome is not None or alteracoes.senha is not None:
+        servico_identidade.atualizar_credencial(
+            sessao, candidato.usuario_id, agora, nome=alteracoes.nome, senha=alteracoes.senha
+        )
+    sessao.commit()
+    return _com_credencial(sessao, candidato)
+
+
+def excluir_candidato(sessao: Session, candidato_id: int) -> None:
+    """Exclui o candidato e a credencial dele, e faz commit (RN-33).
+
+    Quem tem candidatura não pode ser excluído: a chave estrangeira de `candidaturas` bloqueia e
+    o erro vira 409 `EXCLUSAO_BLOQUEADA`. Candidato inexistente dá 404 `CANDIDATO_NAO_ENCONTRADO`.
+    """
+    candidato = _obter_modelo(sessao, candidato_id)
+    usuario_id = candidato.usuario_id
+    try:
+        repositorio.remover_candidato(sessao, candidato)
+    except IntegrityError as erro:
+        sessao.rollback()
+        if nome_da_restricao(erro) != FK_CANDIDATO_COM_CANDIDATURA:
+            raise
+        raise ConflitoDeEstado(
+            "O candidato tem candidaturas. Remova as candidaturas antes.",
+            codigo="EXCLUSAO_BLOQUEADA",
+        ) from erro
+    servico_identidade.remover_credencial(sessao, usuario_id)
+    sessao.commit()
+
+
+def obter_candidato_logado(sessao: Session, usuario_id: int) -> CandidatoDetalhado:
+    """Os dados completos do próprio candidato, para `/candidatos/eu` (RN-30).
+
+    Levanta 404 `CANDIDATO_NAO_ENCONTRADO` se a credencial não tiver um candidato.
+    """
+    candidato = repositorio.buscar_candidato_por_usuario_id(sessao, usuario_id)
+    if candidato is None:
+        raise NaoEncontrado("Candidato não encontrado.", codigo="CANDIDATO_NAO_ENCONTRADO")
+    return _com_credencial(sessao, candidato)
+
+
+def obter_candidato_do_usuario(sessao: Session, usuario_id: int) -> CandidatoResumo | None:
+    """Devolve o candidato dono desta credencial, ou `None` se não houver. Usada por `eleicoes`."""
+    candidato = repositorio.buscar_candidato_por_usuario_id(sessao, usuario_id)
+    return _resumir_candidato(candidato) if candidato else None
+
+
+def obter_resumos_de_candidatos(sessao: Session, ids: list[int]) -> dict[int, CandidatoResumo]:
+    """Resumos dos candidatos que existem, indexados pelo id (ids inexistentes ficam de fora).
+
+    Usada por `eleicoes` para montar a lista de candidaturas numa única consulta.
+    """
+    if not ids:
+        return {}
+    candidatos = repositorio.buscar_candidatos_por_ids(sessao, ids)
+    return {candidato.id: _resumir_candidato(candidato) for candidato in candidatos}
 
 
 def criar_partido(sessao: Session, dados: NovoPartidoDados, agora: datetime) -> PartidoResumo:
