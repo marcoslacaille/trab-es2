@@ -5,11 +5,13 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.compartilhado.banco import obter_sessao
+from app.compartilhado.erros import registrar_tratadores
 
 app = FastAPI(
     title="API de Simulação de Eleição Eletrônica",
     version="1.0.0",
 )
+registrar_tratadores(app)
 
 
 @app.get("/health", tags=["Sistema"], summary="Verifica se a API e o banco estão no ar")
