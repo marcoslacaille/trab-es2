@@ -5,7 +5,7 @@ from typing import Annotated
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints
 
-from app.eleicoes.dominio import StatusEleicao
+from app.eleicoes.dominio import EleicaoResumo, StatusEleicao, links_da_eleicao
 
 
 def _sem_fuso(horario: time) -> time:
@@ -59,11 +59,18 @@ class AlteracaoEleicao(BaseModel):
     horario_encerramento: Horario | None = None
 
 
+class LinkResposta(BaseModel):
+    """Uma ação possível sobre a eleição (HATEOAS)."""
+
+    rel: str = Field(description="Nome da ação, por exemplo `abrir`.")
+    metodo: str = Field(description="Método HTTP.")
+    href: str = Field(description="Caminho da ação.")
+
+
 class EleicaoResposta(BaseModel):
     """Uma eleição, com situação, janela e carimbos de tempo."""
 
     model_config = ConfigDict(
-        from_attributes=True,
         json_schema_extra={
             "example": {
                 "id": 1,
@@ -75,6 +82,21 @@ class EleicaoResposta(BaseModel):
                 "status": "AGENDADA",
                 "aberta_em": None,
                 "encerrada_em": None,
+                "links": [
+                    {"rel": "self", "metodo": "GET", "href": "/api/v1/eleicoes/1"},
+                    {"rel": "editar", "metodo": "PATCH", "href": "/api/v1/eleicoes/1"},
+                    {
+                        "rel": "candidaturas",
+                        "metodo": "GET",
+                        "href": "/api/v1/eleicoes/1/candidaturas",
+                    },
+                    {
+                        "rel": "nova-candidatura",
+                        "metodo": "POST",
+                        "href": "/api/v1/eleicoes/1/candidaturas",
+                    },
+                    {"rel": "abrir", "metodo": "POST", "href": "/api/v1/eleicoes/1/abertura"},
+                ],
             }
         },
     )
@@ -90,3 +112,25 @@ class EleicaoResposta(BaseModel):
     encerrada_em: datetime | None = Field(
         description="Instante do encerramento; nulo até encerrar."
     )
+    links: list[LinkResposta] = Field(
+        description="Ações possíveis para o seu perfil neste status da eleição (RN-19)."
+    )
+
+    @classmethod
+    def de_eleicao(cls, eleicao: EleicaoResumo, perfil: str) -> "EleicaoResposta":
+        """Monta a resposta com os `links` que o perfil pode seguir (RN-19)."""
+        return cls(
+            id=eleicao.id,
+            descricao=eleicao.descricao,
+            data=eleicao.data,
+            turno=eleicao.turno,
+            horario_abertura=eleicao.horario_abertura,
+            horario_encerramento=eleicao.horario_encerramento,
+            status=eleicao.status,
+            aberta_em=eleicao.aberta_em,
+            encerrada_em=eleicao.encerrada_em,
+            links=[
+                LinkResposta(rel=link.rel, metodo=link.metodo, href=link.href)
+                for link in links_da_eleicao(eleicao, perfil)
+            ],
+        )

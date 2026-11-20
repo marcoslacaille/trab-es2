@@ -15,11 +15,17 @@ from app.eleicoes.esquemas import AlteracaoEleicao, EleicaoResposta, NovaEleicao
 
 # `identidade.dependencias` é a única parte de `identidade` (além do serviço) que as rotas de
 # outros módulos podem importar (seção 5).
-from app.identidade.dependencias import Perfil, exige_perfil, obter_usuario_atual
+from app.identidade.dependencias import (
+    Perfil,
+    UsuarioAutenticado,
+    exige_perfil,
+    obter_usuario_atual,
+)
 
 roteador = APIRouter(prefix="/eleicoes", tags=["Eleições"])
 
-somente_chefe = [Depends(exige_perfil(Perfil.CHEFE_SECAO))]
+UsuarioChefe = Annotated[UsuarioAutenticado, Depends(exige_perfil(Perfil.CHEFE_SECAO))]
+UsuarioLogado = Annotated[UsuarioAutenticado, Depends(obter_usuario_atual)]
 IdDaEleicao = Annotated[int, Path(gt=0, description="Identificador da eleição.")]
 
 
@@ -27,7 +33,6 @@ IdDaEleicao = Annotated[int, Path(gt=0, description="Identificador da eleição.
     "",
     status_code=201,
     response_model=EleicaoResposta,
-    dependencies=somente_chefe,
     summary="Cria uma eleição",
     description=(
         "Agenda uma eleição (status AGENDADA). Turno 1 ou 2, abertura antes do encerramento e "
@@ -38,46 +43,50 @@ IdDaEleicao = Annotated[int, Path(gt=0, description="Identificador da eleição.
 )
 def criar_eleicao(
     dados: NovaEleicao,
+    usuario: UsuarioChefe,
     sessao: Annotated[Session, Depends(obter_sessao)],
     agora: Annotated[datetime, Depends(obter_agora)],
 ) -> EleicaoResposta:
     eleicao = servico.criar_eleicao(sessao, NovaEleicaoDados(**dados.model_dump()), agora)
-    return EleicaoResposta.model_validate(eleicao)
+    return EleicaoResposta.de_eleicao(eleicao, usuario.perfil)
 
 
 @roteador.get(
     "",
     response_model=list[EleicaoResposta],
-    dependencies=[Depends(obter_usuario_atual)],
     summary="Lista as eleições",
     description="Qualquer usuário logado lista as eleições, com filtro opcional de status (RN-19).",
     responses=respostas_de_erro(401, 422),
 )
 def listar_eleicoes(
+    usuario: UsuarioLogado,
     sessao: Annotated[Session, Depends(obter_sessao)],
     status: Annotated[StatusEleicao | None, Query(description="Filtra pela situação.")] = None,
 ) -> list[EleicaoResposta]:
-    return [EleicaoResposta.model_validate(e) for e in servico.listar_eleicoes(sessao, status)]
+    return [
+        EleicaoResposta.de_eleicao(eleicao, usuario.perfil)
+        for eleicao in servico.listar_eleicoes(sessao, status)
+    ]
 
 
 @roteador.get(
     "/{eleicao_id}",
     response_model=EleicaoResposta,
-    dependencies=[Depends(obter_usuario_atual)],
     summary="Consulta uma eleição",
     description="Qualquer usuário logado consulta situação, horários e carimbos (RN-19).",
     responses=respostas_de_erro(401, 404, 422),
 )
 def consultar_eleicao(
-    eleicao_id: IdDaEleicao, sessao: Annotated[Session, Depends(obter_sessao)]
+    eleicao_id: IdDaEleicao,
+    usuario: UsuarioLogado,
+    sessao: Annotated[Session, Depends(obter_sessao)],
 ) -> EleicaoResposta:
-    return EleicaoResposta.model_validate(servico.obter_eleicao(sessao, eleicao_id))
+    return EleicaoResposta.de_eleicao(servico.obter_eleicao(sessao, eleicao_id), usuario.perfil)
 
 
 @roteador.patch(
     "/{eleicao_id}",
     response_model=EleicaoResposta,
-    dependencies=somente_chefe,
     summary="Altera uma eleição",
     description=(
         "Só enquanto a eleição está AGENDADA. Os dados resultantes passam de novo pelas regras "
@@ -88,18 +97,18 @@ def consultar_eleicao(
 def alterar_eleicao(
     eleicao_id: IdDaEleicao,
     alteracao: AlteracaoEleicao,
+    usuario: UsuarioChefe,
     sessao: Annotated[Session, Depends(obter_sessao)],
     agora: Annotated[datetime, Depends(obter_agora)],
 ) -> EleicaoResposta:
     alteracoes = AlteracoesEleicao(**alteracao.model_dump())
     eleicao = servico.editar_eleicao(sessao, eleicao_id, alteracoes, agora)
-    return EleicaoResposta.model_validate(eleicao)
+    return EleicaoResposta.de_eleicao(eleicao, usuario.perfil)
 
 
 @roteador.post(
     "/{eleicao_id}/abertura",
     response_model=EleicaoResposta,
-    dependencies=somente_chefe,
     summary="Abre a votação",
     description=(
         "Muda a eleição de AGENDADA para ABERTA. Só no dia e dentro da janela, com pelo menos "
@@ -110,16 +119,18 @@ def alterar_eleicao(
 )
 def abrir_eleicao(
     eleicao_id: IdDaEleicao,
+    usuario: UsuarioChefe,
     sessao: Annotated[Session, Depends(obter_sessao)],
     agora: Annotated[datetime, Depends(obter_agora)],
 ) -> EleicaoResposta:
-    return EleicaoResposta.model_validate(servico.abrir_eleicao(sessao, eleicao_id, agora))
+    return EleicaoResposta.de_eleicao(
+        servico.abrir_eleicao(sessao, eleicao_id, agora), usuario.perfil
+    )
 
 
 @roteador.post(
     "/{eleicao_id}/encerramento",
     response_model=EleicaoResposta,
-    dependencies=somente_chefe,
     summary="Encerra a votação",
     description=(
         "Muda a eleição de ABERTA para ENCERRADA, a qualquer hora (antes ou depois do horário "
@@ -129,7 +140,10 @@ def abrir_eleicao(
 )
 def encerrar_eleicao(
     eleicao_id: IdDaEleicao,
+    usuario: UsuarioChefe,
     sessao: Annotated[Session, Depends(obter_sessao)],
     agora: Annotated[datetime, Depends(obter_agora)],
 ) -> EleicaoResposta:
-    return EleicaoResposta.model_validate(servico.encerrar_eleicao(sessao, eleicao_id, agora))
+    return EleicaoResposta.de_eleicao(
+        servico.encerrar_eleicao(sessao, eleicao_id, agora), usuario.perfil
+    )
