@@ -1,6 +1,7 @@
 """Registro dos modelos ORM.
 
-Quando os módulos de domínio existirem, este arquivo importará os modelos de todos eles
-(identidade, eleitores, candidatos, eleicoes e votacao). O Alembic importa este arquivo para
-enxergar todas as tabelas em `Base.metadata`.
+Importa os modelos de todos os módulos de domínio. O Alembic importa este arquivo para
+enxergar todas as tabelas em `Base.metadata`. Cada tarefa acrescenta aqui o módulo novo.
 """
+
+import app.identidade.modelos  # noqa: F401
