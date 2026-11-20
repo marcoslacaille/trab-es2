@@ -1,0 +1,34 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: eleicao
+          POSTGRES_PASSWORD: eleicao
+          POSTGRES_DB: eleicao_teste
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U eleicao"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://eleicao:eleicao@localhost:5433/eleicao_teste
+      DATABASE_URL: postgresql+psycopg://eleicao:eleicao@localhost:5433/eleicao_teste
+      JWT_SEGREDO: segredo-de-ci-com-pelo-menos-32-caracteres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: pytest --cov=app --cov-report=term-missing
