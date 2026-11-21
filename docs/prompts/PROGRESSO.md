@@ -17,7 +17,7 @@ Marque `[x]` quando a tarefa estiver integrada na `main` (o agente marca no últ
 - [x] 11 — Qualidade transversal
 - [x] 12 — Swagger e GitHub Pages
 - [x] 13 — Seed e documentação de entrega
-- [ ] 14 — Revisão final
+- [x] 14 — Revisão final
 
 ## Pendências e decisões registradas
 

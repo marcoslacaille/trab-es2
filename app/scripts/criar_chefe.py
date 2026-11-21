@@ -15,7 +15,7 @@ from app.identidade.dominio import Perfil
 
 
 def criar_chefe() -> int:
-    """Cria o Chefe da Seção com os dados do `.env`. Devolve 0 se deu certo, 1 se falhou.
+    """RN-04: cria o Chefe da Seção com os dados do `.env`. Devolve 0 se deu certo, 1 se falhou.
 
     Valida CPF (RN-07), nome (RN-08) e senha (RN-05) pelo próprio serviço de identidade.
     A mensagem impressa nunca contém a senha.

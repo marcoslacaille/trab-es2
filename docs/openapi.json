@@ -3573,7 +3573,7 @@
           },
           "links": {
             "items": {
-              "$ref": "#/components/schemas/app__votacao__esquemas__LinkResposta"
+              "$ref": "#/components/schemas/LinkDaVotacao"
             },
             "type": "array",
             "title": "Links",
@@ -3632,7 +3632,14 @@
           "mensagem"
         ],
         "title": "CorpoDoErro",
-        "description": "Conteúdo do erro: o que o cliente da API lê para decidir o que fazer."
+        "description": "Conteúdo do erro: o que o cliente da API lê para decidir o que fazer.",
+        "example": {
+          "codigo": "ELEICAO_NAO_ABERTA",
+          "detalhes": {
+            "status": "AGENDADA"
+          },
+          "mensagem": "A eleição não está aberta."
+        }
       },
       "EleicaoResposta": {
         "properties": {
@@ -3722,7 +3729,7 @@
           },
           "links": {
             "items": {
-              "$ref": "#/components/schemas/app__eleicoes__esquemas__LinkResposta"
+              "$ref": "#/components/schemas/LinkResposta"
             },
             "type": "array",
             "title": "Links",
@@ -3936,6 +3943,60 @@
         ],
         "title": "LinhaApuracaoResposta",
         "description": "Um candidato na apuração do cargo."
+      },
+      "LinkDaVotacao": {
+        "properties": {
+          "rel": {
+            "type": "string",
+            "title": "Rel",
+            "description": "Nome da ação, por exemplo `confirmar`."
+          },
+          "metodo": {
+            "type": "string",
+            "title": "Metodo",
+            "description": "Método HTTP."
+          },
+          "href": {
+            "type": "string",
+            "title": "Href",
+            "description": "Caminho da ação."
+          }
+        },
+        "type": "object",
+        "required": [
+          "rel",
+          "metodo",
+          "href"
+        ],
+        "title": "LinkDaVotacao",
+        "description": "Uma ação possível a seguir (HATEOAS)."
+      },
+      "LinkResposta": {
+        "properties": {
+          "rel": {
+            "type": "string",
+            "title": "Rel",
+            "description": "Nome da ação, por exemplo `abrir`."
+          },
+          "metodo": {
+            "type": "string",
+            "title": "Metodo",
+            "description": "Método HTTP."
+          },
+          "href": {
+            "type": "string",
+            "title": "Href",
+            "description": "Caminho da ação."
+          }
+        },
+        "type": "object",
+        "required": [
+          "rel",
+          "metodo",
+          "href"
+        ],
+        "title": "LinkResposta",
+        "description": "Uma ação possível sobre a eleição (HATEOAS)."
       },
       "LoginResposta": {
         "properties": {
@@ -4604,7 +4665,7 @@
           },
           "links": {
             "items": {
-              "$ref": "#/components/schemas/app__votacao__esquemas__LinkResposta"
+              "$ref": "#/components/schemas/LinkDaVotacao"
             },
             "type": "array",
             "title": "Links",
@@ -4891,60 +4952,6 @@
           "type"
         ],
         "title": "ValidationError"
-      },
-      "app__eleicoes__esquemas__LinkResposta": {
-        "properties": {
-          "rel": {
-            "type": "string",
-            "title": "Rel",
-            "description": "Nome da ação, por exemplo `abrir`."
-          },
-          "metodo": {
-            "type": "string",
-            "title": "Metodo",
-            "description": "Método HTTP."
-          },
-          "href": {
-            "type": "string",
-            "title": "Href",
-            "description": "Caminho da ação."
-          }
-        },
-        "type": "object",
-        "required": [
-          "rel",
-          "metodo",
-          "href"
-        ],
-        "title": "LinkResposta",
-        "description": "Uma ação possível sobre a eleição (HATEOAS)."
-      },
-      "app__votacao__esquemas__LinkResposta": {
-        "properties": {
-          "rel": {
-            "type": "string",
-            "title": "Rel",
-            "description": "Nome da ação, por exemplo `confirmar`."
-          },
-          "metodo": {
-            "type": "string",
-            "title": "Metodo",
-            "description": "Método HTTP."
-          },
-          "href": {
-            "type": "string",
-            "title": "Href",
-            "description": "Caminho da ação."
-          }
-        },
-        "type": "object",
-        "required": [
-          "rel",
-          "metodo",
-          "href"
-        ],
-        "title": "LinkResposta",
-        "description": "Uma ação possível a seguir (HATEOAS)."
       }
     },
     "securitySchemes": {
