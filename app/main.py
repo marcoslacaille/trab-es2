@@ -4,6 +4,7 @@ from fastapi import Depends, FastAPI
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.apuracao.rotas import roteador as rotas_apuracao
 from app.candidatos.rotas import roteador as rotas_candidatos
 from app.compartilhado.banco import obter_sessao
 from app.compartilhado.erros import registrar_tratadores
@@ -31,6 +32,7 @@ app.include_router(rotas_candidaturas, prefix=PREFIXO)
 app.include_router(rotas_eleitores, prefix=PREFIXO)
 app.include_router(rotas_candidatos, prefix=PREFIXO)
 app.include_router(rotas_votacao, prefix=PREFIXO)
+app.include_router(rotas_apuracao, prefix=PREFIXO)
 
 
 @app.get("/health", tags=["Sistema"], summary="Verifica se a API e o banco estão no ar")
