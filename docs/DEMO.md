@@ -6,7 +6,7 @@ O mesmo roteiro está automatizado no teste TI-74 (`pytest tests/integracao/test
 
 ## Preparação (antes da aula)
 
-1. Banco limpo e API no ar (Docker Desktop aberto; no Windows troque `.venv/bin/python` por `.venv\Scripts\python.exe`):
+1. Banco limpo e API no ar (Docker Desktop aberto; no Windows troque `.venv/bin/python` por `.venv\Scripts\python.exe`). O `.env` precisa existir e ter `POSTGRES_USER` e `POSTGRES_PASSWORD` (copie do `.env.example`), senão o `docker compose` não sobe:
 
    ```bash
    docker compose down -v

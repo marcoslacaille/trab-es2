@@ -113,10 +113,10 @@ Pré-requisitos: Python 3.12, Git e Docker (Docker Desktop aberto, no Windows e 
 ### Windows (PowerShell)
 
 ```powershell
-docker compose up -d                                  # sobe o banco (5432) e o banco de teste (5433)
+copy .env.example .env                                # troque JWT_SEGREDO e as senhas fora da demonstração
+docker compose up -d                                  # sobe o banco (5432) e o banco de teste (5433); lê o .env
 py -3.12 -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-copy .env.example .env                                # troque JWT_SEGREDO e as senhas fora da demonstração
 .venv\Scripts\python.exe -m alembic upgrade head      # cria as tabelas
 .venv\Scripts\python.exe -m app.scripts.seed_demo     # dados de demonstração (opcional; já cria o Chefe)
 .venv\Scripts\python.exe -m uvicorn app.main:app --reload
@@ -125,11 +125,11 @@ copy .env.example .env                                # troque JWT_SEGREDO e as 
 ### Linux / macOS
 
 ```bash
-docker compose up -d                                  # sobe o banco (5432) e o banco de teste (5433)
+cp .env.example .env                                  # troque JWT_SEGREDO e as senhas fora da demonstração
+docker compose up -d                                  # sobe o banco (5432) e o banco de teste (5433); lê o .env
 python3.12 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements-dev.txt
-cp .env.example .env                                  # troque JWT_SEGREDO e as senhas fora da demonstração
 alembic upgrade head                                  # cria as tabelas
 python -m app.scripts.seed_demo                       # dados de demonstração (opcional; já cria o Chefe)
 uvicorn app.main:app --reload
@@ -137,6 +137,7 @@ uvicorn app.main:app --reload
 
 A API fica em http://localhost:8000, o Swagger em http://localhost:8000/docs e a verificação de saúde em http://localhost:8000/health.
 
+- **Credenciais do banco:** o `docker-compose.yml` não tem senha escrita; lê `POSTGRES_USER` e `POSTGRES_PASSWORD` do `.env` e para com uma mensagem clara se faltarem. Se trocar a senha, troque também em `DATABASE_URL` e `TEST_DATABASE_URL`, e rode `docker compose down -v` (o PostgreSQL só usa a senha na criação do volume).
 - **Sem a demonstração:** em vez do `seed_demo`, rode `python -m app.scripts.criar_chefe` (usa `CHEFE_CPF`, `CHEFE_NOME` e `CHEFE_SENHA` do `.env`). Não existe rota para criar Chefe.
 - **Dados de demonstração:** `seed_demo` cria o Chefe, 3 partidos, 6 eleitores, 10 candidatos e a eleição de hoje (00:00 às 23:59) com as 10 candidaturas, ainda AGENDADA, e imprime a tabela de logins. Se já houver dados, avisa e não altera nada. Chefe: CPF `291.417.776-38`, senha `Chefe@2026`; eleitores: `Eleitor@123`; candidatos: `Candidato@123` (senhas fixas, só para a demo).
 - **Recomeçar do zero:** `docker compose down -v`, `docker compose up -d`, `alembic upgrade head`, `seed_demo`.
