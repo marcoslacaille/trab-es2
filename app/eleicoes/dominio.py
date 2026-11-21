@@ -181,18 +181,59 @@ def _validar_segundo_turno_completo(candidaturas_por_cargo: dict[Cargo, int]) ->
         )
 
 
+def _validar_cargos_do_segundo_turno(candidaturas_por_cargo: dict[Cargo, int]) -> None:
+    """RN-45: no 2º turno só há candidaturas de Governador e Presidente (409 se não)."""
+    proibidos = sorted(
+        cargo.value
+        for cargo, quantidade in candidaturas_por_cargo.items()
+        if quantidade > 0 and cargo not in CARGOS_DO_SEGUNDO_TURNO
+    )
+    if proibidos:
+        raise ConflitoDeEstado(
+            "No 2º turno só há Governador e Presidente.",
+            codigo="CARGO_NAO_PERMITIDO_NO_TURNO",
+            detalhes={"cargos": proibidos},
+        )
+
+
+def validar_candidaturas_no_turno(turno: int, candidaturas_por_cargo: dict[Cargo, int]) -> None:
+    """RN-45: as candidaturas já cadastradas cabem no turno? Usada ao editar a eleição.
+
+    Sem isto, trocar o turno de 1 para 2 deixaria um 2º turno com Senador ou com 3 candidatos a
+    Presidente. No 1º turno não há restrição. No 2º, confere nesta ordem: só Governador e
+    Presidente (`CARGO_NAO_PERMITIDO_NO_TURNO`, 409) e no máximo 2 por cargo
+    (`LIMITE_SEGUNDO_TURNO`, 409); `detalhes.cargos` lista os cargos com problema.
+    """
+    if turno != 2:
+        return
+    _validar_cargos_do_segundo_turno(candidaturas_por_cargo)
+    excedentes = sorted(
+        cargo.value
+        for cargo, quantidade in candidaturas_por_cargo.items()
+        if quantidade > CANDIDATURAS_DO_SEGUNDO_TURNO_POR_CARGO
+    )
+    if excedentes:
+        raise ConflitoDeEstado(
+            f"No 2º turno cada cargo tem no máximo {CANDIDATURAS_DO_SEGUNDO_TURNO_POR_CARGO} "
+            "candidaturas.",
+            codigo="LIMITE_SEGUNDO_TURNO",
+            detalhes={"cargos": excedentes},
+        )
+
+
 def validar_abertura(
     eleicao: EleicaoResumo,
     agora: datetime,
     existe_outra_aberta: bool,
     candidaturas_por_cargo: dict[Cargo, int],
 ) -> None:
-    """RN-13, RN-15, RN-16 e RN-17: confere se a eleição pode ser aberta agora.
+    """RN-13, RN-15, RN-16, RN-17 e RN-45: confere se a eleição pode ser aberta agora.
 
     Confere nesta ordem, e a primeira falha é a devolvida (todas são 409): status AGENDADA
     (`TRANSICAO_INVALIDA`); nenhuma outra eleição aberta (`OUTRA_ELEICAO_ABERTA`); hoje é a data
     da eleição (`FORA_DA_DATA`); horário entre a abertura (inclusive) e o encerramento
     (exclusive) (`FORA_DA_JANELA`); ao menos uma candidatura (`SEM_CANDIDATURAS`); no 2º turno,
+    só Governador e Presidente (`CARGO_NAO_PERMITIDO_NO_TURNO`, segunda barreira da RN-45) e
     exatamente 2 candidaturas em cada cargo disputado (`SEGUNDO_TURNO_INCOMPLETO`).
     `candidaturas_por_cargo` só traz os cargos que têm candidatura.
     """
@@ -225,6 +266,7 @@ def validar_abertura(
             codigo="SEM_CANDIDATURAS",
         )
     if eleicao.turno == 2:
+        _validar_cargos_do_segundo_turno(candidaturas_por_cargo)
         _validar_segundo_turno_completo(candidaturas_por_cargo)
 
 
