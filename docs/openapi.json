@@ -1,0 +1,5000 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "API de Simulação de Eleição Eletrônica",
+    "description": "\nAPI de simulação de eleição eletrônica (trabalho de Engenharia de Software II).\n\n**Como autenticar:** clique em *Authorize*, informe o CPF em `username` e a senha em `password`.\n\n**Fluxo do voto:** consulte a cédula → registre o voto (recebe `token_cedula`) →\nconfirme com o token.\n\n**Erros:** todas as rotas respondem `{\"erro\": {\"codigo\", \"mensagem\", \"detalhes\"}}`.\n",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "Autenticação"
+        ],
+        "summary": "Entra no sistema com CPF e senha",
+        "description": "Recebe um formulário OAuth2 (`application/x-www-form-urlencoded`): `username` é o CPF (com ou sem pontuação) e `password` é a senha. Devolve o token JWT de acesso, que vale 60 minutos. CPF inexistente e senha errada dão a mesma resposta 401 (RN-01).",
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_login"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResposta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "Autenticação"
+        ],
+        "summary": "Consulta o usuário logado",
+        "description": "Devolve os dados do dono do token, lidos do banco no momento da requisição (RN-02). Se o usuário foi excluído depois do login, o token deixa de valer.",
+        "operationId": "consultar_usuario_logado",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsuarioLogadoResposta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/eleicoes": {
+      "post": {
+        "tags": [
+          "Eleições"
+        ],
+        "summary": "Cria uma eleição",
+        "description": "Agenda uma eleição (status AGENDADA). Turno 1 ou 2, abertura antes do encerramento e data não anterior a hoje. Não pode haver outra eleição na mesma data e turno (RN-10, RN-11, RN-12).",
+        "operationId": "criar_eleicao",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NovaEleicao"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EleicaoResposta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perfil sem permissão para esta operação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito com o estado atual (regra de negócio)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Eleições"
+        ],
+        "summary": "Lista as eleições",
+        "description": "Qualquer usuário logado lista as eleições, com filtro opcional de status (RN-19).",
+        "operationId": "listar_eleicoes",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/StatusEleicao"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtra pela situação.",
+              "title": "Status"
+            },
+            "description": "Filtra pela situação."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EleicaoResposta"
+                  },
+                  "title": "Response Listar Eleicoes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/eleicoes/{eleicao_id}": {
+      "get": {
+        "tags": [
+          "Eleições"
+        ],
+        "summary": "Consulta uma eleição",
+        "description": "Qualquer usuário logado consulta situação, horários e carimbos (RN-19).",
+        "operationId": "consultar_eleicao",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleicao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "description": "Identificador da eleição.",
+              "title": "Eleicao Id"
+            },
+            "description": "Identificador da eleição."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EleicaoResposta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Eleições"
+        ],
+        "summary": "Altera uma eleição",
+        "description": "Só enquanto a eleição está AGENDADA. Os dados resultantes passam de novo pelas regras de agendamento (RN-10, RN-11, RN-12, RN-14).",
+        "operationId": "alterar_eleicao",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleicao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "description": "Identificador da eleição.",
+              "title": "Eleicao Id"
+            },
+            "description": "Identificador da eleição."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlteracaoEleicao"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EleicaoResposta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perfil sem permissão para esta operação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito com o estado atual (regra de negócio)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/eleicoes/{eleicao_id}/abertura": {
+      "post": {
+        "tags": [
+          "Eleições"
+        ],
+        "summary": "Abre a votação",
+        "description": "Muda a eleição de AGENDADA para ABERTA. Só no dia e dentro da janela, com pelo menos uma candidatura e nenhuma outra eleição aberta; no 2º turno, exatamente 2 candidaturas por cargo (RN-10, RN-13, RN-15 a RN-17).",
+        "operationId": "abrir_eleicao",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleicao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "description": "Identificador da eleição.",
+              "title": "Eleicao Id"
+            },
+            "description": "Identificador da eleição."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EleicaoResposta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perfil sem permissão para esta operação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito com o estado atual (regra de negócio)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/eleicoes/{eleicao_id}/encerramento": {
+      "post": {
+        "tags": [
+          "Eleições"
+        ],
+        "summary": "Encerra a votação",
+        "description": "Muda a eleição de ABERTA para ENCERRADA, a qualquer hora (antes ou depois do horário previsto). Depois disso nenhum voto novo entra (RN-10, RN-13, RN-18).",
+        "operationId": "encerrar_eleicao",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleicao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "description": "Identificador da eleição.",
+              "title": "Eleicao Id"
+            },
+            "description": "Identificador da eleição."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EleicaoResposta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perfil sem permissão para esta operação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito com o estado atual (regra de negócio)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/eleicoes/{eleicao_id}/candidaturas": {
+      "get": {
+        "tags": [
+          "Candidaturas"
+        ],
+        "summary": "Lista as candidaturas da eleição",
+        "description": "Ordenadas pelo cargo (ordem da urna) e depois pelo número. Filtro opcional por cargo (RN-40).",
+        "operationId": "listar_candidaturas",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleicao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "description": "Identificador da eleição.",
+              "title": "Eleicao Id"
+            },
+            "description": "Identificador da eleição."
+          },
+          {
+            "name": "cargo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Cargo"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtra pelo cargo.",
+              "title": "Cargo"
+            },
+            "description": "Filtra pelo cargo."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CandidaturaResposta"
+                  },
+                  "title": "Response Listar Candidaturas"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perfil sem permissão para esta operação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Candidaturas"
+        ],
+        "summary": "Cria uma candidatura",
+        "description": "Só com a eleição AGENDADA. Candidato e partido precisam existir; o número tem os dígitos do cargo e é único no cargo; o candidato disputa uma vez por eleição; no 2º turno só Governador e Presidente, no máximo 2 cada (RN-40 a RN-46).",
+        "operationId": "criar_candidatura",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleicao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "description": "Identificador da eleição.",
+              "title": "Eleicao Id"
+            },
+            "description": "Identificador da eleição."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NovaCandidatura"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidaturaResposta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perfil sem permissão para esta operação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito com o estado atual (regra de negócio)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/eleicoes/{eleicao_id}/candidaturas/{candidatura_id}": {
+      "patch": {
+        "tags": [
+          "Candidaturas"
+        ],
+        "summary": "Altera uma candidatura",
+        "description": "Muda só cargo, número e partido, e só com a eleição AGENDADA. Candidato e eleição não mudam (RN-40 a RN-45).",
+        "operationId": "alterar_candidatura",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleicao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "description": "Identificador da eleição.",
+              "title": "Eleicao Id"
+            },
+            "description": "Identificador da eleição."
+          },
+          {
+            "name": "candidatura_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "description": "Identificador da candidatura.",
+              "title": "Candidatura Id"
+            },
+            "description": "Identificador da candidatura."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlteracaoCandidatura"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidaturaResposta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perfil sem permissão para esta operação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito com o estado atual (regra de negócio)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Candidaturas"
+        ],
+        "summary": "Remove uma candidatura",
+        "description": "Só com a eleição AGENDADA (RN-40).",
+        "operationId": "remover_candidatura",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleicao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "description": "Identificador da eleição.",
+              "title": "Eleicao Id"
+            },
+            "description": "Identificador da eleição."
+          },
+          {
+            "name": "candidatura_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "description": "Identificador da candidatura.",
+              "title": "Candidatura Id"
+            },
+            "description": "Identificador da candidatura."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perfil sem permissão para esta operação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito com o estado atual (regra de negócio)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/candidaturas/minhas": {
+      "get": {
+        "tags": [
+          "Candidaturas"
+        ],
+        "summary": "Lista as candidaturas do candidato logado",
+        "description": "O Candidato vê as próprias candidaturas, em todas as eleições (RN-47).",
+        "operationId": "listar_minhas_candidaturas",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CandidaturaResposta"
+                  },
+                  "type": "array",
+                  "title": "Response Listar Minhas Candidaturas"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perfil sem permissão para esta operação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/eleitores": {
+      "post": {
+        "tags": [
+          "Eleitores"
+        ],
+        "summary": "Cadastra um eleitor",
+        "description": "Cria o eleitor e a credencial dele (perfil ELEITOR) de uma vez. O CPF pode vir com ou sem pontuação e é gravado só com dígitos. A senha nunca é devolvida (RN-20 a RN-22).",
+        "operationId": "cadastrar_eleitor",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NovoEleitor"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EleitorResposta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perfil sem permissão para esta operação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito com o estado atual (regra de negócio)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Eleitores"
+        ],
+        "summary": "Lista os eleitores",
+        "description": "Ordenados por nome, com filtro opcional por parte do nome e paginação (RN-20).",
+        "operationId": "listar_eleitores",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "nome",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 120
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Parte do nome, sem diferenciar maiúsculas.",
+              "title": "Nome"
+            },
+            "description": "Parte do nome, sem diferenciar maiúsculas."
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Número da página (começa em 1).",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Número da página (começa em 1)."
+          },
+          {
+            "name": "tamanho",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Itens por página (de 1 a 100).",
+              "default": 20,
+              "title": "Tamanho"
+            },
+            "description": "Itens por página (de 1 a 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_EleitorResposta_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perfil sem permissão para esta operação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/eleitores/eu": {
+      "get": {
+        "tags": [
+          "Eleitores"
+        ],
+        "summary": "Consulta os próprios dados de eleitor",
+        "description": "O eleitor logado vê os próprios dados (RN-25).",
+        "operationId": "consultar_meus_dados_de_eleitor",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EleitorResposta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perfil sem permissão para esta operação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/eleitores/{eleitor_id}": {
+      "get": {
+        "tags": [
+          "Eleitores"
+        ],
+        "summary": "Consulta um eleitor",
+        "description": "Só o Chefe da Seção consulta eleitores pelo id (RN-20).",
+        "operationId": "consultar_eleitor",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleitor_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "description": "Identificador do eleitor.",
+              "title": "Eleitor Id"
+            },
+            "description": "Identificador do eleitor."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EleitorResposta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perfil sem permissão para esta operação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Eleitores"
+        ],
+        "summary": "Altera um eleitor",
+        "description": "Só nome, data de nascimento e senha podem mudar. CPF e título não mudam: mandar qualquer outro campo dá 422 (RN-22 e RN-23).",
+        "operationId": "alterar_eleitor",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleitor_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "description": "Identificador do eleitor.",
+              "title": "Eleitor Id"
+            },
+            "description": "Identificador do eleitor."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlteracaoEleitor"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EleitorResposta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perfil sem permissão para esta operação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Eleitores"
+        ],
+        "summary": "Exclui um eleitor",
+        "description": "Apaga o eleitor e a credencial dele. Quem já votou não pode ser excluído: responde 409 `EXCLUSAO_BLOQUEADA` (RN-24).",
+        "operationId": "excluir_eleitor",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleitor_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "description": "Identificador do eleitor.",
+              "title": "Eleitor Id"
+            },
+            "description": "Identificador do eleitor."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perfil sem permissão para esta operação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito com o estado atual (regra de negócio)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/candidatos": {
+      "post": {
+        "tags": [
+          "Candidatos"
+        ],
+        "summary": "Cadastra um candidato",
+        "description": "Cria o candidato e a credencial dele (perfil CANDIDATO) de uma vez. O CPF pode vir com ou sem pontuação e é gravado só com dígitos. A senha nunca é devolvida (RN-30, RN-31). Ligar o candidato a uma eleição é outra etapa: a candidatura.",
+        "operationId": "cadastrar_candidato",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NovoCandidato"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidatoResposta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perfil sem permissão para esta operação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito com o estado atual (regra de negócio)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Candidatos"
+        ],
+        "summary": "Lista os candidatos",
+        "description": "Ordenados por nome, com filtro opcional por parte do nome e paginação (RN-30).",
+        "operationId": "listar_candidatos",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "nome",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 120
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Parte do nome, sem diferenciar maiúsculas.",
+              "title": "Nome"
+            },
+            "description": "Parte do nome, sem diferenciar maiúsculas."
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Número da página (começa em 1).",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Número da página (começa em 1)."
+          },
+          {
+            "name": "tamanho",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Itens por página (de 1 a 100).",
+              "default": 20,
+              "title": "Tamanho"
+            },
+            "description": "Itens por página (de 1 a 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_CandidatoResposta_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perfil sem permissão para esta operação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/candidatos/eu": {
+      "get": {
+        "tags": [
+          "Candidatos"
+        ],
+        "summary": "Consulta os próprios dados de candidato",
+        "description": "O candidato logado vê os próprios dados (RN-30).",
+        "operationId": "consultar_meus_dados_de_candidato",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidatoResposta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perfil sem permissão para esta operação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/candidatos/{candidato_id}": {
+      "get": {
+        "tags": [
+          "Candidatos"
+        ],
+        "summary": "Consulta um candidato",
+        "description": "Só o Chefe da Seção consulta candidatos pelo id (RN-30).",
+        "operationId": "consultar_candidato",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "candidato_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "description": "Identificador do candidato.",
+              "title": "Candidato Id"
+            },
+            "description": "Identificador do candidato."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidatoResposta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perfil sem permissão para esta operação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Candidatos"
+        ],
+        "summary": "Altera um candidato",
+        "description": "Só nome, nome de urna, data de nascimento e senha podem mudar. O CPF não muda: mandar qualquer outro campo dá 422 (RN-31 e RN-33).",
+        "operationId": "alterar_candidato",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "candidato_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "description": "Identificador do candidato.",
+              "title": "Candidato Id"
+            },
+            "description": "Identificador do candidato."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlteracaoCandidato"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidatoResposta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perfil sem permissão para esta operação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Candidatos"
+        ],
+        "summary": "Exclui um candidato",
+        "description": "Apaga o candidato e a credencial dele. Quem tem candidaturas não pode ser excluído: responde 409 `EXCLUSAO_BLOQUEADA`; remova as candidaturas antes (RN-33).",
+        "operationId": "excluir_candidato",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "candidato_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "description": "Identificador do candidato.",
+              "title": "Candidato Id"
+            },
+            "description": "Identificador do candidato."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perfil sem permissão para esta operação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito com o estado atual (regra de negócio)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/partidos": {
+      "get": {
+        "tags": [
+          "Partidos"
+        ],
+        "summary": "Lista os partidos",
+        "description": "Qualquer usuário logado lista os partidos, ordenados por número (RN-30).",
+        "operationId": "listar_partidos",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PartidoResposta"
+                  },
+                  "type": "array",
+                  "title": "Response Listar Partidos"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Partidos"
+        ],
+        "summary": "Cadastra um partido",
+        "description": "Só o Chefe da Seção cadastra partidos. A sigla é gravada em maiúsculas. Sigla, nome e número são únicos: repetir qualquer um responde 409 `PARTIDO_DUPLICADO` (RN-30, RN-32).",
+        "operationId": "cadastrar_partido",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NovoPartido"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartidoResposta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perfil sem permissão para esta operação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito com o estado atual (regra de negócio)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/votacao/eleicoes/{eleicao_id}/cedula": {
+      "get": {
+        "tags": [
+          "Votação"
+        ],
+        "summary": "Consulta a cédula",
+        "description": "Lista os cargos disputados, na ordem da urna, com os candidatos e se o eleitor já votou em cada um. Só com a eleição aberta e dentro da janela (RN-50 a 53, RN-55, RN-61).",
+        "operationId": "obter_cedula",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleicao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "description": "Identificador da eleição.",
+              "title": "Eleicao Id"
+            },
+            "description": "Identificador da eleição."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CedulaResposta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perfil sem permissão para esta operação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito com o estado atual (regra de negócio)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/votacao/eleicoes/{eleicao_id}/votos/registro": {
+      "post": {
+        "tags": [
+          "Votação"
+        ],
+        "summary": "Registra o voto (etapa 1)",
+        "description": "Devolve a prévia do voto e a cédula assinada. **Nada é gravado**: pode repetir para mudar de ideia. Número com candidatura vira voto NOMINAL, número sem candidatura vira NULO, modo BRANCO vira BRANCO. A cédula vale 5 minutos (RN-54 a 58).",
+        "operationId": "registrar_voto",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleicao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "description": "Identificador da eleição.",
+              "title": "Eleicao Id"
+            },
+            "description": "Identificador da eleição."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoRegistroVoto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviaVotoResposta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perfil sem permissão para esta operação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito com o estado atual (regra de negócio)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/votacao/eleicoes/{eleicao_id}/votos/confirmacao": {
+      "post": {
+        "tags": [
+          "Votação"
+        ],
+        "summary": "Confirma o voto (etapa 2)",
+        "description": "Grava o voto de forma definitiva e sem identificação. A resposta não diz em quem o eleitor votou. Um voto por eleitor, por cargo, por eleição; não pode ser alterado (RN-54, RN-56, RN-57, RN-59, RN-60).",
+        "operationId": "confirmar_voto",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleicao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "description": "Identificador da eleição.",
+              "title": "Eleicao Id"
+            },
+            "description": "Identificador da eleição."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoConfirmacaoVoto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComprovanteVotoResposta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perfil sem permissão para esta operação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito com o estado atual (regra de negócio)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/votacao/eleicoes/{eleicao_id}/participacao": {
+      "get": {
+        "tags": [
+          "Votação"
+        ],
+        "summary": "Consulta em quais cargos já votou",
+        "description": "Lista os cargos disputados e se o eleitor já votou, sem a escolha (RN-61).",
+        "operationId": "obter_participacao",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleicao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "description": "Identificador da eleição.",
+              "title": "Eleicao Id"
+            },
+            "description": "Identificador da eleição."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParticipacaoResposta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perfil sem permissão para esta operação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/apuracao/eleicoes/{eleicao_id}/parcial": {
+      "get": {
+        "tags": [
+          "Apuração"
+        ],
+        "summary": "Acompanha a apuração parcial",
+        "description": "Contagem atualizada a cada consulta, só com a eleição ABERTA. Eleitor e Chefe veem todos os cargos; o Candidato vê só o cargo da sua candidatura nesta eleição (RN-70 a 72, RN-74 a 79). Aqui `mais_votado` é quem lidera até agora.",
+        "operationId": "apuracao_parcial",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleicao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "description": "Identificador da eleição.",
+              "title": "Eleicao Id"
+            },
+            "description": "Identificador da eleição."
+          },
+          {
+            "name": "cargo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Cargo"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Limita a apuração a um cargo. Sem ele, todos os disputados.",
+              "title": "Cargo"
+            },
+            "description": "Limita a apuração a um cargo. Sem ele, todos os disputados."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApuracaoResposta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Perfil sem permissão para esta operação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito com o estado atual (regra de negócio)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/apuracao/eleicoes/{eleicao_id}/resultado": {
+      "get": {
+        "tags": [
+          "Apuração"
+        ],
+        "summary": "Consulta o resultado final",
+        "description": "Resultado da eleição ENCERRADA, visível a qualquer perfil autenticado: votos, percentuais, brancos, nulos, mais votado por cargo e comparecimento (RN-70, RN-73 a 79).",
+        "operationId": "resultado_final",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eleicao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "description": "Identificador da eleição.",
+              "title": "Eleicao Id"
+            },
+            "description": "Identificador da eleição."
+          },
+          {
+            "name": "cargo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Cargo"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Limita a apuração a um cargo. Sem ele, todos os disputados.",
+              "title": "Cargo"
+            },
+            "description": "Limita a apuração a um cargo. Sem ele, todos os disputados."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApuracaoResposta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito com o estado atual (regra de negócio)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "Sistema"
+        ],
+        "summary": "Verifica se a API e o banco estão no ar",
+        "description": "Executa `SELECT 1` no banco. Responde 200 com `{\"status\": \"ok\"}` se tudo estiver no ar.",
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Health"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AlteracaoCandidato": {
+        "properties": {
+          "nome": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120,
+                "minLength": 3
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome",
+            "examples": [
+              "Carlos Henrique Lima"
+            ]
+          },
+          "nome_urna": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 30,
+                "minLength": 3
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome Urna",
+            "examples": [
+              "Carlos H. Lima"
+            ]
+          },
+          "data_nascimento": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Nascimento",
+            "examples": [
+              "1968-03-05"
+            ]
+          },
+          "senha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Senha",
+            "description": "Nova senha (RN-05).",
+            "examples": [
+              "NovaSenha@456"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "AlteracaoCandidato",
+        "description": "O que o Chefe pode mudar num candidato (RN-31). O CPF não muda (RN-33).\n\nMandar o CPF (ou qualquer outro campo) dá 422. Campo ausente não muda.",
+        "example": {
+          "nome_urna": "Carlos H. Lima",
+          "senha": "NovaSenha@456"
+        }
+      },
+      "AlteracaoCandidatura": {
+        "properties": {
+          "cargo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Cargo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              "PRESIDENTE"
+            ]
+          },
+          "numero": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20,
+                "description": "Só dígitos, na quantidade do cargo.",
+                "examples": [
+                  "10"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numero",
+            "examples": [
+              "11"
+            ]
+          },
+          "partido_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Partido Id",
+            "examples": [
+              1
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "AlteracaoCandidatura",
+        "description": "O que pode mudar numa candidatura: cargo, número e partido. Candidato e eleição, não.",
+        "example": {
+          "numero": "11"
+        }
+      },
+      "AlteracaoEleicao": {
+        "properties": {
+          "descricao": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descricao",
+            "examples": [
+              "Eleições Gerais 2026 — 1º turno"
+            ]
+          },
+          "data": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data",
+            "examples": [
+              "2026-11-25"
+            ]
+          },
+          "turno": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 2.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Turno",
+            "examples": [
+              1
+            ]
+          },
+          "horario_abertura": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horario Abertura",
+            "examples": [
+              "08:00"
+            ]
+          },
+          "horario_encerramento": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horario Encerramento",
+            "examples": [
+              "17:00"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "AlteracaoEleicao",
+        "description": "O que o Chefe pode mudar numa eleição AGENDADA (RN-14). Campo ausente não muda.",
+        "example": {
+          "horario_encerramento": "18:00"
+        }
+      },
+      "AlteracaoEleitor": {
+        "properties": {
+          "nome": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120,
+                "minLength": 3
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome",
+            "examples": [
+              "Ana Beatriz Souza Lima"
+            ]
+          },
+          "data_nascimento": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Nascimento",
+            "examples": [
+              "1990-04-12"
+            ]
+          },
+          "senha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Senha",
+            "description": "Nova senha (RN-05).",
+            "examples": [
+              "NovaSenha@456"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "AlteracaoEleitor",
+        "description": "O que o Chefe pode mudar num eleitor: nome, data de nascimento e senha (RN-23).\n\nCPF e título não mudam: mandá-los (ou qualquer outro campo) dá 422. Campo ausente não muda.",
+        "example": {
+          "nome": "Ana Beatriz Souza Lima",
+          "senha": "NovaSenha@456"
+        }
+      },
+      "ApuracaoResposta": {
+        "properties": {
+          "eleicao_id": {
+            "type": "integer",
+            "title": "Eleicao Id",
+            "description": "Eleição apurada.",
+            "examples": [
+              1
+            ]
+          },
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "PARCIAL",
+              "FINAL"
+            ],
+            "title": "Tipo",
+            "description": "PARCIAL (aberta) ou FINAL (encerrada)."
+          },
+          "status_eleicao": {
+            "$ref": "#/components/schemas/StatusEleicao",
+            "description": "Situação da eleição."
+          },
+          "gerado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Gerado Em",
+            "description": "Instante em que a apuração foi calculada."
+          },
+          "comparecimento": {
+            "$ref": "#/components/schemas/ComparecimentoResposta",
+            "description": "Aptos, votantes e abstenção."
+          },
+          "cargos": {
+            "items": {
+              "$ref": "#/components/schemas/ResultadoCargoResposta"
+            },
+            "type": "array",
+            "title": "Cargos",
+            "description": "Um resultado por cargo."
+          }
+        },
+        "type": "object",
+        "required": [
+          "eleicao_id",
+          "tipo",
+          "status_eleicao",
+          "gerado_em",
+          "comparecimento",
+          "cargos"
+        ],
+        "title": "ApuracaoResposta",
+        "description": "Apuração parcial (`tipo` PARCIAL) ou resultado final (`tipo` FINAL).",
+        "example": {
+          "cargos": [
+            {
+              "brancos": 1,
+              "candidatos": [
+                {
+                  "nome_urna": "Carlos Lima",
+                  "numero": "10",
+                  "partido_sigla": "PINO",
+                  "percentual_validos": "100.00",
+                  "votos": 2
+                },
+                {
+                  "nome_urna": "Marina Costa",
+                  "numero": "20",
+                  "partido_sigla": "UC",
+                  "percentual_validos": "0.00",
+                  "votos": 0
+                }
+              ],
+              "cargo": "PRESIDENTE",
+              "criterio": "MAIOR_VOTACAO",
+              "mais_votado": {
+                "nome_urna": "Carlos Lima",
+                "numero": "10",
+                "partido_sigla": "PINO",
+                "percentual_validos": "100.00",
+                "votos": 2
+              },
+              "nulos": 0,
+              "situacao": "DEFINIDO",
+              "total_votos": 3,
+              "votos_validos": 2
+            }
+          ],
+          "comparecimento": {
+            "abstencao": 3,
+            "eleitores_aptos": 6,
+            "votantes": 3
+          },
+          "eleicao_id": 1,
+          "gerado_em": "2026-11-25T10:30:00-03:00",
+          "status_eleicao": "ABERTA",
+          "tipo": "PARCIAL"
+        }
+      },
+      "Body_login": {
+        "properties": {
+          "grant_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^password$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grant Type"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "title": "Password"
+          },
+          "scope": {
+            "type": "string",
+            "title": "Scope",
+            "default": ""
+          },
+          "client_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Id"
+          },
+          "client_secret": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "format": "password",
+            "title": "Client Secret"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "Body_login"
+      },
+      "CandidatoDaCandidatura": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "Identificador do candidato.",
+            "examples": [
+              1
+            ]
+          },
+          "nome_urna": {
+            "type": "string",
+            "title": "Nome Urna",
+            "description": "Nome de urna.",
+            "examples": [
+              "Carlos Lima"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome_urna"
+        ],
+        "title": "CandidatoDaCandidatura",
+        "description": "Candidato como aparece na candidatura."
+      },
+      "CandidatoNaCedula": {
+        "properties": {
+          "numero": {
+            "type": "string",
+            "title": "Numero",
+            "description": "Número do candidato no cargo.",
+            "examples": [
+              "10"
+            ]
+          },
+          "nome_urna": {
+            "type": "string",
+            "title": "Nome Urna",
+            "description": "Nome de urna.",
+            "examples": [
+              "Carlos Lima"
+            ]
+          },
+          "partido_sigla": {
+            "type": "string",
+            "title": "Partido Sigla",
+            "description": "Sigla do partido.",
+            "examples": [
+              "PINO"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "numero",
+          "nome_urna",
+          "partido_sigla"
+        ],
+        "title": "CandidatoNaCedula",
+        "description": "Candidato como o eleitor o vê na cédula."
+      },
+      "CandidatoResposta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "Identificador do candidato.",
+            "examples": [
+              1
+            ]
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome",
+            "description": "Nome completo.",
+            "examples": [
+              "Carlos Henrique Lima"
+            ]
+          },
+          "nome_urna": {
+            "type": "string",
+            "title": "Nome Urna",
+            "description": "Nome que aparece na urna.",
+            "examples": [
+              "Carlos Lima"
+            ]
+          },
+          "cpf": {
+            "type": "string",
+            "title": "Cpf",
+            "description": "CPF só com dígitos.",
+            "examples": [
+              "39825979194"
+            ]
+          },
+          "data_nascimento": {
+            "type": "string",
+            "format": "date",
+            "title": "Data Nascimento",
+            "description": "Data de nascimento.",
+            "examples": [
+              "1968-03-05"
+            ]
+          },
+          "criado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Criado Em",
+            "description": "Instante do cadastro."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "nome_urna",
+          "cpf",
+          "data_nascimento",
+          "criado_em"
+        ],
+        "title": "CandidatoResposta",
+        "description": "Um candidato, sem a senha.",
+        "example": {
+          "cpf": "39825979194",
+          "criado_em": "2026-11-25T07:30:00-03:00",
+          "data_nascimento": "1968-03-05",
+          "id": 1,
+          "nome": "Carlos Henrique Lima",
+          "nome_urna": "Carlos Lima"
+        }
+      },
+      "CandidaturaResposta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "Identificador da candidatura.",
+            "examples": [
+              1
+            ]
+          },
+          "eleicao_id": {
+            "type": "integer",
+            "title": "Eleicao Id",
+            "description": "Eleição em que disputa.",
+            "examples": [
+              1
+            ]
+          },
+          "cargo": {
+            "$ref": "#/components/schemas/Cargo",
+            "description": "Cargo disputado.",
+            "examples": [
+              "PRESIDENTE"
+            ]
+          },
+          "numero": {
+            "type": "string",
+            "title": "Numero",
+            "description": "Número do candidato no cargo.",
+            "examples": [
+              "10"
+            ]
+          },
+          "candidato": {
+            "$ref": "#/components/schemas/CandidatoDaCandidatura",
+            "description": "Dados de exibição do candidato."
+          },
+          "partido": {
+            "$ref": "#/components/schemas/PartidoDaCandidatura",
+            "description": "Dados de exibição do partido."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "eleicao_id",
+          "cargo",
+          "numero",
+          "candidato",
+          "partido"
+        ],
+        "title": "CandidaturaResposta",
+        "description": "Uma candidatura com os dados de exibição do candidato e do partido.",
+        "example": {
+          "candidato": {
+            "id": 1,
+            "nome_urna": "Carlos Lima"
+          },
+          "cargo": "PRESIDENTE",
+          "eleicao_id": 1,
+          "id": 1,
+          "numero": "10",
+          "partido": {
+            "id": 1,
+            "numero": 10,
+            "sigla": "PINO"
+          }
+        }
+      },
+      "Cargo": {
+        "type": "string",
+        "enum": [
+          "DEPUTADO_FEDERAL",
+          "DEPUTADO_ESTADUAL",
+          "SENADOR",
+          "GOVERNADOR",
+          "PRESIDENTE"
+        ],
+        "title": "Cargo",
+        "description": "Cargo disputado. A ordem é a da urna real e ordena a cédula e a apuração."
+      },
+      "CargoNaCedula": {
+        "properties": {
+          "cargo": {
+            "$ref": "#/components/schemas/Cargo",
+            "description": "Cargo da cédula.",
+            "examples": [
+              "PRESIDENTE"
+            ]
+          },
+          "digitos": {
+            "type": "integer",
+            "title": "Digitos",
+            "description": "Quantidade de dígitos do número neste cargo (RN-42)."
+          },
+          "ja_votou": {
+            "type": "boolean",
+            "title": "Ja Votou",
+            "description": "O eleitor já votou neste cargo? (RN-61)."
+          },
+          "candidatos": {
+            "items": {
+              "$ref": "#/components/schemas/CandidatoNaCedula"
+            },
+            "type": "array",
+            "title": "Candidatos",
+            "description": "Candidatos do cargo."
+          }
+        },
+        "type": "object",
+        "required": [
+          "cargo",
+          "digitos",
+          "ja_votou",
+          "candidatos"
+        ],
+        "title": "CargoNaCedula",
+        "description": "Um cargo disputado, com os dígitos do número e os candidatos."
+      },
+      "CargoNaParticipacao": {
+        "properties": {
+          "cargo": {
+            "$ref": "#/components/schemas/Cargo",
+            "description": "Cargo.",
+            "examples": [
+              "PRESIDENTE"
+            ]
+          },
+          "ja_votou": {
+            "type": "boolean",
+            "title": "Ja Votou",
+            "description": "O eleitor já votou neste cargo? (RN-61)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "cargo",
+          "ja_votou"
+        ],
+        "title": "CargoNaParticipacao",
+        "description": "Se o eleitor já votou neste cargo. Nunca diz em quem."
+      },
+      "CedulaResposta": {
+        "properties": {
+          "eleicao_id": {
+            "type": "integer",
+            "title": "Eleicao Id",
+            "description": "Eleição da cédula.",
+            "examples": [
+              1
+            ]
+          },
+          "cargos": {
+            "items": {
+              "$ref": "#/components/schemas/CargoNaCedula"
+            },
+            "type": "array",
+            "title": "Cargos",
+            "description": "Um bloco por cargo."
+          }
+        },
+        "type": "object",
+        "required": [
+          "eleicao_id",
+          "cargos"
+        ],
+        "title": "CedulaResposta",
+        "description": "A cédula do eleitor: só os cargos disputados, na ordem da urna (RN-55).",
+        "example": {
+          "cargos": [
+            {
+              "candidatos": [
+                {
+                  "nome_urna": "Carlos Lima",
+                  "numero": "10",
+                  "partido_sigla": "PINO"
+                },
+                {
+                  "nome_urna": "Marina Costa",
+                  "numero": "20",
+                  "partido_sigla": "UC"
+                }
+              ],
+              "cargo": "PRESIDENTE",
+              "digitos": 2,
+              "ja_votou": false
+            }
+          ],
+          "eleicao_id": 1
+        }
+      },
+      "ComparecimentoResposta": {
+        "properties": {
+          "eleitores_aptos": {
+            "type": "integer",
+            "title": "Eleitores Aptos",
+            "description": "Eleitores cadastrados na eleição.",
+            "examples": [
+              6
+            ]
+          },
+          "votantes": {
+            "type": "integer",
+            "title": "Votantes",
+            "description": "Eleitores que votaram em pelo menos um cargo."
+          },
+          "abstencao": {
+            "type": "integer",
+            "title": "Abstencao",
+            "description": "Aptos que não votaram em nenhum cargo.",
+            "examples": [
+              2
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "eleitores_aptos",
+          "votantes",
+          "abstencao"
+        ],
+        "title": "ComparecimentoResposta",
+        "description": "Eleitores aptos (cadastrados antes da abertura), votantes e abstenção (RN-79)."
+      },
+      "ComprovanteVotoResposta": {
+        "properties": {
+          "eleicao_id": {
+            "type": "integer",
+            "title": "Eleicao Id",
+            "description": "Eleição do voto.",
+            "examples": [
+              1
+            ]
+          },
+          "cargo": {
+            "$ref": "#/components/schemas/Cargo",
+            "description": "Cargo em que o voto foi confirmado.",
+            "examples": [
+              "PRESIDENTE"
+            ]
+          },
+          "mensagem": {
+            "type": "string",
+            "title": "Mensagem",
+            "description": "Confirmação para o eleitor."
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/app__votacao__esquemas__LinkResposta"
+            },
+            "type": "array",
+            "title": "Links",
+            "description": "Próximas ações possíveis."
+          }
+        },
+        "type": "object",
+        "required": [
+          "eleicao_id",
+          "cargo",
+          "mensagem",
+          "links"
+        ],
+        "title": "ComprovanteVotoResposta",
+        "description": "Voto confirmado. Não contém a escolha (RN-60).",
+        "example": {
+          "cargo": "PRESIDENTE",
+          "eleicao_id": 1,
+          "links": [
+            {
+              "href": "/api/v1/votacao/eleicoes/1/cedula",
+              "metodo": "GET",
+              "rel": "cedula"
+            },
+            {
+              "href": "/api/v1/votacao/eleicoes/1/participacao",
+              "metodo": "GET",
+              "rel": "participacao"
+            }
+          ],
+          "mensagem": "Voto confirmado."
+        }
+      },
+      "CorpoDoErro": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo",
+            "description": "Código estável do erro (catálogo da seção 10 do PLANO)."
+          },
+          "mensagem": {
+            "type": "string",
+            "title": "Mensagem",
+            "description": "Explicação legível para uma pessoa."
+          },
+          "detalhes": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Detalhes",
+            "description": "Dados extras; pode ser vazio."
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "mensagem"
+        ],
+        "title": "CorpoDoErro",
+        "description": "Conteúdo do erro: o que o cliente da API lê para decidir o que fazer."
+      },
+      "EleicaoResposta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "Identificador da eleição.",
+            "examples": [
+              1
+            ]
+          },
+          "descricao": {
+            "type": "string",
+            "title": "Descricao",
+            "description": "Nome do pleito.",
+            "examples": [
+              "Eleições Gerais 2026 — 1º turno"
+            ]
+          },
+          "data": {
+            "type": "string",
+            "format": "date",
+            "title": "Data",
+            "description": "Dia da eleição.",
+            "examples": [
+              "2026-11-25"
+            ]
+          },
+          "turno": {
+            "type": "integer",
+            "title": "Turno",
+            "description": "1 ou 2.",
+            "examples": [
+              1
+            ]
+          },
+          "horario_abertura": {
+            "type": "string",
+            "format": "time",
+            "title": "Horario Abertura",
+            "description": "Início da janela de votação.",
+            "examples": [
+              "08:00:00"
+            ]
+          },
+          "horario_encerramento": {
+            "type": "string",
+            "format": "time",
+            "title": "Horario Encerramento",
+            "description": "Fim da janela de votação.",
+            "examples": [
+              "17:00:00"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/StatusEleicao",
+            "description": "AGENDADA, ABERTA ou ENCERRADA.",
+            "examples": [
+              "AGENDADA"
+            ]
+          },
+          "aberta_em": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aberta Em",
+            "description": "Instante da abertura; nulo até abrir."
+          },
+          "encerrada_em": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Encerrada Em",
+            "description": "Instante do encerramento; nulo até encerrar."
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/app__eleicoes__esquemas__LinkResposta"
+            },
+            "type": "array",
+            "title": "Links",
+            "description": "Ações possíveis para o seu perfil neste status da eleição (RN-19)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "descricao",
+          "data",
+          "turno",
+          "horario_abertura",
+          "horario_encerramento",
+          "status",
+          "aberta_em",
+          "encerrada_em",
+          "links"
+        ],
+        "title": "EleicaoResposta",
+        "description": "Uma eleição, com situação, janela e carimbos de tempo.",
+        "example": {
+          "data": "2026-11-25",
+          "descricao": "Eleições Gerais 2026 — 1º turno",
+          "horario_abertura": "08:00:00",
+          "horario_encerramento": "17:00:00",
+          "id": 1,
+          "links": [
+            {
+              "href": "/api/v1/eleicoes/1",
+              "metodo": "GET",
+              "rel": "self"
+            },
+            {
+              "href": "/api/v1/eleicoes/1",
+              "metodo": "PATCH",
+              "rel": "editar"
+            },
+            {
+              "href": "/api/v1/eleicoes/1/candidaturas",
+              "metodo": "GET",
+              "rel": "candidaturas"
+            },
+            {
+              "href": "/api/v1/eleicoes/1/candidaturas",
+              "metodo": "POST",
+              "rel": "nova-candidatura"
+            },
+            {
+              "href": "/api/v1/eleicoes/1/abertura",
+              "metodo": "POST",
+              "rel": "abrir"
+            }
+          ],
+          "status": "AGENDADA",
+          "turno": 1
+        }
+      },
+      "EleitorResposta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "Identificador do eleitor.",
+            "examples": [
+              1
+            ]
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome",
+            "description": "Nome completo.",
+            "examples": [
+              "Ana Beatriz Souza"
+            ]
+          },
+          "cpf": {
+            "type": "string",
+            "title": "Cpf",
+            "description": "CPF só com dígitos.",
+            "examples": [
+              "01152449303"
+            ]
+          },
+          "titulo_eleitor": {
+            "type": "string",
+            "title": "Titulo Eleitor",
+            "description": "Título com 12 dígitos.",
+            "examples": [
+              "100000000001"
+            ]
+          },
+          "data_nascimento": {
+            "type": "string",
+            "format": "date",
+            "title": "Data Nascimento",
+            "description": "Data de nascimento.",
+            "examples": [
+              "1990-04-12"
+            ]
+          },
+          "criado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Criado Em",
+            "description": "Instante do cadastro."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "cpf",
+          "titulo_eleitor",
+          "data_nascimento",
+          "criado_em"
+        ],
+        "title": "EleitorResposta",
+        "description": "Um eleitor, sem a senha.",
+        "example": {
+          "cpf": "01152449303",
+          "criado_em": "2026-11-25T07:30:00-03:00",
+          "data_nascimento": "1990-04-12",
+          "id": 1,
+          "nome": "Ana Beatriz Souza",
+          "titulo_eleitor": "100000000001"
+        }
+      },
+      "ErroResposta": {
+        "properties": {
+          "erro": {
+            "$ref": "#/components/schemas/CorpoDoErro"
+          }
+        },
+        "type": "object",
+        "required": [
+          "erro"
+        ],
+        "title": "ErroResposta",
+        "description": "Formato de erro de todas as rotas: `{\"erro\": {\"codigo\", \"mensagem\", \"detalhes\"}}`.",
+        "example": {
+          "erro": {
+            "codigo": "ELEICAO_NAO_ABERTA",
+            "detalhes": {
+              "status": "AGENDADA"
+            },
+            "mensagem": "A eleição não está aberta."
+          }
+        }
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "LinhaApuracaoResposta": {
+        "properties": {
+          "numero": {
+            "type": "string",
+            "title": "Numero",
+            "description": "Número do candidato no cargo.",
+            "examples": [
+              "10"
+            ]
+          },
+          "nome_urna": {
+            "type": "string",
+            "title": "Nome Urna",
+            "description": "Nome de urna.",
+            "examples": [
+              "Carlos Lima"
+            ]
+          },
+          "partido_sigla": {
+            "type": "string",
+            "title": "Partido Sigla",
+            "description": "Sigla do partido.",
+            "examples": [
+              "PINO"
+            ]
+          },
+          "votos": {
+            "type": "integer",
+            "title": "Votos",
+            "description": "Votos nominais recebidos.",
+            "examples": [
+              2
+            ]
+          },
+          "percentual_validos": {
+            "type": "string",
+            "title": "Percentual Validos",
+            "description": "Percentual sobre os votos válidos, 2 casas."
+          }
+        },
+        "type": "object",
+        "required": [
+          "numero",
+          "nome_urna",
+          "partido_sigla",
+          "votos",
+          "percentual_validos"
+        ],
+        "title": "LinhaApuracaoResposta",
+        "description": "Um candidato na apuração do cargo."
+      },
+      "LoginResposta": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token",
+            "description": "Token JWT de acesso."
+          },
+          "token_type": {
+            "type": "string",
+            "const": "bearer",
+            "title": "Token Type",
+            "description": "Tipo do token; sempre `bearer`.",
+            "default": "bearer"
+          },
+          "expira_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expira Em",
+            "description": "Instante (UTC) em que o token deixa de valer."
+          },
+          "usuario": {
+            "$ref": "#/components/schemas/UsuarioResposta",
+            "description": "Quem fez login."
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "expira_em",
+          "usuario"
+        ],
+        "title": "LoginResposta",
+        "description": "Resposta do login: o token a ser enviado em `Authorization: Bearer <token>`.",
+        "example": {
+          "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          "expira_em": "2026-11-25T12:00:00Z",
+          "token_type": "bearer",
+          "usuario": {
+            "id": 1,
+            "nome": "Chefe da Seção",
+            "perfil": "CHEFE_SECAO"
+          }
+        }
+      },
+      "ModoEscolha": {
+        "type": "string",
+        "enum": [
+          "NUMERO",
+          "BRANCO"
+        ],
+        "title": "ModoEscolha",
+        "description": "Como o eleitor escolhe: digitando um número ou apertando BRANCO (sem flag booleana)."
+      },
+      "NovaCandidatura": {
+        "properties": {
+          "candidato_id": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Candidato Id",
+            "description": "Candidato que disputa (RN-46: precisa existir)."
+          },
+          "partido_id": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Partido Id",
+            "description": "Partido pelo qual disputa (RN-46: precisa existir)."
+          },
+          "cargo": {
+            "$ref": "#/components/schemas/Cargo",
+            "description": "Um dos 5 cargos (RN-41)."
+          },
+          "numero": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Numero",
+            "description": "Só dígitos, na quantidade do cargo.",
+            "examples": [
+              "10"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "candidato_id",
+          "partido_id",
+          "cargo",
+          "numero"
+        ],
+        "title": "NovaCandidatura",
+        "description": "Dados para criar uma candidatura (RN-40). Campos desconhecidos são recusados.",
+        "example": {
+          "candidato_id": 1,
+          "cargo": "PRESIDENTE",
+          "numero": "10",
+          "partido_id": 1
+        }
+      },
+      "NovaEleicao": {
+        "properties": {
+          "descricao": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Descricao",
+            "description": "Nome do pleito (1 a 120 caracteres).",
+            "examples": [
+              "Eleições Gerais 2026 — 1º turno"
+            ]
+          },
+          "data": {
+            "type": "string",
+            "format": "date",
+            "title": "Data",
+            "description": "Dia da eleição; não pode ser anterior a hoje.",
+            "examples": [
+              "2026-11-25"
+            ]
+          },
+          "turno": {
+            "type": "integer",
+            "maximum": 2.0,
+            "minimum": 1.0,
+            "title": "Turno",
+            "description": "1 ou 2. Cada turno é uma eleição separada.",
+            "examples": [
+              1
+            ]
+          },
+          "horario_abertura": {
+            "type": "string",
+            "format": "time",
+            "title": "Horario Abertura",
+            "description": "Início da janela de votação.",
+            "examples": [
+              "08:00"
+            ]
+          },
+          "horario_encerramento": {
+            "type": "string",
+            "format": "time",
+            "title": "Horario Encerramento",
+            "description": "Fim da janela; depois do horário de abertura.",
+            "examples": [
+              "17:00"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "descricao",
+          "data",
+          "turno",
+          "horario_abertura",
+          "horario_encerramento"
+        ],
+        "title": "NovaEleicao",
+        "description": "Dados para agendar uma eleição (RN-11). Campos desconhecidos são recusados.",
+        "example": {
+          "data": "2026-11-25",
+          "descricao": "Eleições Gerais 2026 — 1º turno",
+          "horario_abertura": "08:00",
+          "horario_encerramento": "17:00",
+          "turno": 1
+        }
+      },
+      "NovoCandidato": {
+        "properties": {
+          "nome": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 3,
+            "title": "Nome",
+            "description": "Nome completo (3 a 120).",
+            "examples": [
+              "Carlos Henrique Lima"
+            ]
+          },
+          "nome_urna": {
+            "type": "string",
+            "maxLength": 30,
+            "minLength": 3,
+            "title": "Nome Urna",
+            "description": "Como o candidato aparece na urna (3 a 30).",
+            "examples": [
+              "Carlos Lima"
+            ]
+          },
+          "cpf": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Cpf",
+            "description": "CPF com ou sem pontuação.",
+            "examples": [
+              "398.259.791-94"
+            ]
+          },
+          "data_nascimento": {
+            "type": "string",
+            "format": "date",
+            "title": "Data Nascimento",
+            "description": "Precisa estar no passado (RN-31).",
+            "examples": [
+              "1968-03-05"
+            ]
+          },
+          "senha": {
+            "type": "string",
+            "title": "Senha",
+            "description": "De 8 caracteres até 72 bytes. Nunca é devolvida (RN-05).",
+            "examples": [
+              "Candidato@123"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "nome",
+          "nome_urna",
+          "cpf",
+          "data_nascimento",
+          "senha"
+        ],
+        "title": "NovoCandidato",
+        "description": "Dados para cadastrar um candidato (RN-31). Campos desconhecidos são recusados.",
+        "example": {
+          "cpf": "398.259.791-94",
+          "data_nascimento": "1968-03-05",
+          "nome": "Carlos Henrique Lima",
+          "nome_urna": "Carlos Lima",
+          "senha": "Candidato@123"
+        }
+      },
+      "NovoEleitor": {
+        "properties": {
+          "nome": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 3,
+            "title": "Nome",
+            "description": "Nome completo (3 a 120 caracteres).",
+            "examples": [
+              "Ana Beatriz Souza"
+            ]
+          },
+          "cpf": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Cpf",
+            "description": "CPF com ou sem pontuação.",
+            "examples": [
+              "011.524.493-03"
+            ]
+          },
+          "titulo_eleitor": {
+            "type": "string",
+            "pattern": "^[0-9]{12}$",
+            "title": "Titulo Eleitor",
+            "description": "Título com 12 dígitos (RN-21).",
+            "examples": [
+              "100000000001"
+            ]
+          },
+          "data_nascimento": {
+            "type": "string",
+            "format": "date",
+            "title": "Data Nascimento",
+            "description": "O eleitor precisa ter 16 anos completos (RN-22).",
+            "examples": [
+              "1990-04-12"
+            ]
+          },
+          "senha": {
+            "type": "string",
+            "title": "Senha",
+            "description": "De 8 caracteres até 72 bytes. Nunca é devolvida (RN-05).",
+            "examples": [
+              "Eleitor@123"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "nome",
+          "cpf",
+          "titulo_eleitor",
+          "data_nascimento",
+          "senha"
+        ],
+        "title": "NovoEleitor",
+        "description": "Dados para cadastrar um eleitor (RN-20). Campos desconhecidos são recusados.",
+        "example": {
+          "cpf": "011.524.493-03",
+          "data_nascimento": "1990-04-12",
+          "nome": "Ana Beatriz Souza",
+          "senha": "Eleitor@123",
+          "titulo_eleitor": "100000000001"
+        }
+      },
+      "NovoPartido": {
+        "properties": {
+          "sigla": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9]{2,10}$",
+            "title": "Sigla",
+            "description": "De 2 a 10 letras ou dígitos. Vira maiúscula.",
+            "examples": [
+              "PINO"
+            ]
+          },
+          "nome": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Nome",
+            "description": "Nome do partido.",
+            "examples": [
+              "Partido da Inovação"
+            ]
+          },
+          "numero": {
+            "type": "integer",
+            "maximum": 99.0,
+            "minimum": 10.0,
+            "title": "Numero",
+            "description": "Número de 2 dígitos, de 10 a 99.",
+            "examples": [
+              10
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sigla",
+          "nome",
+          "numero"
+        ],
+        "title": "NovoPartido",
+        "description": "Dados para cadastrar um partido (RN-32). Campos desconhecidos são recusados.",
+        "example": {
+          "nome": "Partido da Inovação",
+          "numero": 10,
+          "sigla": "PINO"
+        }
+      },
+      "Pagina_CandidatoResposta_": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/CandidatoResposta"
+            },
+            "type": "array",
+            "title": "Itens"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina",
+            "description": "Página devolvida (começa em 1)."
+          },
+          "tamanho": {
+            "type": "integer",
+            "title": "Tamanho",
+            "description": "Itens por página pedidos."
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Total de itens do filtro, somando todas as páginas."
+          }
+        },
+        "type": "object",
+        "required": [
+          "itens",
+          "pagina",
+          "tamanho",
+          "total"
+        ],
+        "title": "Pagina[CandidatoResposta]"
+      },
+      "Pagina_EleitorResposta_": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/EleitorResposta"
+            },
+            "type": "array",
+            "title": "Itens"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina",
+            "description": "Página devolvida (começa em 1)."
+          },
+          "tamanho": {
+            "type": "integer",
+            "title": "Tamanho",
+            "description": "Itens por página pedidos."
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Total de itens do filtro, somando todas as páginas."
+          }
+        },
+        "type": "object",
+        "required": [
+          "itens",
+          "pagina",
+          "tamanho",
+          "total"
+        ],
+        "title": "Pagina[EleitorResposta]"
+      },
+      "ParticipacaoResposta": {
+        "properties": {
+          "eleicao_id": {
+            "type": "integer",
+            "title": "Eleicao Id",
+            "description": "Eleição consultada.",
+            "examples": [
+              1
+            ]
+          },
+          "cargos": {
+            "items": {
+              "$ref": "#/components/schemas/CargoNaParticipacao"
+            },
+            "type": "array",
+            "title": "Cargos",
+            "description": "Participação por cargo."
+          }
+        },
+        "type": "object",
+        "required": [
+          "eleicao_id",
+          "cargos"
+        ],
+        "title": "ParticipacaoResposta",
+        "description": "Em quais cargos o eleitor já votou nesta eleição (RN-61).",
+        "example": {
+          "cargos": [
+            {
+              "cargo": "PRESIDENTE",
+              "ja_votou": true
+            },
+            {
+              "cargo": "SENADOR",
+              "ja_votou": false
+            }
+          ],
+          "eleicao_id": 1
+        }
+      },
+      "PartidoDaCandidatura": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "Identificador do partido.",
+            "examples": [
+              1
+            ]
+          },
+          "sigla": {
+            "type": "string",
+            "title": "Sigla",
+            "description": "Sigla do partido.",
+            "examples": [
+              "PINO"
+            ]
+          },
+          "numero": {
+            "type": "integer",
+            "title": "Numero",
+            "description": "Número do partido.",
+            "examples": [
+              10
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "sigla",
+          "numero"
+        ],
+        "title": "PartidoDaCandidatura",
+        "description": "Partido como aparece na candidatura."
+      },
+      "PartidoResposta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "Identificador do partido.",
+            "examples": [
+              1
+            ]
+          },
+          "sigla": {
+            "type": "string",
+            "title": "Sigla",
+            "description": "Sigla em maiúsculas.",
+            "examples": [
+              "PINO"
+            ]
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome",
+            "description": "Nome do partido.",
+            "examples": [
+              "Partido da Inovação"
+            ]
+          },
+          "numero": {
+            "type": "integer",
+            "title": "Numero",
+            "description": "Número de 2 dígitos.",
+            "examples": [
+              10
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "sigla",
+          "nome",
+          "numero"
+        ],
+        "title": "PartidoResposta",
+        "description": "Um partido.",
+        "example": {
+          "id": 1,
+          "nome": "Partido da Inovação",
+          "numero": 10,
+          "sigla": "PINO"
+        }
+      },
+      "PedidoConfirmacaoVoto": {
+        "properties": {
+          "token_cedula": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Token Cedula",
+            "description": "Token recebido no registro do voto.",
+            "examples": [
+              "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "token_cedula"
+        ],
+        "title": "PedidoConfirmacaoVoto",
+        "description": "Etapa 2 do voto: a cédula recebida no registro.",
+        "example": {
+          "token_cedula": "eyJhbGciOiJIUzI1NiIs..."
+        }
+      },
+      "PedidoRegistroVoto": {
+        "properties": {
+          "cargo": {
+            "$ref": "#/components/schemas/Cargo",
+            "description": "Cargo em que vota.",
+            "examples": [
+              "PRESIDENTE"
+            ]
+          },
+          "modo": {
+            "$ref": "#/components/schemas/ModoEscolha",
+            "description": "NUMERO (digita o número) ou BRANCO.",
+            "examples": [
+              "NUMERO"
+            ]
+          },
+          "numero": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9]{1,5}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numero",
+            "description": "Só dígitos (1 a 5). Obrigatório no modo NUMERO, proibido no modo BRANCO."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "cargo",
+          "modo"
+        ],
+        "title": "PedidoRegistroVoto",
+        "description": "Etapa 1 do voto (RN-56, RN-58). Campos desconhecidos são recusados.\n\nNo modo NUMERO o `numero` é obrigatório; no modo BRANCO é proibido. A quantidade exata de\ndígitos do cargo é conferida pelo serviço (`NUMERO_INVALIDO_PARA_CARGO`).",
+        "example": {
+          "cargo": "PRESIDENTE",
+          "modo": "NUMERO",
+          "numero": "10"
+        }
+      },
+      "Perfil": {
+        "type": "string",
+        "enum": [
+          "CHEFE_SECAO",
+          "ELEITOR",
+          "CANDIDATO"
+        ],
+        "title": "Perfil",
+        "description": "Papel do usuário. Cada usuário tem exatamente um (RN-03)."
+      },
+      "PreviaVotoResposta": {
+        "properties": {
+          "cargo": {
+            "$ref": "#/components/schemas/Cargo",
+            "description": "Cargo do voto.",
+            "examples": [
+              "PRESIDENTE"
+            ]
+          },
+          "tipo_voto": {
+            "$ref": "#/components/schemas/TipoVoto",
+            "description": "NOMINAL, BRANCO ou NULO.",
+            "examples": [
+              "NOMINAL"
+            ]
+          },
+          "candidato": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CandidatoNaCedula"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Nulo nos votos BRANCO e NULO."
+          },
+          "mensagem": {
+            "type": "string",
+            "title": "Mensagem",
+            "description": "Texto para o eleitor conferir."
+          },
+          "token_cedula": {
+            "type": "string",
+            "title": "Token Cedula",
+            "description": "Cédula assinada, válida por 5 minutos (RN-57)."
+          },
+          "expira_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expira Em",
+            "description": "Instante em que o token_cedula expira."
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/app__votacao__esquemas__LinkResposta"
+            },
+            "type": "array",
+            "title": "Links",
+            "description": "Próximas ações possíveis."
+          }
+        },
+        "type": "object",
+        "required": [
+          "cargo",
+          "tipo_voto",
+          "candidato",
+          "mensagem",
+          "token_cedula",
+          "expira_em",
+          "links"
+        ],
+        "title": "PreviaVotoResposta",
+        "description": "A prévia do voto: nada foi gravado. O `token_cedula` serve para confirmar (RN-56, RN-57).",
+        "example": {
+          "candidato": {
+            "nome_urna": "Carlos Lima",
+            "numero": "10",
+            "partido_sigla": "PINO"
+          },
+          "cargo": "PRESIDENTE",
+          "expira_em": "2026-11-25T10:05:00-03:00",
+          "links": [
+            {
+              "href": "/api/v1/votacao/eleicoes/1/votos/confirmacao",
+              "metodo": "POST",
+              "rel": "confirmar"
+            }
+          ],
+          "mensagem": "Confira os dados e confirme o voto.",
+          "tipo_voto": "NOMINAL",
+          "token_cedula": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        }
+      },
+      "ResultadoCargoResposta": {
+        "properties": {
+          "cargo": {
+            "$ref": "#/components/schemas/Cargo",
+            "description": "Cargo apurado.",
+            "examples": [
+              "PRESIDENTE"
+            ]
+          },
+          "total_votos": {
+            "type": "integer",
+            "title": "Total Votos",
+            "description": "Votos válidos, brancos e nulos.",
+            "examples": [
+              4
+            ]
+          },
+          "votos_validos": {
+            "type": "integer",
+            "title": "Votos Validos",
+            "description": "Só os votos nominais (RN-76)."
+          },
+          "brancos": {
+            "type": "integer",
+            "title": "Brancos",
+            "description": "Votos em branco (RN-76).",
+            "examples": [
+              1
+            ]
+          },
+          "nulos": {
+            "type": "integer",
+            "title": "Nulos",
+            "description": "Votos nulos (RN-76).",
+            "examples": [
+              0
+            ]
+          },
+          "situacao": {
+            "$ref": "#/components/schemas/SituacaoCargo",
+            "description": "Situação da apuração do cargo."
+          },
+          "criterio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Criterio",
+            "description": "`MAIOR_VOTACAO` ou `DESEMPATE_POR_IDADE`."
+          },
+          "mais_votado": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LinhaApuracaoResposta"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Na parcial, quem lidera até agora. Nulo em EMPATE e SEM_VOTOS_VALIDOS."
+          },
+          "candidatos": {
+            "items": {
+              "$ref": "#/components/schemas/LinhaApuracaoResposta"
+            },
+            "type": "array",
+            "title": "Candidatos",
+            "description": "Todos os candidatos, do mais votado ao menos."
+          }
+        },
+        "type": "object",
+        "required": [
+          "cargo",
+          "total_votos",
+          "votos_validos",
+          "brancos",
+          "nulos",
+          "situacao",
+          "criterio",
+          "mais_votado",
+          "candidatos"
+        ],
+        "title": "ResultadoCargoResposta",
+        "description": "A apuração de um cargo, com todos os candidatos (inclusive com 0 votos)."
+      },
+      "SituacaoCargo": {
+        "type": "string",
+        "enum": [
+          "DEFINIDO",
+          "EMPATE",
+          "SEM_VOTOS_VALIDOS"
+        ],
+        "title": "SituacaoCargo",
+        "description": "Como o cargo terminou (ou está) na apuração."
+      },
+      "StatusEleicao": {
+        "type": "string",
+        "enum": [
+          "AGENDADA",
+          "ABERTA",
+          "ENCERRADA"
+        ],
+        "title": "StatusEleicao",
+        "description": "Ciclo de vida da eleição, sempre nesta ordem e sem volta (RN-13)."
+      },
+      "TipoVoto": {
+        "type": "string",
+        "enum": [
+          "NOMINAL",
+          "BRANCO",
+          "NULO"
+        ],
+        "title": "TipoVoto",
+        "description": "O que o voto vale na apuração."
+      },
+      "UsuarioLogadoResposta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "Identificador do usuário.",
+            "examples": [
+              1
+            ]
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome",
+            "description": "Nome do usuário.",
+            "examples": [
+              "Chefe da Seção"
+            ]
+          },
+          "cpf": {
+            "type": "string",
+            "title": "Cpf",
+            "description": "CPF só com dígitos.",
+            "examples": [
+              "29141777638"
+            ]
+          },
+          "perfil": {
+            "$ref": "#/components/schemas/Perfil",
+            "description": "Perfil de acesso.",
+            "examples": [
+              "CHEFE_SECAO"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "cpf",
+          "perfil"
+        ],
+        "title": "UsuarioLogadoResposta",
+        "description": "O usuário dono do token, como está no banco agora (`GET /auth/me`).",
+        "example": {
+          "cpf": "29141777638",
+          "id": 1,
+          "nome": "Chefe da Seção",
+          "perfil": "CHEFE_SECAO"
+        }
+      },
+      "UsuarioResposta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "Identificador do usuário.",
+            "examples": [
+              1
+            ]
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome",
+            "description": "Nome do usuário.",
+            "examples": [
+              "Chefe da Seção"
+            ]
+          },
+          "perfil": {
+            "$ref": "#/components/schemas/Perfil",
+            "description": "Perfil de acesso.",
+            "examples": [
+              "CHEFE_SECAO"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "perfil"
+        ],
+        "title": "UsuarioResposta",
+        "description": "Quem fez login (resumo devolvido junto com o token).",
+        "example": {
+          "id": 1,
+          "nome": "Chefe da Seção",
+          "perfil": "CHEFE_SECAO"
+        }
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "app__eleicoes__esquemas__LinkResposta": {
+        "properties": {
+          "rel": {
+            "type": "string",
+            "title": "Rel",
+            "description": "Nome da ação, por exemplo `abrir`."
+          },
+          "metodo": {
+            "type": "string",
+            "title": "Metodo",
+            "description": "Método HTTP."
+          },
+          "href": {
+            "type": "string",
+            "title": "Href",
+            "description": "Caminho da ação."
+          }
+        },
+        "type": "object",
+        "required": [
+          "rel",
+          "metodo",
+          "href"
+        ],
+        "title": "LinkResposta",
+        "description": "Uma ação possível sobre a eleição (HATEOAS)."
+      },
+      "app__votacao__esquemas__LinkResposta": {
+        "properties": {
+          "rel": {
+            "type": "string",
+            "title": "Rel",
+            "description": "Nome da ação, por exemplo `confirmar`."
+          },
+          "metodo": {
+            "type": "string",
+            "title": "Metodo",
+            "description": "Método HTTP."
+          },
+          "href": {
+            "type": "string",
+            "title": "Href",
+            "description": "Caminho da ação."
+          }
+        },
+        "type": "object",
+        "required": [
+          "rel",
+          "metodo",
+          "href"
+        ],
+        "title": "LinkResposta",
+        "description": "Uma ação possível a seguir (HATEOAS)."
+      }
+    },
+    "securitySchemes": {
+      "OAuth2PasswordBearer": {
+        "type": "oauth2",
+        "flows": {
+          "password": {
+            "scopes": {},
+            "tokenUrl": "/api/v1/auth/login"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Sistema",
+      "description": "Saúde da aplicação."
+    },
+    {
+      "name": "Autenticação",
+      "description": "Login e dados do usuário logado."
+    },
+    {
+      "name": "Eleições",
+      "description": "Cadastro, abertura, encerramento e situação (Chefe da Seção)."
+    },
+    {
+      "name": "Candidaturas",
+      "description": "Associação de candidato a eleição, cargo, partido e número."
+    },
+    {
+      "name": "Eleitores",
+      "description": "Cadastro de eleitores (Chefe da Seção)."
+    },
+    {
+      "name": "Candidatos",
+      "description": "Cadastro de candidatos (Chefe da Seção)."
+    },
+    {
+      "name": "Partidos",
+      "description": "Cadastro e consulta de partidos."
+    },
+    {
+      "name": "Votação",
+      "description": "Cédula, registro e confirmação do voto (Eleitor)."
+    },
+    {
+      "name": "Apuração",
+      "description": "Acompanhamento parcial e resultado final."
+    }
+  ]
+}
