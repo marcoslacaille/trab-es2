@@ -185,6 +185,17 @@ Todo módulo também pode usar `compartilhado` e `identidade.dependencias` (aute
 
 **Camadas de cada módulo** (a mesma forma em todos): `rotas.py` (HTTP, sem regra de negócio) → `servico.py` (casos de uso, única porta de entrada, controla a transação) → `dominio.py` (regras puras, sem FastAPI nem SQLAlchemy) e `repositorio.py` (consultas, só nas tabelas do módulo) → `modelos.py` (tabelas ORM); `esquemas.py` tem os contratos de entrada e saída.
 
+**Para quem pensa em MVC:** cada módulo é MVC com a camada de negócio separada. Como a API só devolve JSON, a "View" é o contrato de resposta:
+
+| Papel no MVC | Arquivo de cada módulo |
+| --- | --- |
+| Controller | `rotas.py` |
+| View (JSON de entrada e saída) | `esquemas.py` |
+| Model: regras de negócio | `servico.py` (casos de uso) + `dominio.py` (regras puras) |
+| Model: dados | `repositorio.py` (consultas) + `modelos.py` (tabelas) |
+
+A diferença para o MVC com pastas globais (`controllers/`, `models/`, `views/`) é que aqui as camadas ficam dentro de cada módulo: tudo o que é de eleitores está em `app/eleitores/`.
+
 **Principais decisões** (todas, com as alternativas descartadas, em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md)):
 
 - **D01, monólito modular:** o enunciado não exige distribuição; mantém as fronteiras dos *bounded contexts* sem o custo de rede, vários bancos e deploy dos microsserviços.
