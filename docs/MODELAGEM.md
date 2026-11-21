@@ -68,6 +68,8 @@ erDiagram
         varchar cargo
         varchar numero
         timestamptz criado_em
+        varchar nome_urna
+        date data_nascimento
     }
     REGISTROS_VOTACAO {
         bigint eleitor_id PK
@@ -193,6 +195,10 @@ Index("uq_eleicoes_uma_aberta", "status", unique=True, postgresql_where=text("st
 | cargo | VARCHAR(20) | NOT NULL, `ck_candidaturas_cargo_valido`: os 5 cargos |
 | numero | VARCHAR(5) | NOT NULL, `ck_candidaturas_numero_por_cargo` (abaixo) |
 | criado_em | TIMESTAMPTZ | NOT NULL |
+| nome_urna | VARCHAR(30) | nulo enquanto a eleição está AGENDADA; retrato gravado na abertura (D-140) |
+| data_nascimento | DATE | nulo enquanto a eleição está AGENDADA; retrato gravado na abertura (D-140) |
+
+O retrato (`nome_urna` e `data_nascimento` do candidato no instante da abertura) é o que a cédula e a apuração usam numa eleição ABERTA ou ENCERRADA. Assim, editar o candidato depois não troca o desempate por idade (RN-77) nem os nomes de uma eleição que já começou; a edição vale para as eleições ainda AGENDADAS.
 
 - `uq_candidaturas_eleicao_id_cargo_numero`: número único por cargo na eleição (Presidente 13 e Governador 13 podem coexistir).
 - `uq_candidaturas_eleicao_id_candidato_id`: um candidato tem no máximo uma candidatura por eleição.
@@ -298,8 +304,9 @@ Uma migração por módulo, em `migrations/versions/`. O banco de uma máquina l
 | `0003_candidatos_partidos` | `candidatos`, `partidos` |
 | `0004_eleicoes_candidaturas` | `eleicoes` (com índice parcial), `candidaturas` |
 | `0005_votacao` | `registros_votacao`, `votos`, função e triggers de imutabilidade |
+| `0006_retrato_candidaturas` | colunas `nome_urna` e `data_nascimento` em `candidaturas` (D-140); preenche as eleições já abertas |
 
-As migrações foram escritas à mão a partir do autogenerate (que não cria trigger e pode errar o índice parcial) e testadas com `upgrade head` e `downgrade -1`. Para gerar uma nova: `python -m alembic revision --autogenerate --rev-id 0006 -m "descricao"` e revise o arquivo.
+As migrações foram escritas à mão a partir do autogenerate (que não cria trigger e pode errar o índice parcial) e testadas com `upgrade head` e `downgrade -1`. Para gerar uma nova: `python -m alembic revision --autogenerate --rev-id 0007 -m "descricao"` e revise o arquivo.
 
 ### Limitações conhecidas do sigilo
 
