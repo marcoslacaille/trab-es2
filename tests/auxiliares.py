@@ -100,12 +100,20 @@ def novo_partido(cliente: TestClient, cabecalho: dict[str, str], **sobrescritas)
     Cada chamada usa um número (10, 11, ...), uma sigla e um nome novos. Os testes passam
     `sobrescritas` para provocar erros (ex.: `numero=10` repetido), por isso a resposta vem sem
     nenhuma conferência de status.
+
+    Sem `sobrescritas`, se o número gerado já existir no teste (o contador dá a volta em 90 e
+    pode cair num partido criado à mão, como o 10), tenta o próximo. Assim o resultado não
+    depende da ordem em que os testes rodam.
     """
-    # O contador vale para a sessão de testes toda; o número do partido vai de 10 a 99.
-    numero = 10 + (next(_sequencia_de_partidos) - 10) % 90
-    dados = {"sigla": f"P{numero}", "nome": f"Partido de Teste {numero}", "numero": numero}
-    dados.update(sobrescritas)
-    return cliente.post("/api/v1/partidos", json=dados, headers=cabecalho)
+    for _ in range(90):
+        # O contador vale para a sessão de testes toda; o número do partido vai de 10 a 99.
+        numero = 10 + (next(_sequencia_de_partidos) - 10) % 90
+        dados = {"sigla": f"P{numero}", "nome": f"Partido de Teste {numero}", "numero": numero}
+        dados.update(sobrescritas)
+        resposta = cliente.post("/api/v1/partidos", json=dados, headers=cabecalho)
+        if sobrescritas or resposta.status_code != 409:
+            return resposta
+    return resposta
 
 
 def novo_candidato(cliente: TestClient, cabecalho: dict[str, str], **sobrescritas):
