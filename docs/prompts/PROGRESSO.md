@@ -32,3 +32,4 @@ Aqui ficam só os avisos de curto prazo entre tarefas, como testes adiados para 
   - Linux/macOS: `.venv/bin/python -m alembic upgrade head`
 
   Para conferir: `alembic current` deve mostrar `0006 (head)`. O banco de teste (porta 5433) não precisa disso: a suíte refaz as migrações a cada execução. Marque este item quando todo o grupo tiver rodado.
+- [ ] **Acrescentar `POSTGRES_USER` e `POSTGRES_PASSWORD` no `.env` de cada integrante (21/11/2026, D-141).** O `docker-compose.yml` não tem mais a senha escrita: lê essas duas variáveis do `.env`. Quem tem um `.env` antigo vai ver `required variable POSTGRES_USER is missing a value` no `docker compose up -d`. Copie as duas linhas do `.env.example` para o seu `.env` (com os valores de lá, `eleicao`/`eleicao`, o banco que já existe continua funcionando). Marque este item quando todo o grupo tiver feito.
