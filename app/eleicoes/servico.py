@@ -23,6 +23,7 @@ from app.eleicoes.dominio import (
     validar_abertura,
     validar_agendamento,
     validar_candidatura,
+    validar_candidaturas_no_turno,
     validar_edicao,
     validar_encerramento,
 )
@@ -90,7 +91,8 @@ def editar_eleicao(
     """Altera descrição, data, turno e/ou horários de uma eleição AGENDADA e faz commit.
 
     Trava a eleição; RN-14: só AGENDADA pode mudar (`ELEICAO_NAO_EDITAVEL`, 409). Os dados
-    resultantes passam de novo pela RN-11 e pela RN-12 (ignorando a própria eleição).
+    resultantes passam de novo pela RN-11 e pela RN-12 (ignorando a própria eleição) e, se a
+    eleição for de 2º turno, as candidaturas já cadastradas passam pela RN-45.
     Eleição inexistente: 404 `ELEICAO_NAO_ENCONTRADA`.
     """
     eleicao = _ou_nao_encontrada(repositorio.obter_com_trava_exclusiva(sessao, eleicao_id))
@@ -106,6 +108,9 @@ def editar_eleicao(
         hoje=agora.date(),
     )
     _conferir_data_e_turno_livres(sessao, dados, ignorando_id=eleicao.id)
+    validar_candidaturas_no_turno(
+        dados.turno, repositorio.contar_candidaturas_por_cargo(sessao, eleicao.id)
+    )
     eleicao.descricao = dados.descricao
     eleicao.data = dados.data
     eleicao.turno = dados.turno

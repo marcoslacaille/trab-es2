@@ -14,6 +14,7 @@ from app.eleicoes.dominio import (
     validar_abertura,
     validar_agendamento,
     validar_candidatura,
+    validar_candidaturas_no_turno,
     validar_edicao,
     validar_encerramento,
 )
@@ -338,3 +339,40 @@ def test_tu17_numero_invalido_vem_antes_das_regras_do_segundo_turno():
     """Ordem das conferências: o número é conferido primeiro (RN-42, depois RN-45)."""
     with pytest.raises(DadosInvalidos):
         validar_candidatura(uma_eleicao(turno=2), Cargo.SENADOR, "1", quantidade_no_cargo=0)
+
+
+def test_rn45_edicao_primeiro_turno_aceita_qualquer_candidatura():
+    """RN-45 só vale no 2º turno: no 1º, Senador e 3 Presidentes não impedem a edição."""
+    validar_candidaturas_no_turno(1, {Cargo.SENADOR: 1, Cargo.PRESIDENTE: 3})
+
+
+def test_rn45_trocar_para_segundo_turno_com_senador_e_recusado():
+    """RN-45: o 2º turno não pode herdar candidatura de Senador (409, cargos listados)."""
+    with pytest.raises(ConflitoDeEstado) as erro:
+        validar_candidaturas_no_turno(2, {Cargo.SENADOR: 2, Cargo.PRESIDENTE: 2})
+
+    assert erro.value.codigo == "CARGO_NAO_PERMITIDO_NO_TURNO"
+    assert erro.value.detalhes == {"cargos": ["SENADOR"]}
+
+
+def test_rn45_trocar_para_segundo_turno_com_tres_presidentes_e_recusado():
+    """RN-45: o 2º turno não pode herdar 3 candidaturas a Presidente (409)."""
+    with pytest.raises(ConflitoDeEstado) as erro:
+        validar_candidaturas_no_turno(2, {Cargo.PRESIDENTE: 3, Cargo.GOVERNADOR: 1})
+
+    assert erro.value.codigo == "LIMITE_SEGUNDO_TURNO"
+    assert erro.value.detalhes == {"cargos": ["PRESIDENTE"]}
+
+
+def test_rn45_trocar_para_segundo_turno_com_candidaturas_compativeis_passa():
+    """RN-45: Governador e Presidente com até 2 candidaturas cabem no 2º turno."""
+    validar_candidaturas_no_turno(2, {Cargo.PRESIDENTE: 2, Cargo.GOVERNADOR: 1})
+
+
+def test_rn45_abertura_do_segundo_turno_recusa_senador():
+    """RN-45 (segunda barreira): 2º turno com Senador, mesmo com 2 por cargo, não abre."""
+    candidaturas = {Cargo.SENADOR: 2, Cargo.PRESIDENTE: 2}
+
+    codigo = codigo_do_erro(lambda: abrir(uma_eleicao(turno=2), candidaturas=candidaturas))
+
+    assert codigo == "CARGO_NAO_PERMITIDO_NO_TURNO"

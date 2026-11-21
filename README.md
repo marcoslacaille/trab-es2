@@ -288,6 +288,7 @@ Detalhes e a tabela de ameaças em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md).
 ## 10. Limitações conhecidas
 
 - **Sigilo no banco:** quem tiver acesso administrativo direto ao PostgreSQL ainda poderia tentar correlacionar a **ordem física** em que as linhas foram gravadas nas duas tabelas. A urna real embaralha o registro digital do voto; aqui isso está fora do escopo.
+- **Sigilo no banco (transação):** o registro de quem votou e o voto são gravados na mesma transação, então as duas linhas têm o mesmo `xmin` (o ID da transação no PostgreSQL). Quem pode ler as duas tabelas liga cada voto ao eleitor com `JOIN ... ON v.xmin = r.xmin`, com precisão total e sem prazo. Por isso o acesso direto ao banco precisa ficar restrito; mudar o desenho (por exemplo, gravar os votos em lote e embaralhados) é uma decisão em aberto (D-134).
 - **Poucos votos:** com pouquíssimos votos, a apuração parcial pode permitir deduzir escolhas (o mesmo acontece em qualquer seção real com um único eleitor).
 - **Token não revogável:** o token de acesso não pode ser revogado antes de expirar (60 min); isso é mitigado porque o usuário é recarregado do banco a cada requisição.
 - **HTTPS:** responsabilidade do ambiente onde a API for publicada.
