@@ -433,3 +433,45 @@ def test_ti37_so_o_candidato_acessa_minhas(cliente, cabecalho_chefe, cabecalho_e
     assert cliente.get(MINHAS, headers=cabecalho_chefe).status_code == 403
     assert cliente.get(MINHAS, headers=cabecalho_eleitor).status_code == 403
     assert cliente.get(MINHAS).status_code == 401
+
+
+# ---------------------------------------------------------------- RN-45 na edição da eleição
+
+
+@pytest.mark.parametrize(
+    ("candidaturas", "codigo_esperado"),
+    [
+        ([("SENADOR", "101"), ("PRESIDENTE", "10")], "CARGO_NAO_PERMITIDO_NO_TURNO"),
+        (
+            [("PRESIDENTE", "10"), ("PRESIDENTE", "20"), ("PRESIDENTE", "30")],
+            "LIMITE_SEGUNDO_TURNO",
+        ),
+    ],
+)
+def test_rn45_trocar_turno_para_2_com_candidaturas_incompativeis_e_recusado(
+    cliente, cabecalho_chefe, candidaturas, codigo_esperado
+):
+    """RN-45: o PATCH de turno 1 → 2 não pode criar um 2º turno com Senador ou 3 Presidentes."""
+    nova_eleicao(cliente, cabecalho_chefe)
+    for cargo, numero in candidaturas:
+        assert (
+            nova_candidatura(cliente, cabecalho_chefe, cargo=cargo, numero=numero).status_code
+            == 201
+        )
+
+    resposta = cliente.patch(f"{ELEICOES}/1", json={"turno": 2}, headers=cabecalho_chefe)
+
+    assert (resposta.status_code, codigo(resposta)) == (409, codigo_esperado)
+    assert cliente.get(f"{ELEICOES}/1", headers=cabecalho_chefe).json()["turno"] == 1
+
+
+def test_rn45_trocar_turno_para_2_com_candidaturas_compativeis_passa(cliente, cabecalho_chefe):
+    """RN-45: com até 2 candidaturas de Presidente, a eleição pode virar 2º turno."""
+    nova_eleicao(cliente, cabecalho_chefe)
+    nova_candidatura(cliente, cabecalho_chefe, numero="10")
+    nova_candidatura(cliente, cabecalho_chefe, numero="20")
+
+    resposta = cliente.patch(f"{ELEICOES}/1", json={"turno": 2}, headers=cabecalho_chefe)
+
+    assert resposta.status_code == 200, resposta.text
+    assert resposta.json()["turno"] == 2
