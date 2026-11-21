@@ -1,6 +1,7 @@
 """TI-69 a TI-72: sigilo do voto no esquema, nas respostas e nos logs (RN-60)."""
 
 import logging
+import re
 import uuid
 
 from sqlalchemy import inspect, text
@@ -10,6 +11,13 @@ from tests.auxiliares import eleicao_aberta_com_candidatos, votar
 
 BASE = "/api/v1/votacao/eleicoes"
 NUMERO_ESCOLHIDO = "202"
+
+
+def _texto_do_log(registro: logging.LogRecord) -> str:
+    """Texto de um registro de log. No log de requisições, sem a duração em ms (D-104)."""
+    if registro.name == "eleicao.requisicoes":
+        return re.sub(r" \(\d+\.\d ms\)$", "", registro.getMessage())
+    return f"{registro.getMessage()} {registro.args}"
 
 
 def _valores(estrutura) -> list:
@@ -113,7 +121,9 @@ def test_ti72_logs_nao_contem_token_numero_nem_candidatura(
     assert confirmacao.status_code == 201, confirmacao.text
 
     # Junta mensagem formatada e argumentos de cada registro de log.
-    texto = "\n".join(f"{r.getMessage()} {r.args}" for r in caplog.records)
+    # A duração do log de requisições (ex.: "202.4 ms") é só um tempo e pode coincidir com o
+    # número do candidato; por isso ela sai do texto conferido (D-104).
+    texto = "\n".join(_texto_do_log(r) for r in caplog.records)
     assert token not in texto
     assert NUMERO_ESCOLHIDO not in texto
     assert f"candidatura_id={candidatura}" not in texto
