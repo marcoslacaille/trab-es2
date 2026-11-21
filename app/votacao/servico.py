@@ -21,7 +21,7 @@ from app.eleicoes import servico as eleicoes_servico
 from app.eleicoes.dominio import EleicaoResumo
 from app.eleitores import servico as eleitores_servico
 from app.eleitores.dominio import EleitorResumo
-from app.identidade.servico import UsuarioAutenticado
+from app.identidade.dominio import UsuarioAutenticado
 from app.votacao import cedulas, dominio, repositorio
 from app.votacao.dominio import (
     CandidatoDaCedula,
