@@ -6,6 +6,7 @@ from typing import Annotated
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints
 
 from app.compartilhado.dominio import Cargo
+from app.compartilhado.validadores import MAIOR_ID, sem_caractere_nulo
 from app.eleicoes.dominio import (
     CandidaturaDetalhada,
     EleicaoResumo,
@@ -22,7 +23,11 @@ def _sem_fuso(horario: time) -> time:
 
 
 Horario = Annotated[time, AfterValidator(_sem_fuso)]
-Descricao = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
+Descricao = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=120),
+    AfterValidator(sem_caractere_nulo),
+]
 
 
 class NovaEleicao(BaseModel):
@@ -176,8 +181,12 @@ class NovaCandidatura(BaseModel):
         },
     )
 
-    candidato_id: int = Field(gt=0, description="Candidato que disputa (RN-46: precisa existir).")
-    partido_id: int = Field(gt=0, description="Partido pelo qual disputa (RN-46: precisa existir).")
+    candidato_id: int = Field(
+        gt=0, le=MAIOR_ID, description="Candidato que disputa (RN-46: precisa existir)."
+    )
+    partido_id: int = Field(
+        gt=0, le=MAIOR_ID, description="Partido pelo qual disputa (RN-46: precisa existir)."
+    )
     cargo: Cargo = Field(description="Um dos 5 cargos (RN-41).")
     numero: Numero
 
@@ -189,7 +198,7 @@ class AlteracaoCandidatura(BaseModel):
 
     cargo: Cargo | None = Field(default=None, examples=["PRESIDENTE"])
     numero: Numero | None = Field(default=None, examples=["11"])
-    partido_id: int | None = Field(default=None, gt=0, examples=[1])
+    partido_id: int | None = Field(default=None, gt=0, le=MAIOR_ID, examples=[1])
 
 
 class CandidatoDaCandidatura(BaseModel):

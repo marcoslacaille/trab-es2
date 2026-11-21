@@ -5,6 +5,9 @@ from datetime import date
 
 FORMATO_CPF = re.compile(r"^[0-9]{3}\.?[0-9]{3}\.?[0-9]{3}-?[0-9]{2}$")
 
+# Maior valor de uma coluna BIGINT do PostgreSQL. Um ID maior nem chega ao banco (que daria 500).
+MAIOR_ID = 9_223_372_036_854_775_807
+
 
 def so_digitos(texto: str) -> bool:
     """Diz se o texto tem só dígitos de 0 a 9 (ASCII).
@@ -47,3 +50,13 @@ def calcular_idade(nascimento: date, referencia: date) -> int:
     """
     ja_fez_aniversario = (referencia.month, referencia.day) >= (nascimento.month, nascimento.day)
     return referencia.year - nascimento.year - (0 if ja_fez_aniversario else 1)
+
+
+def sem_caractere_nulo(texto: str | None) -> str | None:
+    """Recusa texto com o caractere nulo (\\x00), que o PostgreSQL não aceita em colunas de texto.
+
+    Usado como `AfterValidator` nos esquemas: o pedido vira 422, e não um erro 500 no banco.
+    """
+    if texto is not None and "\x00" in texto:
+        raise ValueError("O texto não pode conter o caractere nulo.")
+    return texto

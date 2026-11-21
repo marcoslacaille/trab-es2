@@ -10,6 +10,7 @@ from app.compartilhado.banco import obter_sessao
 from app.compartilhado.dominio import Cargo
 from app.compartilhado.openapi import respostas_de_erro
 from app.compartilhado.relogio import obter_agora
+from app.compartilhado.validadores import MAIOR_ID
 from app.eleicoes import servico
 from app.eleicoes.dominio import (
     AlteracoesCandidatura,
@@ -43,8 +44,10 @@ roteador_candidaturas = APIRouter(tags=["Candidaturas"])
 UsuarioChefe = Annotated[UsuarioAutenticado, Depends(exige_perfil(Perfil.CHEFE_SECAO))]
 UsuarioLogado = Annotated[UsuarioAutenticado, Depends(obter_usuario_atual)]
 UsuarioCandidato = Annotated[UsuarioAutenticado, Depends(exige_perfil(Perfil.CANDIDATO))]
-IdDaEleicao = Annotated[int, Path(gt=0, description="Identificador da eleição.")]
-IdDaCandidatura = Annotated[int, Path(gt=0, description="Identificador da candidatura.")]
+IdDaEleicao = Annotated[int, Path(gt=0, le=MAIOR_ID, description="Identificador da eleição.")]
+IdDaCandidatura = Annotated[
+    int, Path(gt=0, le=MAIOR_ID, description="Identificador da candidatura.")
+]
 
 
 @roteador.post(

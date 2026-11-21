@@ -4,12 +4,14 @@ from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query, Response
+from pydantic import AfterValidator
 from sqlalchemy.orm import Session
 
 from app.compartilhado.banco import obter_sessao
 from app.compartilhado.openapi import respostas_de_erro
 from app.compartilhado.paginacao import Pagina, Paginacao, obter_paginacao
 from app.compartilhado.relogio import obter_agora
+from app.compartilhado.validadores import MAIOR_ID, sem_caractere_nulo
 from app.eleitores import servico
 from app.eleitores.dominio import AlteracoesEleitor, NovoEleitorDados
 from app.eleitores.esquemas import AlteracaoEleitor, EleitorResposta, NovoEleitor
@@ -21,7 +23,7 @@ from app.identidade.dependencias import Perfil, UsuarioAutenticado, exige_perfil
 roteador = APIRouter(prefix="/eleitores", tags=["Eleitores"])
 
 somente_chefe = [Depends(exige_perfil(Perfil.CHEFE_SECAO))]
-IdDoEleitor = Annotated[int, Path(gt=0, description="Identificador do eleitor.")]
+IdDoEleitor = Annotated[int, Path(gt=0, le=MAIOR_ID, description="Identificador do eleitor.")]
 
 
 @roteador.post(
@@ -57,7 +59,9 @@ def listar_eleitores(
     sessao: Annotated[Session, Depends(obter_sessao)],
     paginacao: Annotated[Paginacao, Depends(obter_paginacao)],
     nome: Annotated[
-        str | None, Query(max_length=120, description="Parte do nome, sem diferenciar maiúsculas.")
+        str | None,
+        Query(max_length=120, description="Parte do nome, sem diferenciar maiúsculas."),
+        AfterValidator(sem_caractere_nulo),
     ] = None,
 ) -> Pagina[EleitorResposta]:
     pagina = servico.listar_eleitores(sessao, nome, paginacao)
