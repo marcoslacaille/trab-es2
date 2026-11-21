@@ -99,6 +99,18 @@ def definir_mais_votado(
     return None, SituacaoCargo.EMPATE, None
 
 
+def _separar_contagens(contagens: list[ContagemVoto]) -> tuple[int, int, dict[int, int]]:
+    """Devolve (brancos, nulos, votos nominais por id de candidatura) de um cargo."""
+    brancos = sum(c.total for c in contagens if c.tipo == TipoVoto.BRANCO)
+    nulos = sum(c.total for c in contagens if c.tipo == TipoVoto.NULO)
+    nominais = {
+        c.candidatura_id: c.total
+        for c in contagens
+        if c.tipo == TipoVoto.NOMINAL and c.candidatura_id is not None
+    }
+    return brancos, nulos, nominais
+
+
 def apurar_cargo(
     cargo: Cargo,
     candidaturas_do_cargo: list[CandidaturaDetalhada],
@@ -110,12 +122,7 @@ def apurar_cargo(
     calcula os percentuais sobre os votos válidos (só os nominais); ordena por votos
     (decrescente) e depois por número; e decide o mais votado.
     """
-    brancos = sum(c.total for c in contagens_do_cargo if c.tipo == TipoVoto.BRANCO)
-    nulos = sum(c.total for c in contagens_do_cargo if c.tipo == TipoVoto.NULO)
-    votos_por_candidatura: dict[int, int] = {}
-    for contagem in contagens_do_cargo:
-        if contagem.tipo == TipoVoto.NOMINAL and contagem.candidatura_id is not None:
-            votos_por_candidatura[contagem.candidatura_id] = contagem.total
+    brancos, nulos, votos_por_candidatura = _separar_contagens(contagens_do_cargo)
     votos_validos = sum(votos_por_candidatura.values())
 
     linhas = [
