@@ -25,15 +25,26 @@ class NovoEleitor(BaseModel):
         },
     )
 
-    nome: Nome
+    nome: Nome = Field(
+        description="Nome completo (3 a 120 caracteres).", examples=["Ana Beatriz Souza"]
+    )
     # Só o tamanho é limitado aqui; o formato e os dígitos verificadores são conferidos pelo
     # serviço de identidade, que responde `CPF_INVALIDO` (RN-07).
-    cpf: str = Field(max_length=20, description="CPF com ou sem pontuação.")
-    titulo_eleitor: str = Field(
-        pattern=r"^[0-9]{12}$", description="Título com 12 dígitos (RN-21)."
+    cpf: str = Field(
+        max_length=20, description="CPF com ou sem pontuação.", examples=["011.524.493-03"]
     )
-    data_nascimento: date = Field(description="O eleitor precisa ter 16 anos completos (RN-22).")
-    senha: str = Field(description="De 8 caracteres até 72 bytes. Nunca é devolvida (RN-05).")
+    titulo_eleitor: str = Field(
+        pattern=r"^[0-9]{12}$",
+        description="Título com 12 dígitos (RN-21).",
+        examples=["100000000001"],
+    )
+    data_nascimento: date = Field(
+        description="O eleitor precisa ter 16 anos completos (RN-22).", examples=["1990-04-12"]
+    )
+    senha: str = Field(
+        description="De 8 caracteres até 72 bytes. Nunca é devolvida (RN-05).",
+        examples=["Eleitor@123"],
+    )
 
 
 class AlteracaoEleitor(BaseModel):
@@ -47,9 +58,11 @@ class AlteracaoEleitor(BaseModel):
         json_schema_extra={"example": {"nome": "Ana Beatriz Souza Lima", "senha": "NovaSenha@456"}},
     )
 
-    nome: Nome | None = None
-    data_nascimento: date | None = None
-    senha: str | None = Field(default=None, description="Nova senha (RN-05).")
+    nome: Nome | None = Field(default=None, examples=["Ana Beatriz Souza Lima"])
+    data_nascimento: date | None = Field(default=None, examples=["1990-04-12"])
+    senha: str | None = Field(
+        default=None, description="Nova senha (RN-05).", examples=["NovaSenha@456"]
+    )
 
 
 class EleitorResposta(BaseModel):
@@ -69,9 +82,9 @@ class EleitorResposta(BaseModel):
         },
     )
 
-    id: int
-    nome: str
-    cpf: str = Field(description="CPF só com dígitos.")
-    titulo_eleitor: str
-    data_nascimento: date
+    id: int = Field(description="Identificador do eleitor.", examples=[1])
+    nome: str = Field(description="Nome completo.", examples=["Ana Beatriz Souza"])
+    cpf: str = Field(description="CPF só com dígitos.", examples=["01152449303"])
+    titulo_eleitor: str = Field(description="Título com 12 dígitos.", examples=["100000000001"])
+    data_nascimento: date = Field(description="Data de nascimento.", examples=["1990-04-12"])
     criado_em: datetime = Field(description="Instante do cadastro.")

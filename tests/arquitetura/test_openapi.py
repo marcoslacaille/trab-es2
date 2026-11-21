@@ -1,9 +1,11 @@
-"""TA-04: toda rota protegida documenta 401, e toda rota com perfil restrito documenta 403."""
+"""TA-03 e TA-04: a especificação publicada está atualizada e as rotas documentam 401 e 403."""
 
+import json
 import re
 
 from app.identidade.dominio import Perfil
 from app.main import app
+from app.scripts.exportar_openapi import CAMINHO_OPENAPI
 from tests.arquitetura.test_rotas_protegidas import LISTA_BRANCA, rotas_da_api
 from tests.integracao.test_permissoes import ROTAS, TODOS
 
@@ -60,3 +62,10 @@ def test_ta04_tabela_de_perfis_usa_so_perfis_conhecidos():
     usados = {perfil for _, _, perfis in ROTAS for perfil in perfis}
 
     assert usados <= set(Perfil)
+
+
+def test_ta03_especificacao_publicada_esta_atualizada():
+    """TA-03: `docs/openapi.json` (usado pelo GitHub Pages) é igual a `app.openapi()`."""
+    publicada = json.loads(CAMINHO_OPENAPI.read_text(encoding="utf-8"))
+
+    assert publicada == app.openapi(), "Rode python -m app.scripts.exportar_openapi"
