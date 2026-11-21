@@ -162,7 +162,7 @@ No Windows, use `.venv\Scripts\python.exe -m <comando>` no lugar de `<comando>` 
 | Integração | `tests/integracao/` | A API de ponta a ponta contra o PostgreSQL de teste: rotas, permissões, restrições e trigger do banco, concorrência, sigilo e o roteiro completo da demonstração (TI-74) | Banco de teste |
 | Arquitetura | `tests/arquitetura/` | Fronteiras entre módulos (TA-01), todas as rotas protegidas e documentadas, `docs/openapi.json` atualizado (TA-03) | Nada |
 
-São 507 testes. O CI do GitHub Actions roda lint, formatação e testes a cada push e Pull Request.
+São 508 testes. O CI do GitHub Actions roda lint, formatação e testes a cada push e Pull Request.
 
 ## 5. Arquitetura
 
