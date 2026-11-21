@@ -2,6 +2,10 @@
 
 import logging
 
+from fastapi.testclient import TestClient
+
+from app.compartilhado.banco import obter_sessao
+from app.main import app
 from tests.auxiliares import CPF_CHEFE, SENHA_CHEFE, criar_chefe
 
 NOME_DO_LOG = "eleicao.requisicoes"
@@ -44,3 +48,20 @@ def test_registra_status_de_erro(cliente, caplog):
         cliente.get("/api/v1/auth/me")
 
     assert "GET /api/v1/auth/me -> 401" in caplog.text
+
+
+def test_registra_status_500_quando_a_rota_falha(caplog):
+    """Erro interno também é logado, com status 500 (e a resposta não vaza detalhes)."""
+
+    def sessao_quebrada():
+        raise RuntimeError("segredo interno")
+
+    app.dependency_overrides[obter_sessao] = sessao_quebrada
+    try:
+        with caplog.at_level(logging.INFO, logger=NOME_DO_LOG):
+            resposta = TestClient(app, raise_server_exceptions=False).get("/health")
+    finally:
+        app.dependency_overrides.pop(obter_sessao, None)
+
+    assert resposta.status_code == 500 and "segredo interno" not in resposta.text
+    assert "GET /health -> 500" in caplog.text
