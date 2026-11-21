@@ -1,7 +1,8 @@
 """Entradas no limite: nenhuma delas pode virar erro 500 (seção 7, "Erros sem vazamento").
 
-Achados do teste de caixa-preta contra a API real (D-128 a D-130): ID maior que o BIGINT do
-PostgreSQL, caractere nulo em campo de texto e valores do SQL no log de erro.
+Achados do teste de caixa-preta contra a API real (D-128 a D-130 e D-137): ID maior que o
+BIGINT do PostgreSQL, caractere nulo em campo de texto, valores do SQL no log de erro e página
+cujo deslocamento (OFFSET) passa do BIGINT.
 """
 
 from datetime import UTC, datetime, timedelta
@@ -13,6 +14,7 @@ from sqlalchemy.exc import DBAPIError
 
 from app.compartilhado.banco import SessionLocal
 from app.compartilhado.config import obter_configuracao
+from app.compartilhado.paginacao import MAIOR_PAGINA, TAMANHO_MAXIMO
 from app.identidade.tokens import ALGORITMO, AUDIENCIA_ACESSO
 from tests.auxiliares import nova_eleicao, novo_candidato, novo_eleitor, novo_partido
 
@@ -116,6 +118,34 @@ def test_caractere_nulo_no_filtro_por_nome_responde_422(cliente, cabecalho_chefe
 
     assert resposta.status_code == 422
     assert resposta.json()["erro"]["detalhes"]["campos"][0]["campo"] == "nome"
+
+
+@pytest.mark.parametrize("recurso", ["eleitores", "candidatos"])
+@pytest.mark.parametrize("pagina", [MAIOR_PAGINA + 1, 2**62, ID_GIGANTE])
+def test_pagina_acima_do_limite_responde_422(cliente, cabecalho_chefe, recurso, pagina):
+    """Seção 10: `pagina` cujo deslocamento passa do BIGINT é pedido errado (422), não 500.
+
+    Antes, `?pagina=4611686018427387904` chegava ao banco como OFFSET fora da faixa (D-137).
+    """
+    resposta = cliente.get(f"/api/v1/{recurso}", params={"pagina": pagina}, headers=cabecalho_chefe)
+
+    assert resposta.status_code == 422
+    assert _codigo(resposta) == "DADOS_INVALIDOS"
+    assert resposta.json()["erro"]["detalhes"]["campos"][0]["campo"] == "pagina"
+
+
+@pytest.mark.parametrize("recurso", ["eleitores", "candidatos"])
+def test_maior_pagina_com_o_maior_tamanho_responde_vazia(cliente, cabecalho_chefe, recurso):
+    """Seção 10: a última página aceita, com `tamanho=100`, ainda cabe no OFFSET do banco."""
+    resposta = cliente.get(
+        f"/api/v1/{recurso}",
+        params={"pagina": MAIOR_PAGINA, "tamanho": TAMANHO_MAXIMO},
+        headers=cabecalho_chefe,
+    )
+
+    assert resposta.status_code == 200
+    assert resposta.json()["itens"] == []
+    assert resposta.json()["pagina"] == MAIOR_PAGINA
 
 
 def test_erro_do_banco_nao_leva_os_valores_do_sql():
