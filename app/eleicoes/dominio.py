@@ -166,6 +166,21 @@ def validar_edicao(status: StatusEleicao) -> None:
         )
 
 
+def _validar_segundo_turno_completo(candidaturas_por_cargo: dict[Cargo, int]) -> None:
+    """RN-17: no 2º turno, cada cargo com candidatura tem exatamente 2 (409 se não)."""
+    incompletos = [
+        cargo.value
+        for cargo, quantidade in candidaturas_por_cargo.items()
+        if quantidade != CANDIDATURAS_DO_SEGUNDO_TURNO_POR_CARGO
+    ]
+    if incompletos:
+        raise ConflitoDeEstado(
+            "No 2º turno, cada cargo disputado precisa ter exatamente 2 candidaturas.",
+            codigo="SEGUNDO_TURNO_INCOMPLETO",
+            detalhes={"cargos": sorted(incompletos)},
+        )
+
+
 def validar_abertura(
     eleicao: EleicaoResumo,
     agora: datetime,
@@ -210,17 +225,7 @@ def validar_abertura(
             codigo="SEM_CANDIDATURAS",
         )
     if eleicao.turno == 2:
-        incompletos = [
-            cargo.value
-            for cargo, quantidade in candidaturas_por_cargo.items()
-            if quantidade != CANDIDATURAS_DO_SEGUNDO_TURNO_POR_CARGO
-        ]
-        if incompletos:
-            raise ConflitoDeEstado(
-                "No 2º turno, cada cargo disputado precisa ter exatamente 2 candidaturas.",
-                codigo="SEGUNDO_TURNO_INCOMPLETO",
-                detalhes={"cargos": sorted(incompletos)},
-            )
+        _validar_segundo_turno_completo(candidaturas_por_cargo)
 
 
 def validar_candidatura(
