@@ -3,15 +3,15 @@ services:
     image: postgres:16-alpine
     container_name: eleicao-banco
     environment:
-      POSTGRES_USER: eleicao
-      POSTGRES_PASSWORD: eleicao
+      POSTGRES_USER: ${POSTGRES_USER:?Defina POSTGRES_USER no .env (veja o .env.example)}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no .env (veja o .env.example)}
       POSTGRES_DB: eleicao
     ports:
       - "5432:5432"
     volumes:
       - dados_banco:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U eleicao -d eleicao"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -20,8 +20,8 @@ services:
     image: postgres:16-alpine
     container_name: eleicao-banco-teste
     environment:
-      POSTGRES_USER: eleicao
-      POSTGRES_PASSWORD: eleicao
+      POSTGRES_USER: ${POSTGRES_USER:?Defina POSTGRES_USER no .env (veja o .env.example)}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no .env (veja o .env.example)}
       POSTGRES_DB: eleicao_teste
     ports:
       - "5433:5432"

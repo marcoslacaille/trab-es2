@@ -22,7 +22,7 @@ A API é documentada pelo próprio código (OpenAPI 3.1, *code-first*). A especi
 
 - **Autenticação:** `POST /api/v1/auth/login` (formulário com `username` = CPF e `password` = senha) devolve um token JWT. Envie-o em `Authorization: Bearer <token>`; no Swagger, use o botão *Authorize*.
 - **Fluxo do voto (Eleitor):** consultar a cédula → registrar o voto (recebe `token_cedula`, válido por 5 minutos) → confirmar com o token. Cada cargo é votado separadamente.
-- **Erros:** todas as rotas respondem `{"erro": {"codigo", "mensagem", "detalhes"}}`. 401 = não autenticado, 403 = perfil sem permissão, 404 = não encontrado, 409 = conflito com regra de negócio, 422 = dados inválidos.
+- **Erros:** todas as rotas respondem `{"erro": {"codigo", "mensagem", "detalhes"}}`. 401 = não autenticado, 403 = perfil sem permissão, 404 = não encontrado, 409 = conflito com regra de negócio, 422 = dados inválidos, 500 = erro inesperado (código `ERRO_INTERNO`; o detalhe fica só no log). O 500 vale para todas as rotas e por isso não se repete nas tabelas abaixo.
 - Depois de mudar rotas ou esquemas, regenere a especificação com `python -m app.scripts.exportar_openapi` (o teste TA-03 falha se ela ficar desatualizada) e atualize as tabelas abaixo (copiadas dela).
 
 #### Rotas
@@ -113,10 +113,10 @@ Pré-requisitos: Python 3.12, Git e Docker (Docker Desktop aberto, no Windows e 
 ### Windows (PowerShell)
 
 ```powershell
-docker compose up -d                                  # sobe o banco (5432) e o banco de teste (5433)
+copy .env.example .env                                # troque JWT_SEGREDO e as senhas fora da demonstração
+docker compose up -d                                  # sobe o banco (5432) e o banco de teste (5433); lê o .env
 py -3.12 -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-copy .env.example .env                                # troque JWT_SEGREDO e as senhas fora da demonstração
 .venv\Scripts\python.exe -m alembic upgrade head      # cria as tabelas
 .venv\Scripts\python.exe -m app.scripts.seed_demo     # dados de demonstração (opcional; já cria o Chefe)
 .venv\Scripts\python.exe -m uvicorn app.main:app --reload
@@ -125,11 +125,11 @@ copy .env.example .env                                # troque JWT_SEGREDO e as 
 ### Linux / macOS
 
 ```bash
-docker compose up -d                                  # sobe o banco (5432) e o banco de teste (5433)
+cp .env.example .env                                  # troque JWT_SEGREDO e as senhas fora da demonstração
+docker compose up -d                                  # sobe o banco (5432) e o banco de teste (5433); lê o .env
 python3.12 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements-dev.txt
-cp .env.example .env                                  # troque JWT_SEGREDO e as senhas fora da demonstração
 alembic upgrade head                                  # cria as tabelas
 python -m app.scripts.seed_demo                       # dados de demonstração (opcional; já cria o Chefe)
 uvicorn app.main:app --reload
@@ -137,6 +137,7 @@ uvicorn app.main:app --reload
 
 A API fica em http://localhost:8000, o Swagger em http://localhost:8000/docs e a verificação de saúde em http://localhost:8000/health.
 
+- **Credenciais do banco:** o `docker-compose.yml` não tem senha escrita; lê `POSTGRES_USER` e `POSTGRES_PASSWORD` do `.env` e para com uma mensagem clara se faltarem. Se trocar a senha, troque também em `DATABASE_URL` e `TEST_DATABASE_URL`, e rode `docker compose down -v` (o PostgreSQL só usa a senha na criação do volume).
 - **Sem a demonstração:** em vez do `seed_demo`, rode `python -m app.scripts.criar_chefe` (usa `CHEFE_CPF`, `CHEFE_NOME` e `CHEFE_SENHA` do `.env`). Não existe rota para criar Chefe.
 - **Dados de demonstração:** `seed_demo` cria o Chefe, 3 partidos, 6 eleitores, 10 candidatos e a eleição de hoje (00:00 às 23:59) com as 10 candidaturas, ainda AGENDADA, e imprime a tabela de logins. Se já houver dados, avisa e não altera nada. Chefe: CPF `291.417.776-38`, senha `Chefe@2026`; eleitores: `Eleitor@123`; candidatos: `Candidato@123` (senhas fixas, só para a demo).
 - **Recomeçar do zero:** `docker compose down -v`, `docker compose up -d`, `alembic upgrade head`, `seed_demo`.
@@ -183,6 +184,17 @@ graph TD
 Todo módulo também pode usar `compartilhado` e `identidade.dependencias` (autenticação nas rotas).
 
 **Camadas de cada módulo** (a mesma forma em todos): `rotas.py` (HTTP, sem regra de negócio) → `servico.py` (casos de uso, única porta de entrada, controla a transação) → `dominio.py` (regras puras, sem FastAPI nem SQLAlchemy) e `repositorio.py` (consultas, só nas tabelas do módulo) → `modelos.py` (tabelas ORM); `esquemas.py` tem os contratos de entrada e saída.
+
+**Para quem pensa em MVC:** cada módulo é MVC com a camada de negócio separada. Como a API só devolve JSON, a "View" é o contrato de resposta:
+
+| Papel no MVC | Arquivo de cada módulo |
+| --- | --- |
+| Controller | `rotas.py` |
+| View (JSON de entrada e saída) | `esquemas.py` |
+| Model: regras de negócio | `servico.py` (casos de uso) + `dominio.py` (regras puras) |
+| Model: dados | `repositorio.py` (consultas) + `modelos.py` (tabelas) |
+
+A diferença para o MVC com pastas globais (`controllers/`, `models/`, `views/`) é que aqui as camadas ficam dentro de cada módulo: tudo o que é de eleitores está em `app/eleitores/`.
 
 **Principais decisões** (todas, com as alternativas descartadas, em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md)):
 
