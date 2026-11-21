@@ -3,10 +3,16 @@
 from datetime import date, datetime
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints
+
+from app.compartilhado.validadores import sem_caractere_nulo
 
 # RN-08: de 3 a 120 caracteres, ignorando espaços nas pontas.
-Nome = Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=120)]
+Nome = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=3, max_length=120),
+    AfterValidator(sem_caractere_nulo),
+]
 
 
 class NovoEleitor(BaseModel):

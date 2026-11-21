@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query, Response
+from pydantic import AfterValidator
 from sqlalchemy.orm import Session
 
 from app.candidatos import servico
@@ -19,6 +20,7 @@ from app.compartilhado.banco import obter_sessao
 from app.compartilhado.openapi import respostas_de_erro
 from app.compartilhado.paginacao import Pagina, Paginacao, obter_paginacao
 from app.compartilhado.relogio import obter_agora
+from app.compartilhado.validadores import MAIOR_ID, sem_caractere_nulo
 
 # `identidade.dependencias` é a única parte de `identidade` (além do serviço) que as rotas de
 # outros módulos podem importar (seção 5).
@@ -32,7 +34,7 @@ from app.identidade.dependencias import (
 roteador = APIRouter()
 
 somente_chefe = [Depends(exige_perfil(Perfil.CHEFE_SECAO))]
-IdDoCandidato = Annotated[int, Path(gt=0, description="Identificador do candidato.")]
+IdDoCandidato = Annotated[int, Path(gt=0, le=MAIOR_ID, description="Identificador do candidato.")]
 
 
 @roteador.post(
@@ -71,7 +73,9 @@ def listar_candidatos(
     sessao: Annotated[Session, Depends(obter_sessao)],
     paginacao: Annotated[Paginacao, Depends(obter_paginacao)],
     nome: Annotated[
-        str | None, Query(max_length=120, description="Parte do nome, sem diferenciar maiúsculas.")
+        str | None,
+        Query(max_length=120, description="Parte do nome, sem diferenciar maiúsculas."),
+        AfterValidator(sem_caractere_nulo),
     ] = None,
 ) -> Pagina[CandidatoResposta]:
     pagina = servico.listar_candidatos(sessao, nome, paginacao)

@@ -3,7 +3,13 @@ from datetime import date
 import pytest
 
 from app.compartilhado.dominio import Cargo, numero_valido_para_cargo
-from app.compartilhado.validadores import calcular_idade, cpf_valido, normalizar_cpf, so_digitos
+from app.compartilhado.validadores import (
+    calcular_idade,
+    cpf_valido,
+    normalizar_cpf,
+    sem_caractere_nulo,
+    so_digitos,
+)
 
 # Quantidade de dígitos de cada cargo, escrita aqui de propósito (e não lida de
 # DIGITOS_POR_CARGO), para o teste conferir a regra e não repetir o código.
@@ -102,3 +108,15 @@ def test_valida_numero_conforme_os_digitos_do_cargo(cargo, numero, esperado):
 def test_recusa_numero_com_digitos_de_outro_alfabeto():
     """TU-06 / RN-42 (D-010): '١٠' tem 2 dígitos arábico-índicos, mas não é um número válido."""
     assert numero_valido_para_cargo("١٠", Cargo.PRESIDENTE) is False
+
+
+def test_sem_caractere_nulo_devolve_o_texto_sem_o_caractere():
+    """RN-08: texto comum (ou ausente) passa sem mudança."""
+    assert sem_caractere_nulo("Ana Maria") == "Ana Maria"
+    assert sem_caractere_nulo(None) is None
+
+
+def test_sem_caractere_nulo_recusa_o_caractere_nulo():
+    """RN-08: o PostgreSQL não aceita o caractere nulo em texto; o validador recusa antes."""
+    with pytest.raises(ValueError, match="caractere nulo"):
+        sem_caractere_nulo("Ana\x00Maria")
