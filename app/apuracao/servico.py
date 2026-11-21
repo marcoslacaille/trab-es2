@@ -15,7 +15,7 @@ from app.compartilhado.erros import AcessoNegado, ConflitoDeEstado, DadosInvalid
 from app.eleicoes import servico as eleicoes_servico
 from app.eleicoes.dominio import EleicaoResumo, StatusEleicao
 from app.eleitores import servico as eleitores_servico
-from app.identidade.servico import Perfil, UsuarioAutenticado
+from app.identidade.dominio import Perfil, UsuarioAutenticado
 from app.votacao import servico as votacao_servico
 
 PREFIXO_DA_API = "/api/v1"
