@@ -14,7 +14,7 @@ Marque `[x]` quando a tarefa estiver integrada na `main` (o agente marca no últ
 - [x] 08 — Votação: API
 - [x] 09 — Sigilo e concorrência
 - [x] 10 — Apuração
-- [ ] 11 — Qualidade transversal
+- [x] 11 — Qualidade transversal
 - [ ] 12 — Swagger e GitHub Pages
 - [ ] 13 — Seed e documentação de entrega
 - [ ] 14 — Revisão final
