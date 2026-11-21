@@ -62,6 +62,16 @@ class DadosInvalidos(ErroDeNegocio):
 class CorpoDoErro(BaseModel):
     """Conteúdo do erro: o que o cliente da API lê para decidir o que fazer."""
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "codigo": "ELEICAO_NAO_ABERTA",
+                "mensagem": "A eleição não está aberta.",
+                "detalhes": {"status": "AGENDADA"},
+            }
+        }
+    )
+
     codigo: str = Field(description="Código estável do erro (catálogo da seção 10 do PLANO).")
     mensagem: str = Field(description="Explicação legível para uma pessoa.")
     detalhes: dict = Field(default_factory=dict, description="Dados extras; pode ser vazio.")

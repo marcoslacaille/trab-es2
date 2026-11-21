@@ -17,7 +17,7 @@ from app.votacao.dominio import (
 )
 
 
-class LinkResposta(BaseModel):
+class LinkDaVotacao(BaseModel):
     """Uma ação possível a seguir (HATEOAS)."""
 
     rel: str = Field(description="Nome da ação, por exemplo `confirmar`.")
@@ -151,7 +151,7 @@ class PreviaVotoResposta(BaseModel):
     mensagem: str = Field(description="Texto para o eleitor conferir.")
     token_cedula: str = Field(description="Cédula assinada, válida por 5 minutos (RN-57).")
     expira_em: datetime = Field(description="Instante em que o token_cedula expira.")
-    links: list[LinkResposta] = Field(description="Próximas ações possíveis.")
+    links: list[LinkDaVotacao] = Field(description="Próximas ações possíveis.")
 
     @classmethod
     def de_previa(cls, previa: PreviaVoto) -> "PreviaVotoResposta":
@@ -165,7 +165,7 @@ class PreviaVotoResposta(BaseModel):
             token_cedula=previa.token_cedula,
             expira_em=previa.expira_em,
             links=[
-                LinkResposta(
+                LinkDaVotacao(
                     rel="confirmar",
                     metodo="POST",
                     href=f"/api/v1/votacao/eleicoes/{previa.eleicao_id}/votos/confirmacao",
@@ -213,7 +213,7 @@ class ComprovanteVotoResposta(BaseModel):
     eleicao_id: int = Field(description="Eleição do voto.", examples=[1])
     cargo: Cargo = Field(description="Cargo em que o voto foi confirmado.", examples=["PRESIDENTE"])
     mensagem: str = Field(description="Confirmação para o eleitor.")
-    links: list[LinkResposta] = Field(description="Próximas ações possíveis.")
+    links: list[LinkDaVotacao] = Field(description="Próximas ações possíveis.")
 
     @classmethod
     def de_comprovante(cls, comprovante: ComprovanteVoto) -> "ComprovanteVotoResposta":
@@ -223,8 +223,8 @@ class ComprovanteVotoResposta(BaseModel):
             cargo=comprovante.cargo,
             mensagem=comprovante.mensagem,
             links=[
-                LinkResposta(rel="cedula", metodo="GET", href=f"{base}/cedula"),
-                LinkResposta(rel="participacao", metodo="GET", href=f"{base}/participacao"),
+                LinkDaVotacao(rel="cedula", metodo="GET", href=f"{base}/cedula"),
+                LinkDaVotacao(rel="participacao", metodo="GET", href=f"{base}/participacao"),
             ],
         )
 
