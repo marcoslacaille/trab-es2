@@ -37,15 +37,17 @@ _DESCRICOES = {
     404: "Recurso não encontrado",
     409: "Conflito com o estado atual (regra de negócio)",
     422: "Dados inválidos",
+    500: "Erro interno inesperado (o detalhe vai só para o log)",
 }
 
 
 def respostas_de_erro(*codigos_http: int) -> dict:
     """Monta o 'responses' de uma rota com o formato padrão de erro.
 
-    Aceita os status 401, 403, 404, 409 e 422. Uso: `responses=respostas_de_erro(401, 403, 404)`.
+    Aceita os status 401, 403, 404, 409 e 422. O 500 entra sempre, porque qualquer rota pode
+    cair no tratador de erro inesperado. Uso: `responses=respostas_de_erro(401, 403, 404)`.
     """
     return {
         codigo: {"model": ErroResposta, "description": _DESCRICOES[codigo]}
-        for codigo in codigos_http
+        for codigo in (*codigos_http, 500)
     }
