@@ -119,6 +119,7 @@ Este arquivo guarda tudo o que foi feito e **não estava prescrito** no `docs/PL
 | D-094 | 09 | LACUNA | Baixo | TI-72: ainda não há log de requisições (tarefa 11), então o teste só prova que os logs que existem hoje (nível DEBUG, via `caplog`) não trazem token, número nem `candidatura_id`. Na tarefa 11 o teste deve continuar passando com o log de requisições ligado. | `tests/integracao/test_sigilo.py` | ABERTA |
 | D-095 | 09 | RISCO | Médio | A corrida entre `confirmar_voto` e `encerrar_eleicao` (trava `FOR SHARE`, ver D-065) continua sem teste: a tarefa 09 e o TI-73 cobrem só o voto duplo em paralelo. Fica para o grupo decidir se vale um teste extra. | `votacao/servico.py`, `eleicoes/servico.py` | ABERTA |
 | D-096 | 09 | EXTRA | Baixo | TI-73 monta a cédula com `cedulas.emitir_cedula` direto (em vez de passar pela rota de registro) e o usuário pelo `/auth/me`, para controlar `agora`; TI-70 confere valores JSON (não substring) para o número, pois números curtos colidem com ids e CPFs. | `tests/integracao/test_concorrencia.py`, `test_sigilo.py` | ABERTA |
+| D-097 | 09 | AMBIENTE | Alto | Em 21/11/2026 o usuário pediu que o agente tenha autonomia permanente: o `CLAUDE.md` passou a dispensar o OK antes de codar e a mandar push, PR, espera do CI e merge na `main` ao fim de cada tarefa (nunca com CI vermelho, sem force push, sem push direto na `main`). Formaliza a D-045; o grupo deve confirmar. | `CLAUDE.md` | ABERTA |
 
 ## O que existe mas ainda não tem teste
 
