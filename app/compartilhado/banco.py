@@ -22,7 +22,9 @@ class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=CONVENCAO_DE_NOMES)
 
 
-engine = create_engine(obter_configuracao().database_url, pool_pre_ping=True)
+# hide_parameters: a mensagem de erro do banco não leva os valores do SQL (hash da senha, CPF,
+# nome), que senão iriam para o log do erro 500 (seção 7, "Erros sem vazamento").
+engine = create_engine(obter_configuracao().database_url, pool_pre_ping=True, hide_parameters=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 
