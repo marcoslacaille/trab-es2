@@ -162,7 +162,7 @@ No Windows, use `.venv\Scripts\python.exe -m <comando>` no lugar de `<comando>` 
 | Integração | `tests/integracao/` | A API de ponta a ponta contra o PostgreSQL de teste: rotas, permissões, restrições e trigger do banco, concorrência, sigilo e o roteiro completo da demonstração (TI-74) | Banco de teste |
 | Arquitetura | `tests/arquitetura/` | Fronteiras entre módulos (TA-01), todas as rotas protegidas e documentadas, `docs/openapi.json` atualizado (TA-03) | Nada |
 
-São 508 testes. O CI do GitHub Actions roda lint, formatação e testes a cada push e Pull Request.
+São 543 testes. O CI do GitHub Actions roda lint, formatação e testes a cada push e Pull Request.
 
 ## 5. Arquitetura
 
@@ -290,6 +290,7 @@ Detalhes e a tabela de ameaças em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md).
 - **Sigilo no banco:** quem tiver acesso administrativo direto ao PostgreSQL ainda poderia tentar correlacionar a **ordem física** em que as linhas foram gravadas nas duas tabelas. A urna real embaralha o registro digital do voto; aqui isso está fora do escopo.
 - **Sigilo no banco (transação):** o registro de quem votou e o voto são gravados na mesma transação, então as duas linhas têm o mesmo `xmin` (o ID da transação no PostgreSQL). Quem pode ler as duas tabelas liga cada voto ao eleitor com `JOIN ... ON v.xmin = r.xmin`, com precisão total e sem prazo. Por isso o acesso direto ao banco precisa ficar restrito; mudar o desenho (por exemplo, gravar os votos em lote e embaralhados) é uma decisão em aberto (D-134).
 - **Poucos votos:** com pouquíssimos votos, a apuração parcial pode permitir deduzir escolhas (o mesmo acontece em qualquer seção real com um único eleitor).
+- **Resultado recalculado com os dados atuais:** a apuração é calculada a cada consulta (D07), inclusive a de uma eleição já encerrada. Se o Chefe mudar, depois do fim, a data de nascimento de um candidato empatado, o desempate por idade pode trocar o mais votado; mudar o nome de urna muda o nome exibido; excluir um eleitor apto que não votou reduz os aptos e a abstenção. O sistema não bloqueia essas alterações (D-138).
 - **Token não revogável:** o token de acesso não pode ser revogado antes de expirar (60 min); isso é mitigado porque o usuário é recarregado do banco a cada requisição.
 - **HTTPS:** responsabilidade do ambiente onde a API for publicada.
 - **Sem limite de tentativas de login** e sem recuperação de senha nem e-mail.
