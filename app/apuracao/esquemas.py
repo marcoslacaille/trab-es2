@@ -60,10 +60,10 @@ _EXEMPLO = {
 class LinhaApuracaoResposta(BaseModel):
     """Um candidato na apuração do cargo."""
 
-    numero: str
-    nome_urna: str
-    partido_sigla: str
-    votos: int
+    numero: str = Field(description="Número do candidato no cargo.", examples=["10"])
+    nome_urna: str = Field(description="Nome de urna.", examples=["Carlos Lima"])
+    partido_sigla: str = Field(description="Sigla do partido.", examples=["PINO"])
+    votos: int = Field(description="Votos nominais recebidos.", examples=[2])
     percentual_validos: str = Field(description="Percentual sobre os votos válidos, 2 casas.")
 
     @classmethod
@@ -80,17 +80,19 @@ class LinhaApuracaoResposta(BaseModel):
 class ResultadoCargoResposta(BaseModel):
     """A apuração de um cargo, com todos os candidatos (inclusive com 0 votos)."""
 
-    cargo: Cargo
-    total_votos: int
+    cargo: Cargo = Field(description="Cargo apurado.", examples=["PRESIDENTE"])
+    total_votos: int = Field(description="Votos válidos, brancos e nulos.", examples=[4])
     votos_validos: int = Field(description="Só os votos nominais (RN-76).")
-    brancos: int
-    nulos: int
-    situacao: SituacaoCargo
+    brancos: int = Field(description="Votos em branco (RN-76).", examples=[1])
+    nulos: int = Field(description="Votos nulos (RN-76).", examples=[0])
+    situacao: SituacaoCargo = Field(description="Situação da apuração do cargo.")
     criterio: str | None = Field(description="`MAIOR_VOTACAO` ou `DESEMPATE_POR_IDADE`.")
     mais_votado: LinhaApuracaoResposta | None = Field(
         description="Na parcial, quem lidera até agora. Nulo em EMPATE e SEM_VOTOS_VALIDOS."
     )
-    candidatos: list[LinhaApuracaoResposta]
+    candidatos: list[LinhaApuracaoResposta] = Field(
+        description="Todos os candidatos, do mais votado ao menos."
+    )
 
     @classmethod
     def de_resultado(cls, resultado: ResultadoCargo) -> "ResultadoCargoResposta":
@@ -111,9 +113,9 @@ class ResultadoCargoResposta(BaseModel):
 class ComparecimentoResposta(BaseModel):
     """Eleitores aptos (cadastrados antes da abertura), votantes e abstenção (RN-79)."""
 
-    eleitores_aptos: int
+    eleitores_aptos: int = Field(description="Eleitores cadastrados na eleição.", examples=[6])
     votantes: int = Field(description="Eleitores que votaram em pelo menos um cargo.")
-    abstencao: int
+    abstencao: int = Field(description="Aptos que não votaram em nenhum cargo.", examples=[2])
 
 
 class ApuracaoResposta(BaseModel):
@@ -121,12 +123,12 @@ class ApuracaoResposta(BaseModel):
 
     model_config = ConfigDict(json_schema_extra={"example": _EXEMPLO})
 
-    eleicao_id: int
-    tipo: Literal["PARCIAL", "FINAL"]
-    status_eleicao: StatusEleicao
-    gerado_em: datetime
-    comparecimento: ComparecimentoResposta
-    cargos: list[ResultadoCargoResposta]
+    eleicao_id: int = Field(description="Eleição apurada.", examples=[1])
+    tipo: Literal["PARCIAL", "FINAL"] = Field(description="PARCIAL (aberta) ou FINAL (encerrada).")
+    status_eleicao: StatusEleicao = Field(description="Situação da eleição.")
+    gerado_em: datetime = Field(description="Instante em que a apuração foi calculada.")
+    comparecimento: ComparecimentoResposta = Field(description="Aptos, votantes e abstenção.")
+    cargos: list[ResultadoCargoResposta] = Field(description="Um resultado por cargo.")
 
     @classmethod
     def de_apuracao(cls, apuracao: Apuracao) -> "ApuracaoResposta":
