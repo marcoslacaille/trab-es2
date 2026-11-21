@@ -1,6 +1,6 @@
 # Revisão final (tarefa 14)
 
-Auditoria do projeto contra o enunciado e o checklist da seção 18 do PLANO, feita sobre a `main` no commit `814fe24` (tag `v1.0.0`). **Nada foi corrigido ainda**: este relatório aguarda aprovação da lista de pendências (seção 5).
+Auditoria do projeto contra o enunciado e o checklist da seção 18 do PLANO, feita sobre a `main` no commit `814fe24` (tag `v1.0.0`). A lista foi aprovada ("todas") e as correções estão na coluna **Situação** da seção 7. Os achados abaixo descrevem o estado antes das correções.
 
 ## 1. Resumo
 
@@ -17,7 +17,7 @@ Auditoria do projeto contra o enunciado e o checklist da seção 18 do PLANO, fe
 | `pytest --cov=app --cov-report=term-missing` | **507 passed**, 2 warnings (ver P-05) |
 | Cobertura total | **97%** (2.081 instruções, 63 não cobertas; meta: 85%) |
 | Cobertura dos `dominio.py` | **100%** em todos (`apuracao`, `candidatos`, `eleicoes`, `eleitores`, `identidade`, `votacao`, `compartilhado`; meta: 90%) |
-| Linhas sem cobertura | Só `scripts/seed_demo.py` (0%, 60 linhas) e `scripts/exportar_openapi.py` (67%, 4 linhas); ambos são exercidos fora do medidor (TI-74 e TA-03), ver P-06 |
+| Linhas sem cobertura | Só `scripts/seed_demo.py` (0%, 60 linhas) e `scripts/exportar_openapi.py` (67%, 4 linhas); o `exportar_openapi` é exercido pelo TA-03 e o `seed_demo` não tinha teste automático (só a verificação manual desta revisão), ver P-06 |
 | `alembic upgrade head` / `downgrade base` / `upgrade head` num banco novo (`revisao`, já removido) | Os três funcionaram. Depois do `downgrade base` só restou a tabela `alembic_version`, sem tabelas, tipos ou funções soltas |
 | `\d votos`, `\d eleicoes`, `\d registros_votacao` no psql | FK composta `fk_votos_candidatura_id_candidaturas (candidatura_id, eleicao_id, cargo)`, índice parcial `uq_eleicoes_uma_aberta`, `uq_eleicoes_data_turno`, `CHECK`s de janela e de status coerente, seção `Triggers` presente nas duas tabelas de votação |
 | `seed_demo` do zero | Rodou sem erro e imprimiu a tabela de logins; a segunda execução não altera nada ("já existem") |
@@ -154,20 +154,20 @@ Fronteiras entre módulos: nenhum módulo importa modelo ou repositório de outr
 
 ## 7. Tabela de pendências
 
-| ID | Gravidade | Pendência | Correção proposta |
-| --- | --- | --- | --- |
-| P-01 | Deveria corrigir | README, linha "Integrantes: Marcos Lacaille e demais membros do grupo (completar antes da entrega)" (D-120). O PLANO não traz os nomes. | **Preciso dos nomes do grupo.** Substituir a linha pelos nomes completos. Commit: `docs(readme): completa a lista de integrantes` |
-| P-02 | Cosmético | A numeração das seções do README começa em "2. Links" (não existe a "1"). | Renumerar para 1 a 11 (ou chamar o parágrafo de abertura de "1. Visão geral"). Commit: `docs(readme): corrige a numeração das seções` |
-| P-03 | Deveria corrigir | O checklist pede "GitHub Pages no ar", mas o repositório é privado (D-114). O README já explica e aponta para `docs/index.html` e `docs/openapi.json`. | Decisão do grupo: (a) tornar o repositório público e ativar Pages, ou (b) manter como está e a entrega usar o link do repositório mais `docs/openapi.json`. Sem alteração de código |
-| P-04 | Cosmético | RN-04 citada só no docstring do módulo `criar_chefe.py`, não no da função; o PLANO não lhe dá ID de teste. | Citar `RN-04` no docstring de `criar_chefe()`. Commit: `docs(identidade): cita a RN-04 na função criar_chefe` |
-| P-05 | Cosmético | 2 warnings no pytest: `StarletteDeprecationWarning` (httpx no `TestClient`, vem das bibliotecas) e `RuntimeWarning` de `runpy` em `test_executado_como_script_sai_com_o_codigo_da_funcao`. | O primeiro não é corrigível aqui (biblioteca). O segundo: não importar `app.scripts.criar_chefe` antes de executar via `runpy`/subprocesso no teste, ou aceitar o aviso. Posso só documentar |
-| P-06 | Cosmético | `seed_demo.py` aparece com 0% e `exportar_openapi.py` com 67% de cobertura, embora sejam testados (subprocesso/TA-03). Um professor que olhe o relatório pode estranhar. | Documentar no README que os scripts rodam em subprocesso, ou excluí-los do medidor (`[tool.coverage] omit`). Prefiro só documentar |
-| P-07 | Cosmético | No Swagger, 8 esquemas sem exemplo (`CorpoDoErro`, páginas de eleitor e candidato, `LinkResposta`...) e dois `LinkResposta` com nomes técnicos (`app__eleicoes__esquemas__LinkResposta`). | Dar `json_schema_extra` de exemplo a `CorpoDoErro` e às páginas; unificar o `LinkResposta`. Exige regenerar o `openapi.json`. Opcional |
-| P-08 | Depende do grupo | Histórico com um único autor e PRs sem revisão por outro membro. | Nada a corrigir no código. O grupo deve decidir como justificar (ou fazer commits e revisões dos demais antes da entrega) |
-| P-09 | Cosmético | Ruff com regras extras (ERA001) acusa 4 comentários de separação (`# (sigla, nome, número)`, `# ---- partidos (TI-27)`) como "código comentado". Não são código. | Nenhuma ação (regra não faz parte da configuração do projeto) |
+| ID | Gravidade | Pendência | Correção proposta | Situação |
+| --- | --- | --- | --- | --- |
+| P-01 | Deveria corrigir | README, linha "Integrantes: Marcos Lacaille e demais membros do grupo (completar antes da entrega)" (D-120). O PLANO não traz os nomes. | **Preciso dos nomes do grupo.** Substituir a linha pelos nomes completos. Commit: `docs(readme): completa a lista de integrantes` | **Aberta**: faltam os nomes do grupo |
+| P-02 | Cosmético | A numeração das seções do README começa em "2. Links" (não existe a "1"). | Renumerar para 1 a 11 (ou chamar o parágrafo de abertura de "1. Visão geral"). Commit: `docs(readme): corrige a numeração das seções` | Corrigida (b3c5cd4) |
+| P-03 | Deveria corrigir | O checklist pede "GitHub Pages no ar", mas o repositório é privado (D-114). O README já explica e aponta para `docs/index.html` e `docs/openapi.json`. | Decisão do grupo: (a) tornar o repositório público e ativar Pages, ou (b) manter como está e a entrega usar o link do repositório mais `docs/openapi.json`. Sem alteração de código | **Aberta**: decisão do grupo |
+| P-04 | Cosmético | RN-04 citada só no docstring do módulo `criar_chefe.py`, não no da função; o PLANO não lhe dá ID de teste. | Citar `RN-04` no docstring de `criar_chefe()`. Commit: `docs(identidade): cita a RN-04 na função criar_chefe` | Corrigida (2085258) |
+| P-05 | Cosmético | 2 warnings no pytest: `StarletteDeprecationWarning` (httpx no `TestClient`, vem das bibliotecas) e `RuntimeWarning` de `runpy` em `test_executado_como_script_sai_com_o_codigo_da_funcao`. | O primeiro não é corrigível aqui (biblioteca). O segundo: não importar `app.scripts.criar_chefe` antes de executar via `runpy`/subprocesso no teste, ou aceitar o aviso. Posso só documentar | Mantida: o aviso vem do próprio teste que cobre o `__main__`; documentada na D-125 |
+| P-06 | Cosmético | `seed_demo.py` aparece com 0% e `exportar_openapi.py` com 67% de cobertura, embora sejam testados (subprocesso/TA-03). Um professor que olhe o relatório pode estranhar. | Documentar no README que os scripts rodam em subprocesso, ou excluí-los do medidor (`[tool.coverage] omit`). Prefiro só documentar | Corrigida de outro modo (d66a85b): o `seed_demo` não tinha teste; ganhou um e passou a 92% (total 99%) |
+| P-07 | Cosmético | No Swagger, 8 esquemas sem exemplo (`CorpoDoErro`, páginas de eleitor e candidato, `LinkResposta`...) e dois `LinkResposta` com nomes técnicos (`app__eleicoes__esquemas__LinkResposta`). | Dar `json_schema_extra` de exemplo a `CorpoDoErro` e às páginas; unificar o `LinkResposta`. Exige regenerar o `openapi.json`. Opcional | Corrigida em parte (0cbe7b4): `CorpoDoErro` ganhou exemplo e o `LinkResposta` da votação virou `LinkDaVotacao`; as páginas de listagem ficam sem exemplo próprio (os itens têm) |
+| P-08 | Depende do grupo | Histórico com um único autor e PRs sem revisão por outro membro. | Nada a corrigir no código. O grupo deve decidir como justificar (ou fazer commits e revisões dos demais antes da entrega) | **Aberta**: depende do grupo |
+| P-09 | Cosmético | Ruff com regras extras (ERA001) acusa 4 comentários de separação (`# (sigla, nome, número)`, `# ---- partidos (TI-27)`) como "código comentado". Não são código. | Nenhuma ação (regra não faz parte da configuração do projeto) | Sem ação |
 
 **Gravidade "bloqueia a entrega": nenhuma.**
 
 ## 8. Decisões a registrar em `docs/DECISOES.md` (a partir de D-124)
 
-Serão acrescentadas no commit das correções: o desvio P-03 (Pages), a criação deste relatório e o que for aprovado acima.
+D-124 a D-127, registradas no commit final.
