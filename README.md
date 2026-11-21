@@ -33,6 +33,12 @@ uvicorn app.main:app --reload
 
 A API fica em http://localhost:8000, o Swagger em http://localhost:8000/docs e a verificação de saúde em http://localhost:8000/health.
 
+### Documentação da API
+
+- Local (com a API no ar): http://localhost:8000/docs (Swagger UI) e http://localhost:8000/redoc.
+- Público (GitHub Pages, somente leitura): _preencher com o link depois de ativar o Pages_ (`https://<usuario>.github.io/<repositorio>/`).
+- A especificação publicada fica em `docs/openapi.json`. Depois de mudar rotas ou esquemas, regenere com `python -m app.scripts.exportar_openapi`; o teste TA-03 falha se ela ficar desatualizada.
+
 ### Testes e qualidade
 
 ```bash
