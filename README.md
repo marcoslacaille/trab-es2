@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/marcoslacaille/trab-es2/actions/workflows/ci.yml/badge.svg)](https://github.com/marcoslacaille/trab-es2/actions/workflows/ci.yml)
 
+## 1. Visão geral
+
 Backend do **Sistema de Simulação de Eleição Eletrônica**, trabalho da disciplina de Engenharia de Software II (Prof. Marcelo Soares Loutfi, UNIRIO). É uma API REST em Python + FastAPI + PostgreSQL, organizada como **monólito modular**, que simula uma eleição de uma seção com três perfis: **Chefe da Seção** (cadastra eleitores, candidatos, partidos e eleições; abre e encerra a votação), **Eleitor** (consulta a cédula, registra e confirma o voto, acompanha a votação) e **Candidato** (acompanha a votação do cargo que disputa). O voto é secreto por construção: o banco nunca liga quem votou ao que foi votado.
 
 Integrantes: Marcos Lacaille e demais membros do grupo (completar antes da entrega).
@@ -160,7 +162,7 @@ No Windows, use `.venv\Scripts\python.exe -m <comando>` no lugar de `<comando>` 
 | Integração | `tests/integracao/` | A API de ponta a ponta contra o PostgreSQL de teste: rotas, permissões, restrições e trigger do banco, concorrência, sigilo e o roteiro completo da demonstração (TI-74) | Banco de teste |
 | Arquitetura | `tests/arquitetura/` | Fronteiras entre módulos (TA-01), todas as rotas protegidas e documentadas, `docs/openapi.json` atualizado (TA-03) | Nada |
 
-São 507 testes. O CI do GitHub Actions roda lint, formatação e testes a cada push e Pull Request.
+São 508 testes. O CI do GitHub Actions roda lint, formatação e testes a cada push e Pull Request.
 
 ## 5. Arquitetura
 
