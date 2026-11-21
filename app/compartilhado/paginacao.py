@@ -6,6 +6,13 @@ from typing import Annotated
 from fastapi import Query
 from pydantic import BaseModel, Field
 
+from app.compartilhado.validadores import MAIOR_ID
+
+TAMANHO_MAXIMO = 100
+# Maior página cujo deslocamento ((pagina - 1) * tamanho) cabe no BIGINT do OFFSET do banco,
+# mesmo com o maior tamanho. Uma página maior nem chega ao banco (que daria 500).
+MAIOR_PAGINA = MAIOR_ID // TAMANHO_MAXIMO
+
 
 @dataclass(frozen=True)
 class Paginacao:
@@ -21,10 +28,17 @@ class Paginacao:
 
 
 def obter_paginacao(
-    pagina: Annotated[int, Query(ge=1, description="Número da página (começa em 1).")] = 1,
-    tamanho: Annotated[int, Query(ge=1, le=100, description="Itens por página (de 1 a 100).")] = 20,
+    pagina: Annotated[
+        int, Query(ge=1, le=MAIOR_PAGINA, description="Número da página (começa em 1).")
+    ] = 1,
+    tamanho: Annotated[
+        int, Query(ge=1, le=TAMANHO_MAXIMO, description="Itens por página (de 1 a 100).")
+    ] = 20,
 ) -> Paginacao:
-    """Dependência FastAPI com `pagina` (≥ 1, padrão 1) e `tamanho` (1 a 100, padrão 20)."""
+    """Dependência FastAPI com `pagina` (1 a `MAIOR_PAGINA`, padrão 1) e `tamanho` (1 a 100).
+
+    O teto de `pagina` (D-137) evita que o deslocamento passe do BIGINT do banco (seria 500).
+    """
     return Paginacao(pagina=pagina, tamanho=tamanho)
 
 

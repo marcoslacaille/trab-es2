@@ -1177,6 +1177,7 @@
             "required": false,
             "schema": {
               "type": "integer",
+              "maximum": 92233720368547758,
               "minimum": 1,
               "description": "Número da página (começa em 1).",
               "default": 1,
@@ -1669,6 +1670,7 @@
             "required": false,
             "schema": {
               "type": "integer",
+              "maximum": 92233720368547758,
               "minimum": 1,
               "description": "Número da página (começa em 1).",
               "default": 1,
