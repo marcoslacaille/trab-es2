@@ -11,7 +11,7 @@ Stack: Python 3.12, FastAPI, SQLAlchemy 2 (síncrono), Alembic, PostgreSQL 16 (D
 
 1. Leia as seções do `docs/PLANO.md` que a tarefa indicar, **sempre** junto com as seções 0, 3 e 5. Leia também o código que já existe nos módulos que a tarefa toca.
 2. Se algo estiver ambíguo, contraditório ou faltando no PLANO, **pare e pergunte** antes de decidir.
-3. Antes de escrever código, mostre a lista de arquivos que vai criar ou alterar e **espere o meu OK**.
+3. Antes de escrever código, mostre a lista de arquivos que vai criar ou alterar. **Não precisa esperar OK** (autonomia dada pelo usuário em 21/11/2026, ver D-045): mostre a lista e siga. Só pare e pergunte nos casos da regra 2 (ambiguidade, contradição ou lacuna no PLANO) e da regra 5 (teste que parece errado).
 4. Faça apenas o que a tarefa pede. Nada da próxima tarefa, nada dos "extras opcionais".
 5. Nunca enfraqueça uma regra de negócio nem um teste para fazê-lo passar. Se um teste parecer errado, explique e pergunte.
 6. Código, nomes, docstrings, mensagens de erro e commits em **português** (glossário da seção 2). Exceções: nomes de bibliotecas e palavras reservadas.
@@ -25,17 +25,17 @@ Stack: Python 3.12, FastAPI, SQLAlchemy 2 (síncrono), Alembic, PostgreSQL 16 (D
 ## Fluxo de cada tarefa
 
 1. Confirme que está na `main` atualizada e sem alterações pendentes (`git status`). Crie a branch indicada na tarefa: `git switch -c <branch>`.
-2. Leia o que a tarefa manda ler. Mostre a lista de arquivos e espere o OK.
+2. Leia o que a tarefa manda ler. Mostre a lista de arquivos e siga, sem esperar OK.
 3. Implemente em passos pequenos, rodando os testes a cada passo.
 4. Verificação final (todas devem passar):
    - `.venv\Scripts\python.exe -m ruff check .`
    - `.venv\Scripts\python.exe -m ruff format --check .`
    - `.venv\Scripts\python.exe -m pytest`
-5. Faça os commits indicados na tarefa (Conventional Commits em português, um assunto por commit). Não faça merge na `main` e não faça push: isso é com o grupo.
+5. Faça os commits indicados na tarefa (Conventional Commits em português, um assunto por commit). Depois faça push da branch, abra o PR (`gh pr create`), espere o CI ficar verde (`gh pr checks --watch`) e faça o merge na `main` (`gh pr merge --merge`). Se o CI falhar, corrija na mesma branch e repita; nunca faça merge com CI vermelho. Crie e envie a tag só quando a tarefa pedir. Nunca use `--force`, nunca faça push direto na `main`.
 6. Marque a tarefa em `docs/prompts/PROGRESSO.md` (no último commit).
 7. Termine com um resumo curto: arquivos criados, RNs implementadas, IDs dos testes adicionados, como rodar, e qualquer pendência ou decisão que precise de revisão humana. Liste as decisões novas de `docs/DECISOES.md` (os IDs) **ordenadas por impacto** (Alto, Médio, Baixo).
 
-## Ambiente (Windows)
+## Ambiente (Windows; no Linux troque `.venv\Scripts\python.exe` por `.venv/bin/python`)
 
 - Use sempre o Python da venv: `.venv\Scripts\python.exe -m <comando>` (evita problemas de ativação no PowerShell).
 - Banco: `docker compose up -d` (precisa do Docker Desktop aberto). Banco da aplicação na porta 5432; banco de teste na 5433.
