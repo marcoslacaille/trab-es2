@@ -12,7 +12,7 @@ Marque `[x]` quando a tarefa estiver integrada na `main` (o agente marca no últ
 - [x] 06 — Candidaturas
 - [x] 07 — Votação: base (tabelas, trigger, domínio, cédula)
 - [x] 08 — Votação: API
-- [ ] 09 — Sigilo e concorrência
+- [x] 09 — Sigilo e concorrência
 - [ ] 10 — Apuração
 - [ ] 11 — Qualidade transversal
 - [ ] 12 — Swagger e GitHub Pages
