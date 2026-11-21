@@ -139,7 +139,8 @@ def abrir_eleicao(sessao: Session, eleicao_id: int, agora: datetime) -> EleicaoR
     """Abre a votação (AGENDADA → ABERTA), registra `aberta_em` e faz commit (RN-13, RN-15 a 17).
 
     Trava a eleição e confere, nesta ordem (`validar_abertura`): status, nenhuma outra aberta,
-    data, janela, ao menos uma candidatura e, no 2º turno, 2 por cargo. Se duas aberturas
+    data, janela, ao menos uma candidatura e, no 2º turno, 2 por cargo. Grava em cada
+    candidatura o retrato do candidato (nome de urna e nascimento, D-140). Se duas aberturas
     simultâneas passarem pelas conferências, o índice parcial do banco recusa a segunda
     (409 `OUTRA_ELEICAO_ABERTA`, traduzido pelo tratador de `IntegrityError`).
     Eleição inexistente: 404 `ELEICAO_NAO_ENCONTRADA`.
@@ -151,6 +152,7 @@ def abrir_eleicao(sessao: Session, eleicao_id: int, agora: datetime) -> EleicaoR
         existe_outra_aberta=repositorio.existe_eleicao_aberta(sessao),
         candidaturas_por_cargo=repositorio.contar_candidaturas_por_cargo(sessao, eleicao.id),
     )
+    _gravar_retrato_dos_candidatos(sessao, eleicao.id)
     eleicao.status = StatusEleicao.ABERTA.value
     eleicao.aberta_em = agora
     sessao.commit()
@@ -242,31 +244,51 @@ def _conferir_numero_livre(
         )
 
 
+def _gravar_retrato_dos_candidatos(sessao: Session, eleicao_id: int) -> None:
+    """D-140: grava em cada candidatura o nome de urna e o nascimento do candidato de agora.
+
+    Chamada na abertura. Daí em diante a cédula e a apuração usam esse retrato: editar o
+    candidato depois não troca o desempate por idade (RN-77) nem os nomes da eleição.
+    """
+    candidaturas = repositorio.listar_candidaturas(sessao, eleicao_id)
+    candidatos = servico_candidatos.obter_resumos_de_candidatos(
+        sessao, [c.candidato_id for c in candidaturas]
+    )
+    for candidatura in candidaturas:
+        candidatura.nome_urna = candidatos[candidatura.candidato_id].nome_urna
+        candidatura.data_nascimento = candidatos[candidatura.candidato_id].data_nascimento
+
+
 def _detalhar(sessao: Session, candidaturas: list[Candidatura]) -> list[CandidaturaDetalhada]:
     """Junta, em memória, os dados de exibição do candidato e do partido de cada candidatura.
 
-    Ordena pela ordem do enum `Cargo` e depois pelo número (seção 9.5).
+    Nome de urna e nascimento vêm do retrato gravado na abertura (D-140) ou, se a eleição
+    ainda está AGENDADA (retrato nulo), do cadastro atual do candidato. Ordena pela ordem do
+    enum `Cargo` e depois pelo número (seção 9.5).
     """
     candidatos = servico_candidatos.obter_resumos_de_candidatos(
         sessao, [c.candidato_id for c in candidaturas]
     )
     partidos = {partido.id: partido for partido in servico_candidatos.listar_partidos(sessao)}
     ordem_dos_cargos = list(Cargo)
-    detalhadas = [
-        CandidaturaDetalhada(
-            id=c.id,
-            eleicao_id=c.eleicao_id,
-            cargo=Cargo(c.cargo),
-            numero=c.numero,
-            candidato_id=c.candidato_id,
-            nome_urna=candidatos[c.candidato_id].nome_urna,
-            data_nascimento=candidatos[c.candidato_id].data_nascimento,
-            partido_id=c.partido_id,
-            partido_sigla=partidos[c.partido_id].sigla,
-            partido_numero=partidos[c.partido_id].numero,
+    detalhadas = []
+    for c in candidaturas:
+        candidato = candidatos[c.candidato_id]
+        tem_retrato = c.nome_urna is not None
+        detalhadas.append(
+            CandidaturaDetalhada(
+                id=c.id,
+                eleicao_id=c.eleicao_id,
+                cargo=Cargo(c.cargo),
+                numero=c.numero,
+                candidato_id=c.candidato_id,
+                nome_urna=c.nome_urna if tem_retrato else candidato.nome_urna,
+                data_nascimento=c.data_nascimento if tem_retrato else candidato.data_nascimento,
+                partido_id=c.partido_id,
+                partido_sigla=partidos[c.partido_id].sigla,
+                partido_numero=partidos[c.partido_id].numero,
+            )
         )
-        for c in candidaturas
-    ]
     return sorted(detalhadas, key=lambda d: (ordem_dos_cargos.index(d.cargo), d.numero))
 
 
