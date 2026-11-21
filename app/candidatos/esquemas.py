@@ -3,11 +3,21 @@
 from datetime import date, datetime
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints
+
+from app.compartilhado.validadores import sem_caractere_nulo
 
 # RN-08 (nome) e RN-31 (nome de urna): tamanhos conferidos sem contar espaços nas pontas.
-Nome = Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=120)]
-NomeDeUrna = Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=30)]
+Nome = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=3, max_length=120),
+    AfterValidator(sem_caractere_nulo),
+]
+NomeDeUrna = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=3, max_length=30),
+    AfterValidator(sem_caractere_nulo),
+]
 
 # RN-32: a sigla chega em qualquer caixa e é convertida para maiúsculas. O padrão aceita as duas
 # caixas porque o Pydantic confere o padrão antes de converter.
@@ -108,7 +118,7 @@ class NovoPartido(BaseModel):
     sigla: Sigla = Field(
         description="De 2 a 10 letras ou dígitos. Vira maiúscula.", examples=["PINO"]
     )
-    nome: str = Field(
+    nome: Annotated[str, AfterValidator(sem_caractere_nulo)] = Field(
         min_length=1,
         max_length=100,
         description="Nome do partido.",

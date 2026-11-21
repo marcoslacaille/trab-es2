@@ -12,6 +12,7 @@ from app.compartilhado.banco import obter_sessao
 from app.compartilhado.dominio import Cargo
 from app.compartilhado.openapi import respostas_de_erro
 from app.compartilhado.relogio import obter_agora
+from app.compartilhado.validadores import MAIOR_ID
 from app.identidade.dependencias import (
     Perfil,
     UsuarioAutenticado,
@@ -21,7 +22,7 @@ from app.identidade.dependencias import (
 
 roteador = APIRouter(prefix="/apuracao/eleicoes/{eleicao_id}", tags=["Apuração"])
 
-IdDaEleicao = Annotated[int, Path(gt=0, description="Identificador da eleição.")]
+IdDaEleicao = Annotated[int, Path(gt=0, le=MAIOR_ID, description="Identificador da eleição.")]
 CargoPedido = Annotated[
     Cargo | None, Query(description="Limita a apuração a um cargo. Sem ele, todos os disputados.")
 ]

@@ -6,6 +6,7 @@ import jwt
 
 from app.compartilhado.config import obter_configuracao
 from app.compartilhado.erros import NaoAutenticado
+from app.compartilhado.validadores import MAIOR_ID
 from app.identidade.dominio import Perfil
 
 ALGORITMO = "HS256"
@@ -47,6 +48,9 @@ def ler_token_acesso(token: str) -> int:
             audience=AUDIENCIA_ACESSO,
             options={"require": ["sub", "exp", "aud"]},
         )
-        return int(dados["sub"])
+        usuario_id = int(dados["sub"])
+        if not 0 < usuario_id <= MAIOR_ID:  # fora da faixa do BIGINT, o banco daria erro 500
+            raise ValueError("sub fora da faixa de IDs")
+        return usuario_id
     except (jwt.InvalidTokenError, ValueError) as erro:
         raise NaoAutenticado("Token inválido ou expirado.", codigo="TOKEN_INVALIDO") from erro
