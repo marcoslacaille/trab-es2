@@ -33,13 +33,22 @@ class NovoCandidato(BaseModel):
         },
     )
 
-    nome: Nome
-    nome_urna: NomeDeUrna = Field(description="Como o candidato aparece na urna (3 a 30).")
+    nome: Nome = Field(description="Nome completo (3 a 120).", examples=["Carlos Henrique Lima"])
+    nome_urna: NomeDeUrna = Field(
+        description="Como o candidato aparece na urna (3 a 30).", examples=["Carlos Lima"]
+    )
     # Só o tamanho é limitado aqui; o formato e os dígitos verificadores são conferidos pelo
     # serviço de identidade, que responde `CPF_INVALIDO` (RN-07).
-    cpf: str = Field(max_length=20, description="CPF com ou sem pontuação.")
-    data_nascimento: date = Field(description="Precisa estar no passado (RN-31).")
-    senha: str = Field(description="De 8 caracteres até 72 bytes. Nunca é devolvida (RN-05).")
+    cpf: str = Field(
+        max_length=20, description="CPF com ou sem pontuação.", examples=["398.259.791-94"]
+    )
+    data_nascimento: date = Field(
+        description="Precisa estar no passado (RN-31).", examples=["1968-03-05"]
+    )
+    senha: str = Field(
+        description="De 8 caracteres até 72 bytes. Nunca é devolvida (RN-05).",
+        examples=["Candidato@123"],
+    )
 
 
 class AlteracaoCandidato(BaseModel):
@@ -53,10 +62,12 @@ class AlteracaoCandidato(BaseModel):
         json_schema_extra={"example": {"nome_urna": "Carlos H. Lima", "senha": "NovaSenha@456"}},
     )
 
-    nome: Nome | None = None
-    nome_urna: NomeDeUrna | None = None
-    data_nascimento: date | None = None
-    senha: str | None = Field(default=None, description="Nova senha (RN-05).")
+    nome: Nome | None = Field(default=None, examples=["Carlos Henrique Lima"])
+    nome_urna: NomeDeUrna | None = Field(default=None, examples=["Carlos H. Lima"])
+    data_nascimento: date | None = Field(default=None, examples=["1968-03-05"])
+    senha: str | None = Field(
+        default=None, description="Nova senha (RN-05).", examples=["NovaSenha@456"]
+    )
 
 
 class CandidatoResposta(BaseModel):
@@ -76,11 +87,11 @@ class CandidatoResposta(BaseModel):
         },
     )
 
-    id: int
-    nome: str
-    nome_urna: str
-    cpf: str = Field(description="CPF só com dígitos.")
-    data_nascimento: date
+    id: int = Field(description="Identificador do candidato.", examples=[1])
+    nome: str = Field(description="Nome completo.", examples=["Carlos Henrique Lima"])
+    nome_urna: str = Field(description="Nome que aparece na urna.", examples=["Carlos Lima"])
+    cpf: str = Field(description="CPF só com dígitos.", examples=["39825979194"])
+    data_nascimento: date = Field(description="Data de nascimento.", examples=["1968-03-05"])
     criado_em: datetime = Field(description="Instante do cadastro.")
 
 
@@ -94,9 +105,16 @@ class NovoPartido(BaseModel):
         },
     )
 
-    sigla: Sigla = Field(description="De 2 a 10 letras ou dígitos. Vira maiúscula.")
-    nome: str = Field(min_length=1, max_length=100)
-    numero: int = Field(ge=10, le=99, description="Número de 2 dígitos, de 10 a 99.")
+    sigla: Sigla = Field(
+        description="De 2 a 10 letras ou dígitos. Vira maiúscula.", examples=["PINO"]
+    )
+    nome: str = Field(
+        min_length=1,
+        max_length=100,
+        description="Nome do partido.",
+        examples=["Partido da Inovação"],
+    )
+    numero: int = Field(ge=10, le=99, description="Número de 2 dígitos, de 10 a 99.", examples=[10])
 
 
 class PartidoResposta(BaseModel):
@@ -109,7 +127,7 @@ class PartidoResposta(BaseModel):
         },
     )
 
-    id: int
-    sigla: str
-    nome: str
-    numero: int
+    id: int = Field(description="Identificador do partido.", examples=[1])
+    sigla: str = Field(description="Sigla em maiúsculas.", examples=["PINO"])
+    nome: str = Field(description="Nome do partido.", examples=["Partido da Inovação"])
+    numero: int = Field(description="Número de 2 dígitos.", examples=[10])

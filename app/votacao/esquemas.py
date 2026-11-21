@@ -28,9 +28,9 @@ class LinkResposta(BaseModel):
 class CandidatoNaCedula(BaseModel):
     """Candidato como o eleitor o vê na cédula."""
 
-    numero: str
-    nome_urna: str
-    partido_sigla: str
+    numero: str = Field(description="Número do candidato no cargo.", examples=["10"])
+    nome_urna: str = Field(description="Nome de urna.", examples=["Carlos Lima"])
+    partido_sigla: str = Field(description="Sigla do partido.", examples=["PINO"])
 
     @classmethod
     def de_candidato(cls, candidato: CandidatoDaCedula) -> "CandidatoNaCedula":
@@ -44,10 +44,10 @@ class CandidatoNaCedula(BaseModel):
 class CargoNaCedula(BaseModel):
     """Um cargo disputado, com os dígitos do número e os candidatos."""
 
-    cargo: Cargo
+    cargo: Cargo = Field(description="Cargo da cédula.", examples=["PRESIDENTE"])
     digitos: int = Field(description="Quantidade de dígitos do número neste cargo (RN-42).")
     ja_votou: bool = Field(description="O eleitor já votou neste cargo? (RN-61).")
-    candidatos: list[CandidatoNaCedula]
+    candidatos: list[CandidatoNaCedula] = Field(description="Candidatos do cargo.")
 
 
 class CedulaResposta(BaseModel):
@@ -72,8 +72,8 @@ class CedulaResposta(BaseModel):
         }
     )
 
-    eleicao_id: int
-    cargos: list[CargoNaCedula]
+    eleicao_id: int = Field(description="Eleição da cédula.", examples=[1])
+    cargos: list[CargoNaCedula] = Field(description="Um bloco por cargo.")
 
     @classmethod
     def de_cedula(cls, cedula: CedulaDoEleitor) -> "CedulaResposta":
@@ -103,8 +103,10 @@ class PedidoRegistroVoto(BaseModel):
         json_schema_extra={"example": {"cargo": "PRESIDENTE", "modo": "NUMERO", "numero": "10"}},
     )
 
-    cargo: Cargo
-    modo: ModoEscolha = Field(description="NUMERO (digita o número) ou BRANCO.")
+    cargo: Cargo = Field(description="Cargo em que vota.", examples=["PRESIDENTE"])
+    modo: ModoEscolha = Field(
+        description="NUMERO (digita o número) ou BRANCO.", examples=["NUMERO"]
+    )
     numero: str | None = Field(
         default=None,
         pattern=r"^[0-9]{1,5}$",
@@ -143,13 +145,13 @@ class PreviaVotoResposta(BaseModel):
         }
     )
 
-    cargo: Cargo
-    tipo_voto: TipoVoto
+    cargo: Cargo = Field(description="Cargo do voto.", examples=["PRESIDENTE"])
+    tipo_voto: TipoVoto = Field(description="NOMINAL, BRANCO ou NULO.", examples=["NOMINAL"])
     candidato: CandidatoNaCedula | None = Field(description="Nulo nos votos BRANCO e NULO.")
-    mensagem: str
+    mensagem: str = Field(description="Texto para o eleitor conferir.")
     token_cedula: str = Field(description="Cédula assinada, válida por 5 minutos (RN-57).")
-    expira_em: datetime
-    links: list[LinkResposta]
+    expira_em: datetime = Field(description="Instante em que o token_cedula expira.")
+    links: list[LinkResposta] = Field(description="Próximas ações possíveis.")
 
     @classmethod
     def de_previa(cls, previa: PreviaVoto) -> "PreviaVotoResposta":
@@ -179,7 +181,12 @@ class PedidoConfirmacaoVoto(BaseModel):
         extra="forbid", json_schema_extra={"example": {"token_cedula": "eyJhbGciOiJIUzI1NiIs..."}}
     )
 
-    token_cedula: str = Field(min_length=1, max_length=2000)
+    token_cedula: str = Field(
+        min_length=1,
+        max_length=2000,
+        description="Token recebido no registro do voto.",
+        examples=["eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."],
+    )
 
 
 class ComprovanteVotoResposta(BaseModel):
@@ -203,10 +210,10 @@ class ComprovanteVotoResposta(BaseModel):
         }
     )
 
-    eleicao_id: int
-    cargo: Cargo
-    mensagem: str
-    links: list[LinkResposta]
+    eleicao_id: int = Field(description="Eleição do voto.", examples=[1])
+    cargo: Cargo = Field(description="Cargo em que o voto foi confirmado.", examples=["PRESIDENTE"])
+    mensagem: str = Field(description="Confirmação para o eleitor.")
+    links: list[LinkResposta] = Field(description="Próximas ações possíveis.")
 
     @classmethod
     def de_comprovante(cls, comprovante: ComprovanteVoto) -> "ComprovanteVotoResposta":
@@ -225,8 +232,8 @@ class ComprovanteVotoResposta(BaseModel):
 class CargoNaParticipacao(BaseModel):
     """Se o eleitor já votou neste cargo. Nunca diz em quem."""
 
-    cargo: Cargo
-    ja_votou: bool
+    cargo: Cargo = Field(description="Cargo.", examples=["PRESIDENTE"])
+    ja_votou: bool = Field(description="O eleitor já votou neste cargo? (RN-61).")
 
 
 class ParticipacaoResposta(BaseModel):
@@ -244,8 +251,8 @@ class ParticipacaoResposta(BaseModel):
         }
     )
 
-    eleicao_id: int
-    cargos: list[CargoNaParticipacao]
+    eleicao_id: int = Field(description="Eleição consultada.", examples=[1])
+    cargos: list[CargoNaParticipacao] = Field(description="Participação por cargo.")
 
     @classmethod
     def de_participacao(cls, participacao: Participacao) -> "ParticipacaoResposta":
