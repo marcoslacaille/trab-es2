@@ -244,3 +244,77 @@ def _novo_candidato_logado(cliente, cabecalho_chefe) -> dict[str, str]:
     resposta = novo_candidato(cliente, cabecalho_chefe)
     assert resposta.status_code == 201, resposta.text
     return login(cliente, resposta.json()["cpf"], SENHA_CANDIDATO)
+
+
+def _candidato_da_candidatura(cliente, cabecalho_chefe, eleicao_id: int, numero: str) -> int:
+    resposta = cliente.get(f"/api/v1/eleicoes/{eleicao_id}/candidaturas", headers=cabecalho_chefe)
+    assert resposta.status_code == 200, resposta.text
+    return next(c["candidato"]["id"] for c in resposta.json() if c["numero"] == numero)
+
+
+def test_desempate_do_resultado_nao_muda_se_o_nascimento_for_editado_depois(
+    cliente, cabecalho_chefe
+):
+    """RN-77 / D-140: o desempate por idade usa a data de nascimento gravada na abertura.
+
+    Sem o retrato, deixar o candidato 20 "mais velho" depois do fim trocava o mais votado.
+    """
+    eleicao, _ = _montar_eleicao(
+        cliente,
+        cabecalho_chefe,
+        [("PRESIDENTE", "10", "1950-01-01"), ("PRESIDENTE", "20", "1980-01-01")],
+    )
+    eleitor_1 = _novo_eleitor_com_login(cliente, cabecalho_chefe)
+    eleitor_2 = _novo_eleitor_com_login(cliente, cabecalho_chefe)
+    assert votar(cliente, eleitor_1, eleicao, "PRESIDENTE", "10").status_code == 201
+    assert votar(cliente, eleitor_2, eleicao, "PRESIDENTE", "20").status_code == 201
+    _encerrar(cliente, cabecalho_chefe, eleicao)
+    candidato_20 = _candidato_da_candidatura(cliente, cabecalho_chefe, eleicao, "20")
+
+    edicao = cliente.patch(
+        f"/api/v1/candidatos/{candidato_20}",
+        json={"data_nascimento": "1940-01-01"},
+        headers=cabecalho_chefe,
+    )
+
+    assert edicao.status_code == 200, edicao.text
+    presidente = _cargo(
+        cliente.get(f"{BASE}/{eleicao}/resultado", headers=cabecalho_chefe).json(), "PRESIDENTE"
+    )
+    assert presidente["criterio"] == "DESEMPATE_POR_IDADE"
+    assert presidente["mais_votado"]["numero"] == "10"
+
+
+def test_nome_de_urna_editado_depois_da_abertura_so_vale_para_eleicao_agendada(
+    cliente, cabecalho_chefe
+):
+    """RN-75 / D-140: cédula, parcial e resultado mostram o nome de urna da abertura.
+
+    A edição continua valendo para o candidato e para as eleições ainda AGENDADAS.
+    """
+    eleicao, _ = _montar_eleicao(cliente, cabecalho_chefe, [("PRESIDENTE", "10", "1950-01-01")])
+    candidato = _candidato_da_candidatura(cliente, cabecalho_chefe, eleicao, "10")
+    nome_da_abertura = cliente.get(f"/api/v1/candidatos/{candidato}", headers=cabecalho_chefe)
+    nome_da_abertura = nome_da_abertura.json()["nome_urna"]
+    agendada = nova_eleicao(cliente, cabecalho_chefe, data="2026-11-26").json()["id"]
+    nova = nova_candidatura(cliente, cabecalho_chefe, agendada, candidato_id=candidato)
+    assert nova.status_code == 201, nova.text
+    eleitor = _novo_eleitor_com_login(cliente, cabecalho_chefe)
+
+    edicao = cliente.patch(
+        f"/api/v1/candidatos/{candidato}", json={"nome_urna": "Nome Novo"}, headers=cabecalho_chefe
+    )
+
+    assert edicao.status_code == 200, edicao.text
+    cedula = cliente.get(f"/api/v1/votacao/eleicoes/{eleicao}/cedula", headers=eleitor).json()
+    assert cedula["cargos"][0]["candidatos"][0]["nome_urna"] == nome_da_abertura
+    parcial = cliente.get(f"{BASE}/{eleicao}/parcial", headers=cabecalho_chefe).json()
+    assert _cargo(parcial, "PRESIDENTE")["candidatos"][0]["nome_urna"] == nome_da_abertura
+    da_agendada = cliente.get(
+        f"/api/v1/eleicoes/{agendada}/candidaturas", headers=cabecalho_chefe
+    ).json()
+    assert da_agendada[0]["candidato"]["nome_urna"] == "Nome Novo"
+    _encerrar(cliente, cabecalho_chefe, eleicao)
+    final = cliente.get(f"{BASE}/{eleicao}/resultado", headers=cabecalho_chefe).json()
+    assert _cargo(final, "PRESIDENTE")["mais_votado"] is None
+    assert _cargo(final, "PRESIDENTE")["candidatos"][0]["nome_urna"] == nome_da_abertura
