@@ -41,12 +41,21 @@ class NovaEleicao(BaseModel):
         },
     )
 
-    descricao: Descricao = Field(description="Nome do pleito (1 a 120 caracteres).")
-    data: date = Field(description="Dia da eleição; não pode ser anterior a hoje.")
-    turno: int = Field(ge=1, le=2, description="1 ou 2. Cada turno é uma eleição separada.")
-    horario_abertura: Horario = Field(description="Início da janela de votação.")
+    descricao: Descricao = Field(
+        description="Nome do pleito (1 a 120 caracteres).",
+        examples=["Eleições Gerais 2026 — 1º turno"],
+    )
+    data: date = Field(
+        description="Dia da eleição; não pode ser anterior a hoje.", examples=["2026-11-25"]
+    )
+    turno: int = Field(
+        ge=1, le=2, description="1 ou 2. Cada turno é uma eleição separada.", examples=[1]
+    )
+    horario_abertura: Horario = Field(
+        description="Início da janela de votação.", examples=["08:00"]
+    )
     horario_encerramento: Horario = Field(
-        description="Fim da janela; depois do horário de abertura."
+        description="Fim da janela; depois do horário de abertura.", examples=["17:00"]
     )
 
 
@@ -58,11 +67,11 @@ class AlteracaoEleicao(BaseModel):
         json_schema_extra={"example": {"horario_encerramento": "18:00"}},
     )
 
-    descricao: Descricao | None = None
-    data: date | None = None
-    turno: int | None = Field(default=None, ge=1, le=2)
-    horario_abertura: Horario | None = None
-    horario_encerramento: Horario | None = None
+    descricao: Descricao | None = Field(default=None, examples=["Eleições Gerais 2026 — 1º turno"])
+    data: date | None = Field(default=None, examples=["2026-11-25"])
+    turno: int | None = Field(default=None, ge=1, le=2, examples=[1])
+    horario_abertura: Horario | None = Field(default=None, examples=["08:00"])
+    horario_encerramento: Horario | None = Field(default=None, examples=["17:00"])
 
 
 class LinkResposta(BaseModel):
@@ -107,13 +116,21 @@ class EleicaoResposta(BaseModel):
         },
     )
 
-    id: int
-    descricao: str
-    data: date
-    turno: int
-    horario_abertura: time
-    horario_encerramento: time
-    status: StatusEleicao
+    id: int = Field(description="Identificador da eleição.", examples=[1])
+    descricao: str = Field(
+        description="Nome do pleito.", examples=["Eleições Gerais 2026 — 1º turno"]
+    )
+    data: date = Field(description="Dia da eleição.", examples=["2026-11-25"])
+    turno: int = Field(description="1 ou 2.", examples=[1])
+    horario_abertura: time = Field(
+        description="Início da janela de votação.", examples=["08:00:00"]
+    )
+    horario_encerramento: time = Field(
+        description="Fim da janela de votação.", examples=["17:00:00"]
+    )
+    status: StatusEleicao = Field(
+        description="AGENDADA, ABERTA ou ENCERRADA.", examples=["AGENDADA"]
+    )
     aberta_em: datetime | None = Field(description="Instante da abertura; nulo até abrir.")
     encerrada_em: datetime | None = Field(
         description="Instante do encerramento; nulo até encerrar."
@@ -144,7 +161,9 @@ class EleicaoResposta(BaseModel):
 
 # ---------------------------------------------------------------- candidaturas
 
-Numero = Annotated[str, Field(max_length=20, description="Só dígitos, na quantidade do cargo.")]
+Numero = Annotated[
+    str, Field(max_length=20, description="Só dígitos, na quantidade do cargo.", examples=["10"])
+]
 
 
 class NovaCandidatura(BaseModel):
@@ -168,24 +187,24 @@ class AlteracaoCandidatura(BaseModel):
 
     model_config = ConfigDict(extra="forbid", json_schema_extra={"example": {"numero": "11"}})
 
-    cargo: Cargo | None = None
-    numero: Numero | None = None
-    partido_id: int | None = Field(default=None, gt=0)
+    cargo: Cargo | None = Field(default=None, examples=["PRESIDENTE"])
+    numero: Numero | None = Field(default=None, examples=["11"])
+    partido_id: int | None = Field(default=None, gt=0, examples=[1])
 
 
 class CandidatoDaCandidatura(BaseModel):
     """Candidato como aparece na candidatura."""
 
-    id: int
-    nome_urna: str
+    id: int = Field(description="Identificador do candidato.", examples=[1])
+    nome_urna: str = Field(description="Nome de urna.", examples=["Carlos Lima"])
 
 
 class PartidoDaCandidatura(BaseModel):
     """Partido como aparece na candidatura."""
 
-    id: int
-    sigla: str
-    numero: int
+    id: int = Field(description="Identificador do partido.", examples=[1])
+    sigla: str = Field(description="Sigla do partido.", examples=["PINO"])
+    numero: int = Field(description="Número do partido.", examples=[10])
 
 
 class CandidaturaResposta(BaseModel):
@@ -204,12 +223,12 @@ class CandidaturaResposta(BaseModel):
         }
     )
 
-    id: int
-    eleicao_id: int
-    cargo: Cargo
-    numero: str
-    candidato: CandidatoDaCandidatura
-    partido: PartidoDaCandidatura
+    id: int = Field(description="Identificador da candidatura.", examples=[1])
+    eleicao_id: int = Field(description="Eleição em que disputa.", examples=[1])
+    cargo: Cargo = Field(description="Cargo disputado.", examples=["PRESIDENTE"])
+    numero: str = Field(description="Número do candidato no cargo.", examples=["10"])
+    candidato: CandidatoDaCandidatura = Field(description="Dados de exibição do candidato.")
+    partido: PartidoDaCandidatura = Field(description="Dados de exibição do partido.")
 
     @classmethod
     def de_candidatura(cls, candidatura: CandidaturaDetalhada) -> "CandidaturaResposta":
