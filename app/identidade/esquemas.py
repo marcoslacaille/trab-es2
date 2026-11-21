@@ -16,9 +16,9 @@ class UsuarioResposta(BaseModel):
         json_schema_extra={"example": {"id": 1, "nome": "Chefe da Seção", "perfil": "CHEFE_SECAO"}},
     )
 
-    id: int
-    nome: str
-    perfil: Perfil
+    id: int = Field(description="Identificador do usuário.", examples=[1])
+    nome: str = Field(description="Nome do usuário.", examples=["Chefe da Seção"])
+    perfil: Perfil = Field(description="Perfil de acesso.", examples=["CHEFE_SECAO"])
 
 
 class UsuarioLogadoResposta(BaseModel):
@@ -36,10 +36,10 @@ class UsuarioLogadoResposta(BaseModel):
         },
     )
 
-    id: int
-    nome: str
-    cpf: str = Field(description="CPF só com dígitos.")
-    perfil: Perfil
+    id: int = Field(description="Identificador do usuário.", examples=[1])
+    nome: str = Field(description="Nome do usuário.", examples=["Chefe da Seção"])
+    cpf: str = Field(description="CPF só com dígitos.", examples=["29141777638"])
+    perfil: Perfil = Field(description="Perfil de acesso.", examples=["CHEFE_SECAO"])
 
 
 class LoginResposta(BaseModel):
@@ -57,6 +57,8 @@ class LoginResposta(BaseModel):
     )
 
     access_token: str = Field(description="Token JWT de acesso.")
-    token_type: Literal["bearer"] = "bearer"
+    token_type: Literal["bearer"] = Field(
+        default="bearer", description="Tipo do token; sempre `bearer`."
+    )
     expira_em: datetime = Field(description="Instante (UTC) em que o token deixa de valer.")
-    usuario: UsuarioResposta
+    usuario: UsuarioResposta = Field(description="Quem fez login.")
