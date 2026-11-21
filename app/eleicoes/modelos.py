@@ -100,3 +100,7 @@ class Candidatura(Base):
     cargo: Mapped[str] = mapped_column(String(20))
     numero: Mapped[str] = mapped_column(String(5))
     criado_em: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True))
+    # Retrato do candidato gravado na abertura (D-140): editar o candidato depois não muda a
+    # eleição ABERTA ou ENCERRADA. Nulos enquanto a eleição está AGENDADA.
+    nome_urna: Mapped[str | None] = mapped_column(String(30))
+    data_nascimento: Mapped[date | None] = mapped_column(Date)
