@@ -54,6 +54,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
           }
         }
       }
@@ -79,6 +89,16 @@
           },
           "401": {
             "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
             "content": {
               "application/json": {
                 "schema": {
@@ -168,6 +188,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
           }
         }
       },
@@ -230,6 +260,16 @@
           },
           "422": {
             "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
             "content": {
               "application/json": {
                 "schema": {
@@ -302,6 +342,16 @@
           },
           "422": {
             "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
             "content": {
               "application/json": {
                 "schema": {
@@ -409,6 +459,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
           }
         }
       }
@@ -501,6 +561,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
           }
         }
       }
@@ -586,6 +656,16 @@
           },
           "422": {
             "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
             "content": {
               "application/json": {
                 "schema": {
@@ -697,6 +777,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
           }
         }
       },
@@ -790,6 +880,16 @@
           },
           "422": {
             "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
             "content": {
               "application/json": {
                 "schema": {
@@ -912,6 +1012,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
           }
         }
       },
@@ -1008,6 +1118,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
           }
         }
       }
@@ -1047,6 +1167,16 @@
           },
           "403": {
             "description": "Perfil sem permissão para esta operação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1129,6 +1259,16 @@
           },
           "422": {
             "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1240,6 +1380,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
           }
         }
       }
@@ -1285,6 +1435,16 @@
           },
           "404": {
             "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1372,6 +1532,16 @@
           },
           "422": {
             "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1469,6 +1639,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
           }
         }
       },
@@ -1552,6 +1732,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
           }
         }
       }
@@ -1622,6 +1812,16 @@
           },
           "422": {
             "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1733,6 +1933,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
           }
         }
       }
@@ -1778,6 +1988,16 @@
           },
           "404": {
             "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1865,6 +2085,16 @@
           },
           "422": {
             "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1962,6 +2192,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
           }
         }
       },
@@ -2045,6 +2285,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
           }
         }
       }
@@ -2074,6 +2324,16 @@
           },
           "401": {
             "description": "Não autenticado ou token inválido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2149,6 +2409,16 @@
           },
           "422": {
             "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2236,6 +2506,16 @@
           },
           "409": {
             "description": "Conflito com o estado atual (regra de negócio)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2355,6 +2635,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
           }
         }
       }
@@ -2457,6 +2747,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
           }
         }
       }
@@ -2522,6 +2822,16 @@
           },
           "404": {
             "description": "Recurso não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2649,6 +2959,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
           }
         }
       }
@@ -2742,6 +3062,16 @@
           },
           "422": {
             "description": "Dados inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
             "content": {
               "application/json": {
                 "schema": {
