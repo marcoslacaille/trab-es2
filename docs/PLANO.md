@@ -1372,21 +1372,24 @@ Casos de uso em `votacao/servico.py`:
 - **`contar_votos(sessao, eleicao_id) -> list[ContagemVoto]`** (`cargo`, `tipo`, `candidatura_id`, `total`): `SELECT cargo, tipo, candidatura_id, COUNT(*) FROM votos WHERE eleicao_id = :id GROUP BY cargo, tipo, candidatura_id` (RN-74).
 - **`contar_comparecimento(sessao, eleicao_id) -> Comparecimento`**: `COUNT(DISTINCT eleitor_id)` e contagem por cargo em `registros_votacao`.
 
-`app/votacao/cedulas.py`. A expiração usa o relógio injetável, por isso fica num campo próprio (`expira_em`) e é conferida à mão, e não no `exp` padrão do JWT (que o PyJWT confere com o relógio real):
+`app/votacao/cedulas.py`. A cédula é cifrada e autenticada com Fernet (pacote `cryptography`), com chave derivada do `JWT_SEGREDO` por HKDF e contexto próprio (D-144): quem vê o token, sem a chave, não lê o eleitor nem a escolha, e ela é diferente da chave do token de acesso. A expiração usa o relógio injetável, por isso fica no próprio conteúdo (`expira_em`, com a mesma precisão devolvida ao eleitor) e é conferida à mão. A resposta do registro vem com `Cache-Control: no-store`.
 
 ```python
+import base64
+import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-import jwt
+from cryptography.fernet import Fernet, InvalidToken
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 from app.compartilhado.config import obter_configuracao
 from app.compartilhado.dominio import Cargo
 from app.compartilhado.erros import DadosInvalidos
 from app.votacao.dominio import Escolha, TipoVoto
 
-ALGORITMO = "HS256"
-AUDIENCIA_CEDULA = "eleicao-api:cedula"
+CONTEXTO_DA_CHAVE = b"eleicao-api:cedula"
 
 
 @dataclass(frozen=True)
@@ -1398,29 +1401,33 @@ class Cedula:
     candidatura_id: int | None
 
 
+def _cifrador() -> Fernet:
+    segredo = obter_configuracao().jwt_segredo.encode("utf-8")
+    chave = HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=CONTEXTO_DA_CHAVE).derive(segredo)
+    return Fernet(base64.urlsafe_b64encode(chave))
+
+
 def emitir_cedula(usuario_id: int, eleicao_id: int, cargo: Cargo, escolha: Escolha,
                   agora: datetime) -> tuple[str, datetime]:
-    """Assina a escolha e devolve ao eleitor. Nada vai para o banco (RN-56, RN-57, RN-60)."""
-    cfg = obter_configuracao()
-    expira_em = agora + timedelta(minutes=cfg.cedula_expiracao_minutos)
+    """Cifra a escolha e devolve ao eleitor. Nada vai para o banco (RN-56, RN-57, RN-60)."""
+    expira_em = agora + timedelta(minutes=obter_configuracao().cedula_expiracao_minutos)
     dados = {
-        "sub": str(usuario_id), "aud": AUDIENCIA_CEDULA, "eleicao_id": eleicao_id,
-        "cargo": cargo.value, "tipo": escolha.tipo.value,
-        "candidatura_id": escolha.candidatura_id, "expira_em": int(expira_em.timestamp()),
+        "usuario_id": usuario_id, "eleicao_id": eleicao_id, "cargo": cargo.value,
+        "tipo": escolha.tipo.value, "candidatura_id": escolha.candidatura_id,
+        "expira_em": expira_em.isoformat(),
     }
-    return jwt.encode(dados, cfg.jwt_segredo, algorithm=ALGORITMO), expira_em
+    return _cifrador().encrypt(json.dumps(dados).encode("utf-8")).decode("ascii"), expira_em
 
 
 def ler_cedula(token: str, agora: datetime) -> Cedula:
-    cfg = obter_configuracao()
     try:
-        dados = jwt.decode(token, cfg.jwt_segredo, algorithms=[ALGORITMO], audience=AUDIENCIA_CEDULA)
-        cedula = Cedula(int(dados["sub"]), int(dados["eleicao_id"]), Cargo(dados["cargo"]),
+        dados = json.loads(_cifrador().decrypt(token.encode("utf-8")))
+        cedula = Cedula(int(dados["usuario_id"]), int(dados["eleicao_id"]), Cargo(dados["cargo"]),
                         TipoVoto(dados["tipo"]), dados["candidatura_id"])
-        expira_em = int(dados["expira_em"])
-    except (jwt.InvalidTokenError, KeyError, ValueError, TypeError) as erro:
+        expira_em = datetime.fromisoformat(dados["expira_em"])
+    except (InvalidToken, KeyError, ValueError, TypeError) as erro:
         raise DadosInvalidos("Cédula inválida.", codigo="CEDULA_INVALIDA") from erro
-    if agora.timestamp() > expira_em:
+    if agora > expira_em:
         raise DadosInvalidos("Cédula expirada. Registre o voto novamente.", codigo="CEDULA_EXPIRADA")
     return cedula
 ```
@@ -1450,6 +1457,8 @@ def confirmar_voto(sessao: Session, usuario: UsuarioAutenticado, eleicao_id: int
         sessao.rollback()
         if nome_da_restricao(erro) == "pk_registros_votacao":
             raise ConflitoDeEstado("Você já votou para este cargo.", codigo="VOTO_JA_REGISTRADO") from erro
+        if nome_da_restricao(erro) == "fk_registros_votacao_eleitor_id_eleitores":  # D-145
+            raise NaoEncontrado("Eleitor não encontrado.", codigo="ELEITOR_NAO_ENCONTRADO") from erro
         raise
 
     # A resposta NÃO contém a escolha (RN-60)
@@ -2479,7 +2488,7 @@ Cada membro será arguido sozinho, então todos precisam saber explicar o sistem
 
 **1. Por que monólito modular e não microsserviços?** O enunciado não pede distribuição, e microsserviços trariam rede, vários bancos e deploy separado sem benefício aqui. O monólito modular tem menor complexidade operacional (aula 06), mas mantém fronteiras de domínio claras. Se um dia precisar, cada módulo já tem as fronteiras de um serviço.
 
-**2. Dê um exemplo de módulo profundo.** `votacao.confirmar_voto`: uma interface pequena (token da cédula) que esconde a validação da assinatura, a trava na eleição, a gravação em duas tabelas sem ligação, a transação e a tradução do erro de chave duplicada. Quem chama não precisa saber de nada disso.
+**2. Dê um exemplo de módulo profundo.** `votacao.confirmar_voto`: uma interface pequena (token da cédula) que esconde a decifração da cédula, a trava na eleição, a gravação em duas tabelas sem ligação, a transação e a tradução do erro de chave duplicada. Quem chama não precisa saber de nada disso.
 
 **3. Onde há ocultação de informação?** Só `identidade` sabe que a senha usa bcrypt e o token usa JWT. Só `votacao` conhece as tabelas de voto. Os serviços devolvem `dataclass`es, nunca o modelo do banco, então o formato das tabelas não vaza para outros módulos.
 
@@ -2487,7 +2496,7 @@ Cada membro será arguido sozinho, então todos precisam saber explicar o sistem
 
 **5. Mas as tabelas têm chave estrangeira entre módulos. Isso não é acoplamento de recurso comum?** No monólito há um banco só, e a FK serve para integridade. Cada tabela tem um único módulo dono que lê e escreve nela; os outros só guardam o id. Em microsserviços trocaríamos a FK por uma referência via API, no estilo HATEOAS (aula 07).
 
-**6. Como aparece a Lei de Conway?** A divisão do trabalho no grupo seguiu a divisão em módulos (seção 13), e o histórico do Git mostra isso.
+**6. Como aparece a Lei de Conway?** Os módulos foram desenhados para espelhar a divisão do trabalho do grupo (seção 13): cada integrante responde por um módulo. No histórico do Git, a implementação ficou concentrada em poucas pessoas; a divisão aparece na responsabilidade de cada um pelo seu módulo, nas revisões e na apresentação. Diga isso com franqueza se perguntarem.
 
 **7. Qual é o agregado do sistema?** A Eleição é a raiz, e as candidaturas são entidades internas. Toda mudança em candidatura passa pela eleição (`/eleicoes/{id}/candidaturas`), que trava a própria linha e aplica a regra "só com eleição AGENDADA" num lugar só.
 
@@ -2555,7 +2564,7 @@ Cada membro será arguido sozinho, então todos precisam saber explicar o sistem
 
 **35. Como a documentação foi gerada?** Use a frase pronta da seção 11.
 
-**36. Como organizaram o Git?** Branch por fase, Pull Request revisado por outro membro, Conventional Commits em português, tags por marco e CI rodando lint e testes a cada push.
+**36. Como organizaram o Git?** Branch por fase, Pull Request para integrar na `main` só com o CI verde, Conventional Commits em português, tags por marco e CI rodando lint e testes a cada push. A maior parte dos PRs foi integrada sem revisão de outro membro; a revisão cruzada passou a ser exigida na reta final. Diga isso com franqueza se perguntarem.
 
 **37. O que vocês fariam com mais tempo?** Os extras da seção 13 (limite de tentativas de login, parcial em tempo real, deploy público) e atacar as limitações conhecidas do sigilo.
 
@@ -2595,33 +2604,35 @@ Cada exigência do enunciado aponta para as rotas, regras e testes que a cumprem
 
 ### Checklist antes de entregar
 
+Situação em 23/11/2026: marcados os itens conferidos no repositório (testes, CI, migrações e documentos); os desmarcados dependem do grupo ou da entrega.
+
 Código e testes
 
-- [ ] As 33 rotas implementadas, com `summary`, descrição, exemplos e respostas de erro
-- [ ] As 58 regras implementadas, cada uma citada na docstring da função e em pelo menos um teste
-- [ ] `ruff check .` e `ruff format --check .` sem avisos
-- [ ] `pytest` verde; cobertura de 85% ou mais no total e 90% ou mais nos `dominio.py`
-- [ ] Testes de arquitetura verdes (nenhum import proibido, todas as rotas protegidas)
-- [ ] Nenhum segredo no repositório (`.env` fora do Git)
+- [x] As 33 rotas implementadas, com `summary`, descrição, exemplos e respostas de erro
+- [x] As 58 regras implementadas, cada uma citada na docstring da função e em pelo menos um teste
+- [x] `ruff check .` e `ruff format --check .` sem avisos
+- [x] `pytest` verde; cobertura de 85% ou mais no total e 90% ou mais nos `dominio.py`
+- [x] Testes de arquitetura verdes (nenhum import proibido, todas as rotas protegidas)
+- [x] Nenhum segredo no repositório (`.env` fora do Git)
 
 Banco
 
-- [ ] `alembic upgrade head` funciona num banco vazio, e `alembic downgrade base` desfaz tudo
-- [ ] Trigger, índice parcial e FK composta presentes (conferir no psql com `\d votos` e `\d eleicoes`)
-- [ ] `seed_demo` roda do zero sem erro
+- [x] `alembic upgrade head` funciona num banco vazio, e `alembic downgrade base` desfaz tudo
+- [x] Trigger, índice parcial e FK composta presentes (conferir no psql com `\d votos` e `\d eleicoes`)
+- [x] `seed_demo` roda do zero sem erro
 
 Documentação
 
-- [ ] `docs/openapi.json` atualizado (TA-03 verde) e GitHub Pages no ar
-- [ ] README com como rodar, como testar, arquitetura, modularização e modelagem
-- [ ] `docs/ARQUITETURA.md`, `docs/MODELAGEM.md` e `docs/DEMO.md` prontos
-- [ ] Coleção do Postman ou Insomnia salva em `docs/`
+- [ ] `docs/openapi.json` atualizado (TA-03 verde) e GitHub Pages no ar (o `openapi.json` está em dia; falta o Pages, que exige repositório público)
+- [x] README com como rodar, como testar, arquitetura, modularização e modelagem
+- [x] `docs/ARQUITETURA.md`, `docs/MODELAGEM.md` e `docs/DEMO.md` prontos
+- [x] Coleção do Postman ou Insomnia salva em `docs/`
 
 Git
 
 - [ ] Commits pequenos, no padrão, com autoria de todos os membros
 - [ ] Pull Requests revisados por outro membro
-- [ ] Tag `v1.0.0` e CI verde na `main`
+- [x] Tag `v1.0.0` e CI verde na `main`
 
 Apresentação
 
@@ -2633,4 +2644,4 @@ Entrega
 
 - [ ] Link do repositório
 - [ ] Link da documentação da API
-- [ ] README (ou PDF) com arquitetura, modularização e modelagem do banco
+- [x] README (ou PDF) com arquitetura, modularização e modelagem do banco

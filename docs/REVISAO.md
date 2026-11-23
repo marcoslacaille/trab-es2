@@ -1,5 +1,7 @@
 # Revisão final
 
+> Retrato da `main` na tag `v1.0.0` (21/11/2026). Os números abaixo (testes, cobertura, commits) são dessa data; as correções feitas depois estão em `docs/DECISOES.md`, de D-128 a D-152.
+
 Auditoria do projeto contra o enunciado e o checklist da seção 18 do PLANO, feita sobre a `main` no commit `13811ec` (tag `v1.0.0`). As correções estão na coluna **Situação** da seção 7. Os achados abaixo descrevem o estado antes das correções.
 
 ## 1. Resumo
