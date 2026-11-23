@@ -2488,7 +2488,7 @@ Cada membro será arguido sozinho, então todos precisam saber explicar o sistem
 
 **1. Por que monólito modular e não microsserviços?** O enunciado não pede distribuição, e microsserviços trariam rede, vários bancos e deploy separado sem benefício aqui. O monólito modular tem menor complexidade operacional (aula 06), mas mantém fronteiras de domínio claras. Se um dia precisar, cada módulo já tem as fronteiras de um serviço.
 
-**2. Dê um exemplo de módulo profundo.** `votacao.confirmar_voto`: uma interface pequena (token da cédula) que esconde a validação da assinatura, a trava na eleição, a gravação em duas tabelas sem ligação, a transação e a tradução do erro de chave duplicada. Quem chama não precisa saber de nada disso.
+**2. Dê um exemplo de módulo profundo.** `votacao.confirmar_voto`: uma interface pequena (token da cédula) que esconde a decifração da cédula, a trava na eleição, a gravação em duas tabelas sem ligação, a transação e a tradução do erro de chave duplicada. Quem chama não precisa saber de nada disso.
 
 **3. Onde há ocultação de informação?** Só `identidade` sabe que a senha usa bcrypt e o token usa JWT. Só `votacao` conhece as tabelas de voto. Os serviços devolvem `dataclass`es, nunca o modelo do banco, então o formato das tabelas não vaza para outros módulos.
 
@@ -2496,7 +2496,7 @@ Cada membro será arguido sozinho, então todos precisam saber explicar o sistem
 
 **5. Mas as tabelas têm chave estrangeira entre módulos. Isso não é acoplamento de recurso comum?** No monólito há um banco só, e a FK serve para integridade. Cada tabela tem um único módulo dono que lê e escreve nela; os outros só guardam o id. Em microsserviços trocaríamos a FK por uma referência via API, no estilo HATEOAS (aula 07).
 
-**6. Como aparece a Lei de Conway?** A divisão do trabalho no grupo seguiu a divisão em módulos (seção 13), e o histórico do Git mostra isso.
+**6. Como aparece a Lei de Conway?** Os módulos foram desenhados para espelhar a divisão do trabalho do grupo (seção 13): cada integrante responde por um módulo. No histórico do Git, a implementação ficou concentrada em poucas pessoas; a divisão aparece na responsabilidade de cada um pelo seu módulo, nas revisões e na apresentação. Diga isso com franqueza se perguntarem.
 
 **7. Qual é o agregado do sistema?** A Eleição é a raiz, e as candidaturas são entidades internas. Toda mudança em candidatura passa pela eleição (`/eleicoes/{id}/candidaturas`), que trava a própria linha e aplica a regra "só com eleição AGENDADA" num lugar só.
 
@@ -2564,7 +2564,7 @@ Cada membro será arguido sozinho, então todos precisam saber explicar o sistem
 
 **35. Como a documentação foi gerada?** Use a frase pronta da seção 11.
 
-**36. Como organizaram o Git?** Branch por fase, Pull Request revisado por outro membro, Conventional Commits em português, tags por marco e CI rodando lint e testes a cada push.
+**36. Como organizaram o Git?** Branch por fase, Pull Request para integrar na `main` só com o CI verde, Conventional Commits em português, tags por marco e CI rodando lint e testes a cada push. A maior parte dos PRs foi integrada sem revisão de outro membro; a revisão cruzada passou a ser exigida na reta final. Diga isso com franqueza se perguntarem.
 
 **37. O que vocês fariam com mais tempo?** Os extras da seção 13 (limite de tentativas de login, parcial em tempo real, deploy público) e atacar as limitações conhecidas do sigilo.
 
@@ -2604,33 +2604,35 @@ Cada exigência do enunciado aponta para as rotas, regras e testes que a cumprem
 
 ### Checklist antes de entregar
 
+Situação em 23/11/2026: marcados os itens conferidos no repositório (testes, CI, migrações e documentos); os desmarcados dependem do grupo ou da entrega.
+
 Código e testes
 
-- [ ] As 33 rotas implementadas, com `summary`, descrição, exemplos e respostas de erro
-- [ ] As 58 regras implementadas, cada uma citada na docstring da função e em pelo menos um teste
-- [ ] `ruff check .` e `ruff format --check .` sem avisos
-- [ ] `pytest` verde; cobertura de 85% ou mais no total e 90% ou mais nos `dominio.py`
-- [ ] Testes de arquitetura verdes (nenhum import proibido, todas as rotas protegidas)
-- [ ] Nenhum segredo no repositório (`.env` fora do Git)
+- [x] As 33 rotas implementadas, com `summary`, descrição, exemplos e respostas de erro
+- [x] As 58 regras implementadas, cada uma citada na docstring da função e em pelo menos um teste
+- [x] `ruff check .` e `ruff format --check .` sem avisos
+- [x] `pytest` verde; cobertura de 85% ou mais no total e 90% ou mais nos `dominio.py`
+- [x] Testes de arquitetura verdes (nenhum import proibido, todas as rotas protegidas)
+- [x] Nenhum segredo no repositório (`.env` fora do Git)
 
 Banco
 
-- [ ] `alembic upgrade head` funciona num banco vazio, e `alembic downgrade base` desfaz tudo
-- [ ] Trigger, índice parcial e FK composta presentes (conferir no psql com `\d votos` e `\d eleicoes`)
-- [ ] `seed_demo` roda do zero sem erro
+- [x] `alembic upgrade head` funciona num banco vazio, e `alembic downgrade base` desfaz tudo
+- [x] Trigger, índice parcial e FK composta presentes (conferir no psql com `\d votos` e `\d eleicoes`)
+- [x] `seed_demo` roda do zero sem erro
 
 Documentação
 
-- [ ] `docs/openapi.json` atualizado (TA-03 verde) e GitHub Pages no ar
-- [ ] README com como rodar, como testar, arquitetura, modularização e modelagem
-- [ ] `docs/ARQUITETURA.md`, `docs/MODELAGEM.md` e `docs/DEMO.md` prontos
-- [ ] Coleção do Postman ou Insomnia salva em `docs/`
+- [ ] `docs/openapi.json` atualizado (TA-03 verde) e GitHub Pages no ar (o `openapi.json` está em dia; falta o Pages, que exige repositório público)
+- [x] README com como rodar, como testar, arquitetura, modularização e modelagem
+- [x] `docs/ARQUITETURA.md`, `docs/MODELAGEM.md` e `docs/DEMO.md` prontos
+- [x] Coleção do Postman ou Insomnia salva em `docs/`
 
 Git
 
 - [ ] Commits pequenos, no padrão, com autoria de todos os membros
 - [ ] Pull Requests revisados por outro membro
-- [ ] Tag `v1.0.0` e CI verde na `main`
+- [x] Tag `v1.0.0` e CI verde na `main`
 
 Apresentação
 
@@ -2642,4 +2644,4 @@ Entrega
 
 - [ ] Link do repositório
 - [ ] Link da documentação da API
-- [ ] README (ou PDF) com arquitetura, modularização e modelagem do banco
+- [x] README (ou PDF) com arquitetura, modularização e modelagem do banco
