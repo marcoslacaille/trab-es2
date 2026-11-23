@@ -1,7 +1,8 @@
 """Casos de uso da apuração (somente leitura, sem tabelas próprias).
 
 Combina as contagens de `votacao`, as candidaturas de `eleicoes` e os eleitores aptos de
-`eleitores`. Nenhuma função faz commit: não há nada a gravar.
+`eleitores`. Nenhuma função faz commit: não há nada a gravar. Toda a apuração lê o banco num
+mesmo instante (transação `REPEATABLE READ`, D-146).
 """
 
 from datetime import datetime
@@ -19,6 +20,18 @@ from app.identidade.dominio import Perfil, UsuarioAutenticado
 from app.votacao import servico as votacao_servico
 
 PREFIXO_DA_API = "/api/v1"
+
+
+def _ler_num_mesmo_instante(sessao: Session) -> None:
+    """Abre uma transação `REPEATABLE READ`: todas as leituras da apuração veem o mesmo instante.
+
+    Sem isso, um voto confirmado entre a contagem dos votos e a dos votantes faria a mesma
+    resposta mostrar, por exemplo, 1 votante e 0 votos (D-146). O nível de isolamento só pode ser
+    escolhido no começo de uma transação, então a leitura feita antes (a do usuário logado) é
+    encerrada com `rollback`. Não há nada gravado para desfazer.
+    """
+    sessao.rollback()
+    sessao.connection(execution_options={"isolation_level": "REPEATABLE READ"})
 
 
 def _exigir_status(eleicao: EleicaoResumo, esperado: StatusEleicao) -> None:
@@ -119,6 +132,7 @@ def apuracao_parcial(
     `CARGO_NAO_PERMITIDO`). Eleitor e Chefe: o cargo pedido ou todos os disputados; cargo que
     não é disputado: 422 `CARGO_NAO_DISPUTADO`. Aqui `mais_votado` é "quem lidera até agora".
     """
+    _ler_num_mesmo_instante(sessao)
     eleicao = eleicoes_servico.obter_eleicao(sessao, eleicao_id)
     _exigir_status(eleicao, StatusEleicao.ABERTA)
     if usuario.perfil == Perfil.CANDIDATO:
@@ -141,6 +155,7 @@ def resultado_final(
     O `usuario` não muda nada (qualquer perfil vê todos os cargos); a assinatura é a mesma da
     parcial, como no PLANO. Cargo que não é disputado: 422 `CARGO_NAO_DISPUTADO`.
     """
+    _ler_num_mesmo_instante(sessao)
     eleicao = eleicoes_servico.obter_eleicao(sessao, eleicao_id)
     _exigir_status(eleicao, StatusEleicao.ENCERRADA)
     cargos = [cargo_pedido] if cargo_pedido is not None else None
