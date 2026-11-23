@@ -33,7 +33,7 @@ class Candidato(Base):
         BigInteger, ForeignKey("usuarios.id", ondelete="RESTRICT")
     )
     nome_urna: Mapped[str] = mapped_column(String(30))
-    # Usada no desempate por idade da apuração (RN-78).
+    # Usada no desempate por idade da apuração (RN-77).
     data_nascimento: Mapped[date] = mapped_column(Date)
     criado_em: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True))
 
