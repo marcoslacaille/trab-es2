@@ -22,17 +22,27 @@ ARESTAS = {
 # `dominio.py` e no `servico.py`, e só nas arestas do grafo.
 # D-103: todo `servico.py` recebe o `UsuarioAutenticado` da rota (assinaturas da seção 9), então
 # `app.identidade.dominio` (só tipos) também vale para módulos sem aresta para `identidade`.
+# D-148: desses tipos, só `Perfil` e `UsuarioAutenticado`; funções de identidade só pelo serviço.
+TIPOS_DE_IDENTIDADE = {
+    "app.identidade.dominio.Perfil",
+    "app.identidade.dominio.UsuarioAutenticado",
+}
 
 
 def _importacoes(arquivo: Path) -> list[str]:
-    """Nomes completos importados pelo arquivo (`from app.x import y` vira `app.x.y`)."""
+    """Nomes completos importados pelo arquivo (`from app.x import y` vira `app.x.y`).
+
+    Import relativo (`from ..x import y`) volta com os pontos na frente (`..x.y`), para o
+    verificador acusar: nele o destino não fica claro e a fronteira passaria sem conferência.
+    """
     arvore = ast.parse(arquivo.read_text(encoding="utf-8"))
     nomes = []
     for no in ast.walk(arvore):
         if isinstance(no, ast.Import):
             nomes += [alias.name for alias in no.names]
-        elif isinstance(no, ast.ImportFrom) and no.module:
-            nomes += [f"{no.module}.{alias.name}" for alias in no.names]
+        elif isinstance(no, ast.ImportFrom):
+            origem = "." * no.level + (no.module or "")
+            nomes += [f"{origem}.{alias.name}" for alias in no.names]
     return nomes
 
 
@@ -49,36 +59,44 @@ def _destino(importado: str) -> tuple[str | None, str | None]:
 
 
 def _tipo_de_identidade(importado: str, arquivo: Path) -> bool:
-    return importado.startswith("app.identidade.dominio.") and arquivo.name in (
-        "dominio.py",
-        "servico.py",
-    )
+    return importado in TIPOS_DE_IDENTIDADE and arquivo.name in ("dominio.py", "servico.py")
+
+
+def _violacoes_no_arquivo(modulo: str, arquivo: Path) -> list[str]:
+    """As importações de um arquivo do `modulo` que quebram as fronteiras da seção 5."""
+    problemas = []
+    for importado in _importacoes(arquivo):
+        onde = f"app/{modulo}/{arquivo.name} importa {importado}"
+        if importado.startswith("."):
+            problemas.append(onde + " (import relativo: use `app.<modulo>`)")
+            continue
+        outro, camada = _destino(importado)
+        if outro is None or outro in (modulo, "compartilhado"):
+            continue
+        if _tipo_de_identidade(importado, arquivo):
+            continue  # D-103
+        if outro not in MODULOS or outro not in ARESTAS[modulo] | {"identidade"}:
+            problemas.append(onde + " (aresta fora do grafo)")
+        elif outro == "identidade" and camada == "dependencias":
+            if arquivo.name != "rotas.py":
+                problemas.append(onde + " (dependencias só nas rotas)")
+        elif outro not in ARESTAS[modulo]:
+            problemas.append(onde + " (aresta fora do grafo)")
+        elif camada == "servico":
+            continue
+        elif camada == "dominio" and arquivo.name in ("dominio.py", "servico.py"):
+            continue  # D-077 / D-098
+        else:
+            problemas.append(onde + " (só `servico` de outro módulo)")
+    return problemas
 
 
 def _violacoes_de_fronteira() -> list[str]:
-    problemas = []
-    for modulo, arquivo in _arquivos_dos_modulos():
-        for importado in _importacoes(arquivo):
-            outro, camada = _destino(importado)
-            if outro is None or outro in (modulo, "compartilhado"):
-                continue
-            onde = f"{arquivo.relative_to(RAIZ.parent)} importa {importado}"
-            if _tipo_de_identidade(importado, arquivo):
-                continue  # D-103
-            if outro not in MODULOS or outro not in ARESTAS[modulo] | {"identidade"}:
-                problemas.append(onde + " (aresta fora do grafo)")
-            elif outro == "identidade" and camada == "dependencias":
-                if arquivo.name != "rotas.py":
-                    problemas.append(onde + " (dependencias só nas rotas)")
-            elif outro not in ARESTAS[modulo]:
-                problemas.append(onde + " (aresta fora do grafo)")
-            elif camada == "servico":
-                continue
-            elif camada == "dominio" and arquivo.name in ("dominio.py", "servico.py"):
-                continue  # D-077 / D-098
-            else:
-                problemas.append(onde + " (só `servico` de outro módulo)")
-    return problemas
+    return [
+        problema
+        for modulo, arquivo in _arquivos_dos_modulos()
+        for problema in _violacoes_no_arquivo(modulo, arquivo)
+    ]
 
 
 def test_ta01_modulos_so_importam_o_que_o_grafo_permite():
@@ -141,9 +159,39 @@ def test_ta01_rotas_nao_importam_repositorio_nem_modelos(modulo):
 
 
 def test_ta01_detecta_violacao_de_fronteira(tmp_path):
-    """TA-01: o verificador de fato enxerga uma importação proibida (teste do teste)."""
+    """TA-01: o verificador de fato acusa cada importação proibida (teste do teste, D-148)."""
     arquivo = tmp_path / "servico.py"
-    arquivo.write_text("from app.eleitores.repositorio import buscar\nimport app.votacao.modelos\n")
+    arquivo.write_text(
+        "from app.eleitores.repositorio import buscar\n"  # camada errada do vizinho
+        "from app.candidatos.servico import listar\n"  # aresta que o grafo não tem
+        "from ..eleicoes import repositorio\n"  # import relativo
+        "from app.identidade.dominio import validar_senha\n"  # função, não tipo
+        "from app.eleicoes.servico import obter_eleicao\n"  # permitido
+        "from app.identidade.dominio import UsuarioAutenticado\n"  # permitido (D-103)
+        "import app.votacao.modelos\n"  # o próprio módulo: permitido
+    )
 
-    assert _importacoes(arquivo) == ["app.eleitores.repositorio.buscar", "app.votacao.modelos"]
-    assert _destino("app.eleitores.repositorio.buscar") == ("eleitores", "repositorio")
+    assert _violacoes_no_arquivo("votacao", arquivo) == [
+        "app/votacao/servico.py importa app.eleitores.repositorio.buscar"
+        " (só `servico` de outro módulo)",
+        "app/votacao/servico.py importa app.candidatos.servico.listar (aresta fora do grafo)",
+        "app/votacao/servico.py importa ..eleicoes.repositorio"
+        " (import relativo: use `app.<modulo>`)",
+        "app/votacao/servico.py importa app.identidade.dominio.validar_senha"
+        " (aresta fora do grafo)",
+    ]
+
+
+@pytest.mark.parametrize("modulo", MODULOS)
+def test_ta01_dominio_nao_importa_repositorio_nem_modelos(modulo):
+    """TA-01 / D-148: `dominio.py` só tem regras puras; não lê o banco nem do próprio módulo."""
+    for importado in _importacoes(RAIZ / modulo / "dominio.py"):
+        _, camada = _destino(importado)
+        assert camada not in ("repositorio", "modelos"), importado
+
+
+@pytest.mark.parametrize("modulo", MODULOS)
+def test_ta01_esquemas_nao_importam_sqlalchemy(modulo):
+    """TA-01 / D-148: `esquemas.py` é o contrato HTTP; não conhece o banco."""
+    for importado in _importacoes(RAIZ / modulo / "esquemas.py"):
+        assert importado.split(".")[0] != "sqlalchemy", importado
