@@ -1,4 +1,4 @@
-# Receita completa — Sistema de Eleição Eletrônica (FastAPI + PostgreSQL)
+# Plano do projeto — Sistema de Eleição Eletrônica (FastAPI + PostgreSQL)
 
 Fonte da verdade: este arquivo no repositório. Quando ele e uma linha `ACEITA` de `docs/DECISOES.md` divergirem, vale a decisão até a próxima consolidação.
 
@@ -6,38 +6,24 @@ Versão de 19/11/2026
 
 ## 0. Como usar este documento
 
-Este documento é a especificação completa do projeto. O agente de IA **não** implementa tudo de uma vez: o trabalho foi dividido em tarefas, uma por sessão, nos arquivos de `docs/prompts/` (comece pelo `docs/prompts/README.md`). As regras permanentes do agente ficam no `CLAUDE.md` da raiz. A **Parte A** (seções 1 a 15) é a especificação para implementar. A **Parte B** (seções 16 a 18) é para o grupo: roteiro da demo, arguição e checklist.
+Este documento é a especificação completa do projeto. A **Parte A** (seções 1 a 15) é a especificação para implementar. A **Parte B** (seções 16 a 18) é para o grupo: roteiro da demo, arguição e checklist. O que foi feito diferente do que está aqui, ou que este documento não previa, fica registrado em `docs/DECISOES.md`.
 
-### Regras do agente (já estão no `CLAUDE.md` da raiz; não precisa colar)
+### Regras de trabalho
 
-```text
-Você é um engenheiro backend sênior e professor paciente. Vamos implementar o backend descrito em docs/PLANO.md
-(Sistema de Simulação de Eleição Eletrônica — Python + FastAPI + PostgreSQL). Leia o documento inteiro antes de
-escrever qualquer código. Regras de trabalho:
-
-1. O PLANO.md é a especificação única. Não invente endpoints, tabelas, campos ou regras que não estejam nele.
-   Se algo estiver ambíguo ou contraditório, PARE e pergunte antes de decidir.
-2. Implemente na ordem das fases da seção 13. Só comece uma fase quando a anterior estiver verde
-   (ruff check, ruff format --check e pytest passando).
-3. Ao fim de cada fase: rode os comandos de verificação, faça os commits listados na fase (Conventional Commits,
-   em português) e escreva um resumo: arquivos criados, RNs implementadas, testes adicionados, como rodar.
-4. Nunca enfraqueça uma regra de negócio nem um teste para fazê-lo passar. Se um teste parecer errado, explique e pergunte.
-5. Código, nomes, docstrings, mensagens de erro e commits em português (linguagem ubíqua da seção 2).
-   Exceções: nomes de bibliotecas e palavras reservadas do Python.
-6. Simplicidade acima de tudo: um aluno precisa conseguir explicar qualquer função em 1 minuto.
-   Sem metaprogramação, sem herança profunda, sem padrões desnecessários (Factory, Strategy, Interface+Impl).
-7. Toda regra de negócio tem um código RN-xx (seção 8). Cite o RN na docstring da função que a implementa
-   e no nome ou docstring do teste que a verifica.
-8. Respeite as fronteiras entre módulos da seção 5: um módulo só importa o servico.py de outro módulo
-   e nunca acessa tabelas de outro módulo.
-9. Comece pela Fase 0. Antes de escrever código, me mostre a lista de arquivos que vai criar nessa fase.
-```
+1. Este documento é a especificação única. Não invente rotas, tabelas, campos ou regras que não estejam nele; se algo estiver ambíguo ou contraditório, decida com o grupo e registre em `docs/DECISOES.md`.
+2. Implemente na ordem das fases da seção 13. Só comece uma fase quando a anterior estiver verde (`ruff check`, `ruff format --check` e `pytest` passando).
+3. Ao fim de cada fase: rode os comandos de verificação, faça os commits listados na fase (Conventional Commits, em português) e resuma no PR os arquivos criados, as RNs implementadas e os testes adicionados.
+4. Nunca enfraqueça uma regra de negócio nem um teste para fazê-lo passar.
+5. Código, nomes, docstrings, mensagens de erro e commits em português (linguagem ubíqua da seção 2). Exceções: nomes de bibliotecas e palavras reservadas do Python.
+6. Simplicidade acima de tudo: qualquer integrante precisa conseguir explicar qualquer função em 1 minuto. Sem metaprogramação, sem herança profunda, sem padrões desnecessários (Factory, Strategy, Interface + Implementação).
+7. Toda regra de negócio tem um código RN-xx (seção 8). Cite o RN na docstring da função que a implementa e no nome ou na docstring do teste que a verifica.
+8. Respeite as fronteiras entre módulos da seção 5.
 
 ### Como o grupo usa este documento
 
-- Uma fase por sessão com o agente. Leia o diff de cada fase antes de commitar e rode os testes você mesmo.
+- Uma fase por vez. Leia o diff de cada fase antes de integrar e rode os testes.
 - Cada membro será arguido sozinho: todos precisam ler o código de todos os módulos, não só o seu (seção 17).
-- Quando quiser mudar uma decisão, mude primeiro aqui e depois peça ao agente para aplicar. O documento e o código não podem divergir.
+- Quando quiser mudar uma decisão, mude primeiro aqui e depois no código. O documento e o código não podem divergir.
 
 ## 1. Contexto, escopo e decisões de projeto
 
@@ -124,7 +110,7 @@ Estes termos são usados de forma idêntica no código, no banco, na API, nos te
 
 ## 3. Princípios de design obrigatórios
 
-O código será avaliado com a régua da disciplina (Ousterhout nas aulas 02 a 05, Newman e DDD nas aulas 06 e 07). Cada princípio abaixo vira uma regra concreta que o agente deve seguir e que o grupo deve saber apontar no código.
+O código será avaliado com a régua da disciplina (Ousterhout nas aulas 02 a 05, Newman e DDD nas aulas 06 e 07). Cada princípio abaixo vira uma regra concreta no código, que o grupo deve saber apontar.
 
 | Princípio (aula) | Regra no código | Onde aparece |
 | --- | --- | --- |
@@ -1090,7 +1076,7 @@ def exige_perfil(*perfis_permitidos: Perfil):
 
 ## 8. Catálogo de regras de negócio
 
-São 58 regras, cada uma com código, lugar no código, erro e origem. **Origem** diz se a regra vem do enunciado (E), de uma decisão de projeto (D) ou é uma regra complementar de realismo (C). O agente cita o código RN na docstring da função e no teste.
+São 58 regras, cada uma com código, lugar no código, erro e origem. **Origem** diz se a regra vem do enunciado (E), de uma decisão de projeto (D) ou é uma regra complementar de realismo (C). O código RN é citado na docstring da função e no teste.
 
 ### Identidade e acesso
 
@@ -2133,11 +2119,11 @@ O TI-73 testa no nível do serviço (duas sessões reais em duas threads), porqu
 
 São 10 fases, na ordem das dependências entre módulos (quem é usado vem antes de quem usa). Cada fase termina com o sistema funcionando, testes verdes e commits pequenos. Nenhuma fase começa antes da anterior estar verde.
 
-### Como executar cada fase com o agente
+### Como executar cada fase
 
 1. `git switch -c feat/<nome-da-fase>` a partir da `main` atualizada.
-2. Peça ao agente: "Execute a Fase N do docs/PLANO.md. Mostre a lista de arquivos antes de começar."
-3. Leia cada arquivo gerado. Pergunte ao agente o que não entender. Se não conseguir explicar, não commite.
+2. Liste os arquivos que a fase vai criar ou alterar e implemente seguindo as seções que ela indica.
+3. Leia o diff inteiro. Se não conseguir explicar um trecho, não commite.
 4. Rode `ruff check .`, `ruff format --check .` e `pytest`.
 5. Faça os commits da fase (abaixo), um assunto por commit.
 6. Abra um Pull Request; **outro membro** revisa e aprova; merge na `main`.
@@ -2265,7 +2251,7 @@ A divisão de trabalho espelha a divisão de módulos. Com menos de 5 pessoas, j
 
 ### Extras opcionais (só depois da v1.0.0, se sobrar tempo)
 
-O agente **não** implementa nada daqui sem pedido explícito.
+Nada daqui entra sem decisão do grupo.
 
 - Limite de tentativas de login (por exemplo, 5 falhas em 15 minutos por CPF).
 - Apuração parcial em tempo real via Server-Sent Events.
@@ -2525,7 +2511,7 @@ Cada membro será arguido sozinho, então todos precisam saber explicar o sistem
 
 **16. Como garantem o sigilo?** O banco nunca guarda eleitor e escolha juntos. `registros_votacao` diz quem votou em qual cargo; `votos` diz o quê foi votado, sem quem; as duas são gravadas na mesma transação e não têm ligação. O voto tem UUID aleatório e nenhum horário, a confirmação não devolve a escolha e os logs não a registram.
 
-**17. Por que duas etapas, e o que é a cédula?** O enunciado pede registrar e confirmar. No registro, o servidor devolve a escolha assinada (um token JWT de 5 minutos) e não grava nada; na confirmação, valida a assinatura e grava. Descartamos guardar um rascunho no banco porque ele ligaria eleitor e escolha até a confirmação.
+**17. Por que duas etapas, e o que é a cédula?** O enunciado pede registrar e confirmar. No registro, o servidor devolve a escolha numa cédula cifrada de 5 minutos (que ninguém lê sem a chave do servidor, D-144) e não grava nada; na confirmação, decifra, confere e grava. Descartamos guardar um rascunho no banco porque ele ligaria eleitor e escolha até a confirmação.
 
 **18. O que impede um voto no exato instante do encerramento?** A confirmação pega uma trava compartilhada na linha da eleição, e o encerramento precisa de uma trava exclusiva. Então o encerramento espera os votos em andamento terminarem, e os votos seguintes já veem a eleição ENCERRADA.
 
