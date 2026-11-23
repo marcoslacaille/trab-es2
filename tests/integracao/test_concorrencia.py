@@ -1,4 +1,4 @@
-"""TI-73 e D-095: concorrência no voto (RN-54) e entre voto e encerramento (RN-18)."""
+"""TI-73, D-095 e D-145: concorrência no voto (RN-54) e entre voto e encerramento (RN-18)."""
 
 import threading
 from datetime import datetime
@@ -10,9 +10,10 @@ from sqlalchemy.exc import IntegrityError
 
 from app.compartilhado.banco import SessionLocal
 from app.compartilhado.dominio import Cargo
-from app.compartilhado.erros import ConflitoDeEstado
+from app.compartilhado.erros import ConflitoDeEstado, NaoEncontrado
 from app.eleicoes import repositorio as repositorio_eleicoes
 from app.eleicoes import servico as servico_eleicoes
+from app.eleitores.dominio import EleitorResumo
 from app.identidade.dominio import Perfil, UsuarioAutenticado
 from app.votacao import cedulas, servico
 from app.votacao.dominio import Escolha, TipoVoto
@@ -164,4 +165,26 @@ def test_confirmacao_repassa_erro_de_integridade_desconhecido(
     with SessionLocal() as sessao, pytest.raises(IntegrityError):
         servico.confirmar_voto(sessao, usuario, eleicao_id, token, agora)
     with SessionLocal() as sessao:
+        assert sessao.execute(text("SELECT COUNT(*) FROM registros_votacao")).scalar_one() == 0
+
+
+def test_d145_eleitor_excluido_durante_a_confirmacao_da_404(
+    cliente, cabecalho_chefe, relogio, monkeypatch
+):
+    """D-145 / RN-54: eleitor excluído no meio da confirmação → 404, sem gravar nada."""
+    eleicao_id = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)["eleicao_id"]
+    agora = relogio()
+    usuario, token = _eleitor_com_cedula(cliente, cabecalho_chefe, eleicao_id, agora)
+    # Simula a corrida: o eleitor foi lido, mas a linha já não existe quando o registro é gravado.
+    sumido = EleitorResumo(id=999_999, usuario_id=usuario.id, criado_em=agora)
+    monkeypatch.setattr(
+        servico.eleitores_servico, "obter_eleitor_do_usuario", lambda sessao, usuario_id: sumido
+    )
+
+    with SessionLocal() as sessao, pytest.raises(NaoEncontrado) as erro:
+        servico.confirmar_voto(sessao, usuario, eleicao_id, token, agora)
+
+    assert erro.value.codigo == "ELEITOR_NAO_ENCONTRADO"
+    with SessionLocal() as sessao:
+        assert sessao.execute(text("SELECT COUNT(*) FROM votos")).scalar_one() == 0
         assert sessao.execute(text("SELECT COUNT(*) FROM registros_votacao")).scalar_one() == 0

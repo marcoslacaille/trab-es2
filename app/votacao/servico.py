@@ -38,6 +38,8 @@ from app.votacao.dominio import (
 )
 
 PK_REGISTRO = "pk_registros_votacao"
+# FK que dispara quando o eleitor é excluído no meio da confirmação (D-145).
+FK_ELEITOR_DO_REGISTRO = "fk_registros_votacao_eleitor_id_eleitores"
 
 MENSAGENS_DA_PREVIA = {
     TipoVoto.NOMINAL: "Confira os dados e confirme o voto.",
@@ -153,7 +155,9 @@ def confirmar_voto(
     trava compartilhada: o encerramento espera esta confirmação terminar (e vice-versa). As duas
     gravações (quem votou no cargo; o voto sem identificação) ficam na mesma transação, em
     tabelas sem ligação. Não há checagem de "já votou" antes: a chave primária decide de forma
-    atômica e a violação vira 409 `VOTO_JA_REGISTRADO`. A resposta não contém a escolha.
+    atômica e a violação vira 409 `VOTO_JA_REGISTRADO`. Eleitor excluído no meio da confirmação:
+    a FK recusa e a resposta é 404 `ELEITOR_NAO_ENCONTRADO` (D-145). A resposta não contém a
+    escolha.
     """
     cedula = cedulas.ler_cedula(token_cedula, agora)
     if cedula.usuario_id != usuario.id or cedula.eleicao_id != eleicao_id:
@@ -177,6 +181,10 @@ def confirmar_voto(
         if nome_da_restricao(erro) == PK_REGISTRO:
             raise ConflitoDeEstado(
                 "Você já votou para este cargo.", codigo="VOTO_JA_REGISTRADO"
+            ) from erro
+        if nome_da_restricao(erro) == FK_ELEITOR_DO_REGISTRO:
+            raise NaoEncontrado(
+                "Eleitor não encontrado.", codigo="ELEITOR_NAO_ENCONTRADO"
             ) from erro
         raise
 
