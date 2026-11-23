@@ -18,7 +18,7 @@ NOME_DE_URNA_MAXIMO = 30
 class CandidatoResumo:
     """O mínimo que outros módulos precisam saber de um candidato (usado por `eleicoes`).
 
-    A data de nascimento serve ao desempate por idade da apuração (RN-78).
+    A data de nascimento serve ao desempate por idade da apuração (RN-77).
     """
 
     id: int

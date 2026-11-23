@@ -5,13 +5,15 @@ também aqui. As senhas são fixas e públicas: este script é só para a demons
 """
 
 import sys
-from datetime import date, time
+from datetime import date, datetime, time
+
+from sqlalchemy.orm import Session
 
 from app.candidatos import servico as servico_candidatos
 from app.candidatos.dominio import NovoCandidatoDados, NovoPartidoDados
-from app.compartilhado.banco import SessionLocal
+from app.compartilhado.banco import engine
 from app.compartilhado.dominio import Cargo
-from app.compartilhado.erros import ConflitoDeEstado
+from app.compartilhado.erros import ConflitoDeEstado, ErroDeNegocio
 from app.compartilhado.relogio import agora
 from app.eleicoes import servico as servico_eleicoes
 from app.eleicoes.dominio import NovaCandidaturaDados, NovaEleicaoDados
@@ -139,79 +141,100 @@ CANDIDATOS = [
 
 
 def semear() -> int:
-    """Cria o cenário completo da demonstração. Devolve 0 se deu certo, 1 se já havia dados.
+    """Cria o cenário completo da demonstração e devolve o código de saída do script.
 
-    Para sem alterar nada se já existir algum partido (os dados de demonstração começam por
-    eles). Cada serviço faz o seu próprio commit; o Chefe é criado só se ainda não existir
-    (o `criar_chefe` pode tê-lo criado antes, com o mesmo CPF do `.env.example`).
+    0: cenário criado. 1: já havia dados (algum partido), nada foi alterado. 2: uma regra de
+    negócio impediu o cenário (por exemplo, já existe eleição de 1º turno hoje); nada foi gravado.
+    O cenário é atômico (D-147): os serviços fazem o próprio commit, mas aqui cada commit vira só
+    um savepoint de uma transação externa, confirmada no fim ou desfeita por inteiro. O Chefe é
+    criado só se ainda não existir (o `criar_chefe` pode tê-lo criado antes, com o mesmo CPF).
     """
     momento = agora()
-    with SessionLocal() as sessao:
-        if servico_candidatos.listar_partidos(sessao):
-            print("Dados de demonstração já existem; nada foi alterado.")
-            print("Para recomeçar: docker compose down -v, up -d e alembic upgrade head.")
-            return 1
+    with engine.connect() as conexao:
+        transacao = conexao.begin()
+        with Session(
+            bind=conexao,
+            join_transaction_mode="create_savepoint",
+            autoflush=False,
+            expire_on_commit=False,
+        ) as sessao:
+            if servico_candidatos.listar_partidos(sessao):
+                transacao.rollback()
+                print("Dados de demonstração já existem; nada foi alterado.")
+                print("Para recomeçar: docker compose down -v, up -d e alembic upgrade head.")
+                return 1
+            try:
+                eleicao_id = _criar_cenario(sessao, momento)
+            except ErroDeNegocio as erro:
+                transacao.rollback()
+                print(f"Não foi possível criar a demonstração: {erro.mensagem} ({erro.codigo}).")
+                print("Nada foi gravado.")
+                return 2
+        transacao.commit()  # outro erro sai sem commit: fechar a conexão desfaz tudo
+    _imprimir_logins(eleicao_id)
+    return 0
 
-        _criar_chefe_se_preciso(sessao, momento)
 
-        partido_por_sigla = {}
-        for sigla, nome, numero in PARTIDOS:
-            partido = servico_candidatos.criar_partido(
-                sessao, NovoPartidoDados(sigla=sigla, nome=nome, numero=numero), momento
-            )
-            partido_por_sigla[sigla] = partido.id
+def _criar_cenario(sessao: Session, momento: datetime) -> int:
+    """Grava Chefe, partidos, eleitores, eleição e candidaturas. Devolve o id da eleição."""
+    _criar_chefe_se_preciso(sessao, momento)
 
-        for nome, cpf, titulo, nascimento in ELEITORES:
-            servico_eleitores.cadastrar_eleitor(
-                sessao,
-                NovoEleitorDados(
-                    nome=nome,
-                    cpf=cpf,
-                    titulo_eleitor=titulo,
-                    data_nascimento=nascimento,
-                    senha=SENHA_ELEITORES,
-                ),
-                momento,
-            )
+    partido_por_sigla = {}
+    for sigla, nome, numero in PARTIDOS:
+        partido = servico_candidatos.criar_partido(
+            sessao, NovoPartidoDados(sigla=sigla, nome=nome, numero=numero), momento
+        )
+        partido_por_sigla[sigla] = partido.id
 
-        eleicao = servico_eleicoes.criar_eleicao(
+    for nome, cpf, titulo, nascimento in ELEITORES:
+        servico_eleitores.cadastrar_eleitor(
             sessao,
-            NovaEleicaoDados(
-                descricao="Eleições Gerais 2026 — 1º turno (simulação)",
-                data=momento.date(),
-                turno=1,
-                horario_abertura=time(0, 0),
-                horario_encerramento=time(23, 59),
+            NovoEleitorDados(
+                nome=nome,
+                cpf=cpf,
+                titulo_eleitor=titulo,
+                data_nascimento=nascimento,
+                senha=SENHA_ELEITORES,
             ),
             momento,
         )
 
-        for cargo, numero, nome_urna, nome, cpf, nascimento, sigla in CANDIDATOS:
-            candidato = servico_candidatos.cadastrar_candidato(
-                sessao,
-                NovoCandidatoDados(
-                    nome=nome,
-                    nome_urna=nome_urna,
-                    cpf=cpf,
-                    data_nascimento=nascimento,
-                    senha=SENHA_CANDIDATOS,
-                ),
-                momento,
-            )
-            servico_eleicoes.criar_candidatura(
-                sessao,
-                eleicao.id,
-                NovaCandidaturaDados(
-                    candidato_id=candidato.id,
-                    partido_id=partido_por_sigla[sigla],
-                    cargo=cargo,
-                    numero=numero,
-                ),
-                momento,
-            )
+    eleicao = servico_eleicoes.criar_eleicao(
+        sessao,
+        NovaEleicaoDados(
+            descricao="Eleições Gerais 2026 — 1º turno (simulação)",
+            data=momento.date(),
+            turno=1,
+            horario_abertura=time(0, 0),
+            horario_encerramento=time(23, 59),
+        ),
+        momento,
+    )
 
-    _imprimir_logins(eleicao.id)
-    return 0
+    for cargo, numero, nome_urna, nome, cpf, nascimento, sigla in CANDIDATOS:
+        candidato = servico_candidatos.cadastrar_candidato(
+            sessao,
+            NovoCandidatoDados(
+                nome=nome,
+                nome_urna=nome_urna,
+                cpf=cpf,
+                data_nascimento=nascimento,
+                senha=SENHA_CANDIDATOS,
+            ),
+            momento,
+        )
+        servico_eleicoes.criar_candidatura(
+            sessao,
+            eleicao.id,
+            NovaCandidaturaDados(
+                candidato_id=candidato.id,
+                partido_id=partido_por_sigla[sigla],
+                cargo=cargo,
+                numero=numero,
+            ),
+            momento,
+        )
+    return eleicao.id
 
 
 def _criar_chefe_se_preciso(sessao, momento) -> None:

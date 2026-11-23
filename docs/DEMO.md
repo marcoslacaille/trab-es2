@@ -13,7 +13,7 @@ O mesmo roteiro está automatizado no teste TI-74 (`pytest tests/integracao/test
    docker compose up -d
    .venv/bin/python -m alembic upgrade head
    .venv/bin/python -m app.scripts.seed_demo
-   .venv/bin/python -m uvicorn app.main:app
+   .venv/bin/python -m uvicorn app.main:app --no-access-log
    ```
 
 2. `pytest` uma vez (confirma que está tudo verde).
@@ -1512,7 +1512,7 @@ Authorization: Bearer {{token_chefe}}
 
 | # | O quê | Como mostrar |
 | --- | --- | --- |
-| 28 | Sigilo no banco | No psql (`docker exec -it eleicao-banco psql -U eleicao -d eleicao`): `SELECT * FROM registros_votacao;` e `SELECT * FROM votos;` mostram que não existe coluna que ligue uma tabela à outra. Depois `UPDATE votos SET tipo = 'BRANCO';` dá `ERROR:  Votos e registros de votação confirmados são imutáveis` (trigger). |
+| 28 | Sigilo no banco | No psql (`docker exec -it eleicao-banco psql -U eleicao -d eleicao`): `SELECT * FROM registros_votacao;` e `SELECT * FROM votos;` mostram que não existe coluna que ligue uma tabela à outra. Depois `UPDATE votos SET tipo = 'BRANCO';` dá `ERROR:  Votos e registros de votação confirmados são imutáveis` (trigger). Se perguntarem: para quem administra o banco, a ligação ainda é possível pelo `xmin` (as duas linhas são gravadas na mesma transação); está nas limitações do README e da modelagem (D-134). |
 | 29 | Testes | Árvore `tests/unitarios`, `tests/integracao`, `tests/arquitetura`; rodar `pytest tests/unitarios -v` (rápido, sem banco) e `pytest tests/integracao -q`; abrir um teste de cada tipo e explicar a diferença; mostrar a cobertura (`pytest --cov=app`). |
 | 30 | Estrutura modular | No VS Code: as pastas dos módulos; abrir `app/votacao/` e seguir uma requisição: `rotas.py` → `servico.py` → `dominio.py` / `repositorio.py`; abrir `tests/arquitetura/test_dependencias.py` e explicar que as fronteiras são verificadas automaticamente. |
 | 31 | Documentação | Swagger local (`/docs`): tags, Authorize, exemplos e respostas de erro; a especificação em `docs/openapi.json`; a frase sobre *code-first* (a spec sai do código). |

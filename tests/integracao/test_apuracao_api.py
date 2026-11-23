@@ -222,10 +222,16 @@ def test_ti61_empate_no_resultado_e_decidido_pelo_mais_idoso(cliente, cabecalho_
     assert _votos(presidente) == {"10": 1, "20": 1}
 
 
-def test_ti62_comparecimento_aptos_votantes_e_abstencao(cliente, cabecalho_chefe):
-    """TI-62 / RN-79: aptos (cadastrados antes da abertura), votantes e abstenção."""
+def test_ti62_comparecimento_aptos_votantes_e_abstencao(cliente, cabecalho_chefe, relogio):
+    """TI-62 / RN-79: aptos (cadastrados antes da abertura), votantes e abstenção.
+
+    O 4º eleitor é cadastrado depois da abertura, com o relógio já adiantado: ele não entra
+    nos aptos (RN-53), e a conta continua 3 aptos, 2 votantes e 1 abstenção.
+    """
     eleitores = [_novo_eleitor_com_login(cliente, cabecalho_chefe) for _ in range(3)]
     eleicao = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)["eleicao_id"]
+    relogio.avancar(minutes=1)
+    _novo_eleitor_com_login(cliente, cabecalho_chefe)  # cadastrado depois da abertura
     assert votar(cliente, eleitores[0], eleicao, "PRESIDENTE", "10").status_code == 201
     assert votar(cliente, eleitores[0], eleicao, "SENADOR", "101").status_code == 201
     assert votar(cliente, eleitores[1], eleicao, "PRESIDENTE", branco=True).status_code == 201

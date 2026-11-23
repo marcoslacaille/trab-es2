@@ -27,6 +27,11 @@ Aqui ficam só os avisos de curto prazo entre tarefas, como testes adiados para 
 
 ### Avisos em aberto
 
+- [ ] **Reinstalar as dependências depois do `git pull` (23/11/2026, D-144).** A cédula passou a ser cifrada com o pacote `cryptography`, novo no `requirements.txt`. Sem ele, a API e os testes não sobem (`ModuleNotFoundError: cryptography`). Cada integrante roda uma vez:
+  - Windows: `.venv\Scripts\python.exe -m pip install -r requirements-dev.txt`
+  - Linux/macOS: `.venv/bin/python -m pip install -r requirements-dev.txt`
+
+  O `.env` não muda: a chave da cédula é derivada do `JWT_SEGREDO`. Marque este item quando todo o grupo tiver feito.
 - [ ] **Rodar a migração `0006` em todo banco já existente (21/11/2026, D-140).** A migração `0006_retrato_candidaturas` acrescenta `nome_urna` e `data_nascimento` à tabela `candidaturas`. Quem já tinha o banco local (porta 5432) criado antes dela precisa aplicá-la, senão a API dá erro ao ler as candidaturas. Cada integrante roda uma vez, depois do `git pull`, com o `docker compose up -d` no ar:
   - Windows: `.venv\Scripts\python.exe -m alembic upgrade head`
   - Linux/macOS: `.venv/bin/python -m alembic upgrade head`

@@ -240,7 +240,7 @@ O retrato (`nome_urna` e `data_nascimento` do candidato no instante da abertura)
 
 ### Trigger: voto e registro são imutáveis
 
-Criado na migração da votação com `op.execute(...)`. Mesmo um bug na aplicação (ou um `UPDATE` manual) não consegue alterar ou apagar um voto confirmado. Nos testes, a limpeza usa `TRUNCATE`, que não dispara triggers de linha.
+Criado na migração da votação com `op.execute(...)`. Mesmo um bug na aplicação, ou um `UPDATE` ou `DELETE` manual, não consegue alterar ou apagar um voto confirmado. O trigger é de linha, então não cobre o `TRUNCATE`, que exige privilégio de administrador do banco; nos testes, a limpeza usa justamente o `TRUNCATE`.
 
 ```sql
 CREATE FUNCTION impedir_alteracao_de_voto() RETURNS trigger AS $$
@@ -310,4 +310,11 @@ As migrações foram escritas à mão a partir do autogenerate (que não cria tr
 
 ### Limitações conhecidas do sigilo
 
-Quem tiver acesso administrativo direto ao banco ainda poderia tentar correlacionar a **ordem física** em que as linhas foram gravadas nas duas tabelas. A urna real resolve isso embaralhando o registro digital do voto. Aqui isso fica fora do escopo e é documentado como limitação. Outra: com pouquíssimos votos, a apuração parcial pode permitir deduzir escolhas (o mesmo acontece em qualquer seção real com um único eleitor).
+Na API e no modelo lógico, nada liga eleitor e voto. Para quem tem acesso administrativo direto ao banco, há duas formas de correlacionar:
+
+1. **O `xmin`:** o registro de quem votou e o voto são gravados na mesma transação (para nunca existir registro sem voto nem voto sem registro), então as duas linhas têm o mesmo identificador de transação, e `JOIN ... ON v.xmin = r.xmin` liga cada voto ao eleitor (D-134).
+2. **A ordem física** em que as linhas foram gravadas nas duas tabelas.
+
+A urna real resolve isso embaralhando o registro digital do voto. Aqui o acesso direto ao banco precisa ficar restrito, e mudar o desenho é decisão em aberto (D-134).
+
+Há também a **parcial exata**: quem consulta a apuração antes e depois de um único voto, e sabe quem votou nesse intervalo, deduz a escolha (o mesmo vale para um cargo com um único votante, como numa seção real com um único eleitor).

@@ -6,11 +6,17 @@ A eleição é a raiz do agregado: toda alteração começa travando a linha del
 
 from datetime import datetime
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.candidatos import servico as servico_candidatos
 from app.compartilhado.dominio import Cargo
-from app.compartilhado.erros import ConflitoDeEstado, DadosInvalidos, NaoEncontrado
+from app.compartilhado.erros import (
+    ConflitoDeEstado,
+    DadosInvalidos,
+    NaoEncontrado,
+    nome_da_restricao,
+)
 from app.eleicoes import repositorio
 from app.eleicoes.dominio import (
     AlteracoesCandidatura,
@@ -28,6 +34,9 @@ from app.eleicoes.dominio import (
     validar_encerramento,
 )
 from app.eleicoes.modelos import Candidatura, Eleicao
+
+# FK que dispara quando o candidato some entre a conferência e a gravação (D-145).
+FK_CANDIDATO_DA_CANDIDATURA = "fk_candidaturas_candidato_id_candidatos"
 
 
 def _resumir(eleicao: Eleicao) -> EleicaoResumo:
@@ -301,7 +310,8 @@ def criar_candidatura(
     Número com os dígitos do cargo (RN-42) e, no 2º turno, só Governador e Presidente com no
     máximo 2 candidaturas por cargo (RN-45), via `validar_candidatura`.
     Número já usado no cargo → 409 `NUMERO_JA_UTILIZADO` (RN-43); candidato que já tem
-    candidatura na eleição → 409 `CANDIDATURA_DUPLICADA` (RN-44).
+    candidatura na eleição → 409 `CANDIDATURA_DUPLICADA` (RN-44). Se o candidato for excluído
+    entre a conferência e a gravação, a FK recusa e a resposta é a mesma 422 da RN-46 (D-145).
     """
     eleicao = _eleicao_editavel(sessao, eleicao_id)
     _conferir_candidato(sessao, dados.candidato_id)
@@ -319,7 +329,17 @@ def criar_candidatura(
         numero=dados.numero,
         criado_em=agora,
     )
-    repositorio.inserir_candidatura(sessao, candidatura)
+    try:
+        repositorio.inserir_candidatura(sessao, candidatura)
+    except IntegrityError as erro:
+        sessao.rollback()
+        if nome_da_restricao(erro) != FK_CANDIDATO_DA_CANDIDATURA:
+            raise
+        raise DadosInvalidos(
+            "O candidato informado não existe.",
+            codigo="REFERENCIA_INEXISTENTE",
+            detalhes={"campo": "candidato_id"},
+        ) from erro
     sessao.commit()
     return _detalhar(sessao, [candidatura])[0]
 

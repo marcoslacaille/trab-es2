@@ -26,9 +26,9 @@ O sistema é uma API REST que simula uma eleição eletrônica com três perfis 
 | D02 | Banco | PostgreSQL 16 | Restrições, transações, índice parcial e trigger garantem as regras críticas | SQLite (concorrência fraca), MongoDB (o problema é relacional) |
 | D03 | Acesso a dados | SQLAlchemy 2.0 **síncrono** + Alembic; rotas `def` | Mais fácil de ler, testar e explicar; desempenho não é gargalo nessa escala | Async (event loop, `await` e sessões assíncronas sem ganho real aqui) |
 | D04 | Perfis | Exatamente um perfil por usuário | O enunciado define três tipos de usuário | Vários papéis por usuário (RBAC mais complexo) |
-| D05 | Fluxo do voto | Duas etapas: registro devolve uma **cédula assinada** (token); confirmação grava | O banco nunca guarda eleitor e escolha juntos, nem por um segundo | Rascunho de voto numa tabela (liga eleitor à escolha até a confirmação) |
-| D06 | Sigilo | Duas tabelas sem ligação: `registros_votacao` (quem votou em qual cargo) e `votos` (o quê, sem quem); voto com UUID aleatório e sem horário | Impossível consultar ou correlacionar eleitor e voto | Tabela única com `eleitor_id`; coluna "anônimo" |
-| D07 | Apuração | Calculada a cada consulta (`GROUP BY`) | Sempre atualizada, sem estado duplicado | Contadores incrementais ou cache (risco de divergência) |
+| D05 | Fluxo do voto | Duas etapas: registro devolve uma **cédula cifrada** (token opaco, D-144); confirmação grava | O banco nunca guarda eleitor e escolha juntos, nem por um segundo | Rascunho de voto numa tabela (liga eleitor à escolha até a confirmação) |
+| D06 | Sigilo | Duas tabelas sem ligação: `registros_votacao` (quem votou em qual cargo) e `votos` (o quê, sem quem); voto com UUID aleatório e sem horário | Nenhuma consulta pela API ou pelo modelo liga eleitor e voto (o limite para quem acessa o banco diretamente está em [`MODELAGEM.md`](MODELAGEM.md)) | Tabela única com `eleitor_id`; coluna "anônimo" |
+| D07 | Apuração | Calculada a cada consulta (`GROUP BY`), numa transação `REPEATABLE READ` (D-146) | Sempre atualizada, sem estado duplicado | Contadores incrementais ou cache (risco de divergência) |
 | D08 | Abertura e encerramento | Manuais, pelo Chefe; os horários definem a janela permitida | O enunciado diz que só o Chefe abre e encerra | Agendador automático (mais peças, difícil de demonstrar) |
 | D09 | Candidaturas | Parte do agregado **Eleição** (a eleição é a raiz) | Toda mudança passa pela raiz (aula 07); a regra "só com eleição AGENDADA" fica num lugar só | Candidatura dentro do módulo de candidatos (cria dependência circular entre módulos) |
 | D10 | Relógio | Função `agora()` injetável | Testes de data e horário determinísticos | `datetime.now()` espalhado pelo código |
@@ -45,6 +45,8 @@ Não estão no enunciado, mas deixam a simulação coerente com a eleição bras
 - Empate no mais votado: vence o candidato mais idoso.
 - Segundo turno: só Governador e Presidente, com exatamente 2 candidatos por cargo.
 - Só vota quem foi cadastrado antes da abertura da eleição ("previamente cadastrado").
+- Abertura só no dia da eleição e dentro da janela de horário cadastrada; passado o horário de encerramento, o voto é recusado mesmo que o Chefe ainda não tenha encerrado (RN-15, RN-52). Numa demonstração ao vivo, cadastre a eleição para o dia de hoje com uma janela que inclua o horário da apresentação.
+- Só uma eleição aberta por vez (RN-16).
 
 ### Fora do escopo (dizer isso com segurança se perguntarem)
 
@@ -92,7 +94,7 @@ O código será avaliado com a régua da disciplina (Ousterhout nas aulas 02 a 0
 
 ## 3. Módulos, camadas, fronteiras, transações e erros
 
-Um único processo FastAPI e um único banco, divididos em **6 módulos de domínio** mais um módulo compartilhado. Cada módulo é dono das suas tabelas e só conversa com os outros pelas funções do `servico.py` deles. As dependências formam um grafo sem ciclos, verificado por um teste automático.
+Um único processo FastAPI e um único banco, divididos em **6 módulos de domínio** mais um módulo compartilhado. Cada módulo é dono das suas tabelas e só conversa com os outros pelas funções do `servico.py` deles (e pelos tipos que essas funções recebem e devolvem). As dependências formam um grafo sem ciclos, verificado por um teste automático.
 
 ### Módulos e dependências
 
@@ -108,7 +110,7 @@ graph TD
     apuracao --> eleitores
 ```
 
-Todo módulo também pode usar `compartilhado` e `identidade.dependencias` (autenticação nas rotas). Nenhuma outra dependência é permitida.
+Todo módulo também pode usar `compartilhado`, `identidade.dependencias` (autenticação nas rotas) e os tipos `Perfil` e `UsuarioAutenticado` de `identidade.dominio` (D-103). Nenhuma outra dependência é permitida.
 
 | Módulo | Responsabilidade (contexto) | Tabelas que possui | Interface pública (`servico.py`) |
 | --- | --- | --- | --- |
@@ -130,8 +132,8 @@ Todo módulo tem a mesma forma. Quem entende um entende todos.
 | --- | --- | --- | --- |
 | `rotas.py` | HTTP: recebe a requisição, chama o serviço, devolve o esquema de resposta. Sem regra de negócio. | `esquemas`, `servico` do próprio módulo, `identidade.dependencias`, `compartilhado` | `repositorio`, `modelos` |
 | `esquemas.py` | Contratos Pydantic de entrada e saída, com exemplos para o Swagger | `dominio` do próprio módulo, `compartilhado` | SQLAlchemy |
-| `servico.py` | Casos de uso. Única porta de entrada do módulo para os outros. Controla a transação. | `dominio`, `repositorio` do próprio módulo, `servico` de outros módulos permitidos | `rotas`, FastAPI |
-| `dominio.py` | Regras puras: enums, `dataclass`es de retorno, funções de validação. Testável sem banco. | `compartilhado.dominio`, `compartilhado.validadores`, `compartilhado.erros` | FastAPI, SQLAlchemy, `repositorio` |
+| `servico.py` | Casos de uso. Única porta de entrada do módulo para os outros. Controla a transação. | `dominio`, `repositorio` do próprio módulo, `servico` e tipos do `dominio` dos módulos permitidos | `rotas`, FastAPI |
+| `dominio.py` | Regras puras: enums, `dataclass`es de retorno, funções de validação. Testável sem banco. | `compartilhado.dominio`, `compartilhado.validadores`, `compartilhado.erros`, tipos do `dominio` dos módulos permitidos (D-077, D-098) | FastAPI, SQLAlchemy, `repositorio`, `modelos` |
 | `repositorio.py` | Consultas SQLAlchemy somente nas tabelas do módulo | `modelos` do próprio módulo | outros módulos |
 | `modelos.py` | Tabelas ORM do módulo | `compartilhado.banco` | modelos de outros módulos (chave estrangeira por nome da tabela em texto: `ForeignKey("eleicoes.id")`) |
 
@@ -139,10 +141,10 @@ Arquivos extras por módulo: `identidade/senhas.py`, `identidade/tokens.py`, `id
 
 ### Regras de fronteira (o teste de arquitetura verifica)
 
-1. Um módulo importa de outro **apenas** `app.<outro>.servico` (e `app.identidade.dependencias` nas rotas).
+1. Um módulo importa de outro **apenas** `app.<outro>.servico` e, como contrato dessas funções, os tipos públicos (`dataclass`es e enums) do `dominio.py` dos módulos vizinhos no grafo (D-077, D-098). De `app.identidade.dominio`, todo `servico.py` pode usar `Perfil` e `UsuarioAutenticado` (D-103); `app.identidade.dependencias`, só nas rotas.
 2. Funções públicas do serviço devolvem `dataclass`es do `dominio.py`, **nunca** objetos ORM. O modelo do banco não vaza para fora do módulo.
 3. Nenhum `import` forma ciclo entre módulos; as arestas permitidas são exatamente as do diagrama acima.
-4. `dominio.py` não importa `fastapi` nem `sqlalchemy`.
+4. `dominio.py` não importa `fastapi`, `sqlalchemy`, `repositorio` nem `modelos`; `esquemas.py` não importa `sqlalchemy`.
 5. Exceções à regra 1, só na "raiz de composição": `app/main.py`, `app/registro_modelos.py`, `app/scripts/*` e `migrations/env.py`.
 
 ### Transações
@@ -260,11 +262,12 @@ Não há autocadastro. Cada pessoa tem exatamente um perfil (decisão D04).
 | Virar Chefe mandando `perfil` no corpo | `extra="forbid"` + perfil lido do banco | Esquemas e dependências |
 | Votar duas vezes (inclusive em paralelo) | Chave primária de `registros_votacao` | Banco |
 | Votar no instante em que o Chefe encerra | Trava compartilhada na linha da eleição durante a confirmação | `votacao.servico.confirmar_voto` |
-| Alterar ou apagar um voto | Não existe rota; trigger bloqueia no banco | API e banco |
-| Descobrir em quem alguém votou | Tabelas sem ligação, UUID aleatório, sem horário, nenhuma rota expõe, logs sem voto, confirmação não devolve a escolha | Modelo, API, logs |
-| Confirmar a cédula de outro eleitor | `sub` da cédula precisa ser o usuário logado | `votacao.servico.confirmar_voto` |
-| Usar a cédula como token de acesso | Audiências diferentes (`acesso` × `cedula`) | `tokens`, `cedulas` |
-| Forjar uma cédula | Assinatura HMAC com segredo do servidor | `cedulas` |
+| Alterar ou apagar um voto | Não existe rota; trigger bloqueia `UPDATE` e `DELETE` no banco | API e banco |
+| Descobrir em quem alguém votou | Tabelas sem ligação, UUID aleatório, sem horário, nenhuma rota expõe, logs sem voto, confirmação não devolve a escolha, cédula cifrada | Modelo, API, logs |
+| Confirmar a cédula de outro eleitor | O `usuario_id` dentro da cédula precisa ser o usuário logado | `votacao.servico.confirmar_voto` |
+| Usar a cédula como token de acesso | Formatos e chaves diferentes: o token de acesso é um JWT; a cédula é cifrada com Fernet e chave própria (D-144) | `tokens`, `cedulas` |
+| Forjar uma cédula | Cifra autenticada (Fernet: AES e HMAC) com chave derivada do segredo do servidor | `cedulas` |
+| Ler em quem o eleitor votou pela cédula (tela, cache, cópia do token) | Cédula cifrada; resposta do registro com `Cache-Control: no-store` | `cedulas`, `votacao.rotas` |
 | SQL injection | ORM com parâmetros | Repositórios |
 | Força bruta no login | Fora do escopo; extra opcional não implementado: limite de tentativas | — |
 
@@ -277,7 +280,7 @@ Não há autocadastro. Cada pessoa tem exatamente um perfil (decisão D04).
 
 ## 5. Fluxo do voto
 
-O voto acontece em duas etapas. O registro só devolve uma prévia e a **cédula assinada** (`token_cedula`); a confirmação é que grava, e grava em duas tabelas sem ligação entre si.
+O voto acontece em duas etapas. O registro só devolve uma prévia e a **cédula cifrada** (`token_cedula`); a confirmação é que grava, e grava em duas tabelas sem ligação entre si.
 
 ```mermaid
 sequenceDiagram
@@ -299,4 +302,4 @@ sequenceDiagram
     Votacao-->>Eleitor: "Voto confirmado." (sem a escolha)
 ```
 
-Por que assim: o banco nunca guarda eleitor e escolha juntos, nem por um segundo (D05); a chave primária de `registros_votacao` impede o voto duplo mesmo com requisições simultâneas; o trigger impede alterar ou apagar um voto depois de confirmado. Detalhes do modelo em [`MODELAGEM.md`](MODELAGEM.md).
+Por que assim: o banco nunca guarda eleitor e escolha juntos, nem por um segundo (D05); a chave primária de `registros_votacao` impede o voto duplo mesmo com requisições simultâneas; o trigger impede `UPDATE` e `DELETE` de um voto confirmado. Detalhes do modelo em [`MODELAGEM.md`](MODELAGEM.md).

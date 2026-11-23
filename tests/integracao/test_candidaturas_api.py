@@ -1,5 +1,6 @@
 import pytest
 
+from app.eleicoes import servico as servico_eleicoes
 from tests.auxiliares import (
     SENHA_CANDIDATO,
     eleicao_aberta_com_candidatos,
@@ -475,3 +476,27 @@ def test_rn45_trocar_turno_para_2_com_candidaturas_compativeis_passa(cliente, ca
 
     assert resposta.status_code == 200, resposta.text
     assert resposta.json()["turno"] == 2
+
+
+def test_d145_candidato_excluido_antes_da_gravacao_da_422(cliente, cabecalho_chefe, monkeypatch):
+    """D-145 / RN-46: se o candidato some entre a conferência e a gravação, a FK recusa e a
+    resposta é 422 `REFERENCIA_INEXISTENTE` (e não o 409 de exclusão bloqueada)."""
+    eleicao = nova_eleicao(cliente, cabecalho_chefe).json()["id"]
+    partido = novo_partido(cliente, cabecalho_chefe).json()["id"]
+    # Simula a corrida: a conferência passa, mas o candidato já não existe na gravação.
+    monkeypatch.setattr(servico_eleicoes, "_conferir_candidato", lambda sessao, candidato_id: None)
+
+    resposta = cliente.post(
+        rota(eleicao),
+        json={
+            "candidato_id": 999_999,
+            "partido_id": partido,
+            "cargo": "GOVERNADOR",
+            "numero": "11",
+        },
+        headers=cabecalho_chefe,
+    )
+
+    assert resposta.status_code == 422
+    assert codigo(resposta) == "REFERENCIA_INEXISTENTE"
+    assert resposta.json()["erro"]["detalhes"] == {"campo": "candidato_id"}

@@ -6,7 +6,7 @@ Todas exigem o perfil ELEITOR (RN-50): Chefe e Candidato recebem 403 `PERFIL_NAO
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Path
+from fastapi import APIRouter, Depends, Path, Response
 from sqlalchemy.orm import Session
 
 from app.compartilhado.banco import obter_sessao
@@ -41,7 +41,7 @@ Agora = Annotated[datetime, Depends(obter_agora)]
         "Lista os cargos disputados, na ordem da urna, com os candidatos e se o eleitor já votou "
         "em cada um. Só com a eleição aberta e dentro da janela (RN-50 a 53, RN-55, RN-61)."
     ),
-    responses=respostas_de_erro(401, 403, 404, 409),
+    responses=respostas_de_erro(401, 403, 404, 409, 422),
 )
 def obter_cedula(
     eleicao_id: IdDaEleicao, usuario: UsuarioEleitor, sessao: Sessao, agora: Agora
@@ -56,7 +56,8 @@ def obter_cedula(
     description=(
         "Devolve a prévia do voto e a cédula assinada. **Nada é gravado**: pode repetir para "
         "mudar de ideia. Número com candidatura vira voto NOMINAL, número sem candidatura vira "
-        "NULO, modo BRANCO vira BRANCO. A cédula vale 5 minutos (RN-54 a 58)."
+        "NULO, modo BRANCO vira BRANCO. A cédula é cifrada e vale 5 minutos (RN-54 a 58). A "
+        "resposta vem com `Cache-Control: no-store`, para a prévia não ficar guardada em cache."
     ),
     responses=respostas_de_erro(401, 403, 404, 409, 422),
 )
@@ -66,7 +67,10 @@ def registrar_voto(
     usuario: UsuarioEleitor,
     sessao: Sessao,
     agora: Agora,
+    resposta: Response,
 ) -> PreviaVotoResposta:
+    # A prévia mostra a escolha e traz a cédula: nenhum cache pode guardá-la (RN-60, D-144).
+    resposta.headers["Cache-Control"] = "no-store"
     pedido = PedidoRegistro(cargo=dados.cargo, modo=dados.modo, numero=dados.numero)
     return PreviaVotoResposta.de_previa(
         servico.registrar_voto(sessao, usuario, eleicao_id, pedido, agora)
@@ -101,7 +105,7 @@ def confirmar_voto(
     response_model=ParticipacaoResposta,
     summary="Consulta em quais cargos já votou",
     description="Lista os cargos disputados e se o eleitor já votou, sem a escolha (RN-61).",
-    responses=respostas_de_erro(401, 403, 404),
+    responses=respostas_de_erro(401, 403, 404, 422),
 )
 def obter_participacao(
     eleicao_id: IdDaEleicao, usuario: UsuarioEleitor, sessao: Sessao
