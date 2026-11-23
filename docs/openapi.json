@@ -2514,8 +2514,8 @@
               }
             }
           },
-          "500": {
-            "description": "Erro interno inesperado (o detalhe vai só para o log)",
+          "422": {
+            "description": "Dados inválidos",
             "content": {
               "application/json": {
                 "schema": {
@@ -2524,12 +2524,12 @@
               }
             }
           },
-          "422": {
-            "description": "Validation Error",
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErroResposta"
                 }
               }
             }
@@ -2543,7 +2543,7 @@
           "Votação"
         ],
         "summary": "Registra o voto (etapa 1)",
-        "description": "Devolve a prévia do voto e a cédula assinada. **Nada é gravado**: pode repetir para mudar de ideia. Número com candidatura vira voto NOMINAL, número sem candidatura vira NULO, modo BRANCO vira BRANCO. A cédula vale 5 minutos (RN-54 a 58).",
+        "description": "Devolve a prévia do voto e a cédula assinada. **Nada é gravado**: pode repetir para mudar de ideia. Número com candidatura vira voto NOMINAL, número sem candidatura vira NULO, modo BRANCO vira BRANCO. A cédula é cifrada e vale 5 minutos (RN-54 a 58). A resposta vem com `Cache-Control: no-store`, para a prévia não ficar guardada em cache.",
         "operationId": "registrar_voto",
         "security": [
           {
@@ -2830,8 +2830,8 @@
               }
             }
           },
-          "500": {
-            "description": "Erro interno inesperado (o detalhe vai só para o log)",
+          "422": {
+            "description": "Dados inválidos",
             "content": {
               "application/json": {
                 "schema": {
@@ -2840,12 +2840,12 @@
               }
             }
           },
-          "422": {
-            "description": "Validation Error",
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErroResposta"
                 }
               }
             }
@@ -4235,19 +4235,6 @@
           }
         }
       },
-      "HTTPValidationError": {
-        "properties": {
-          "detail": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationError"
-            },
-            "type": "array",
-            "title": "Detail"
-          }
-        },
-        "type": "object",
-        "title": "HTTPValidationError"
-      },
       "LinhaApuracaoResposta": {
         "properties": {
           "numero": {
@@ -5012,7 +4999,7 @@
           "token_cedula": {
             "type": "string",
             "title": "Token Cedula",
-            "description": "Cédula assinada, válida por 5 minutos (RN-57)."
+            "description": "Cédula cifrada (opaca), válida por 5 minutos (RN-57, RN-60)."
           },
           "expira_em": {
             "type": "string",
@@ -5058,7 +5045,7 @@
           ],
           "mensagem": "Confira os dados e confirme o voto.",
           "tipo_voto": "NOMINAL",
-          "token_cedula": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          "token_cedula": "gAAAAABpQ2..."
         }
       },
       "ResultadoCargoResposta": {
@@ -5269,46 +5256,6 @@
           "nome": "Chefe da Seção",
           "perfil": "CHEFE_SECAO"
         }
-      },
-      "ValidationError": {
-        "properties": {
-          "loc": {
-            "items": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                }
-              ]
-            },
-            "type": "array",
-            "title": "Location"
-          },
-          "msg": {
-            "type": "string",
-            "title": "Message"
-          },
-          "type": {
-            "type": "string",
-            "title": "Error Type"
-          },
-          "input": {
-            "title": "Input"
-          },
-          "ctx": {
-            "type": "object",
-            "title": "Context"
-          }
-        },
-        "type": "object",
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
-        "title": "ValidationError"
       }
     },
     "securitySchemes": {

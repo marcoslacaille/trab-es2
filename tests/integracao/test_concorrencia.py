@@ -1,4 +1,4 @@
-"""TI-73 e D-095: concorrência no voto (RN-54) e entre voto e encerramento (RN-18)."""
+"""TI-73, D-095, D-145 e D-146: concorrência no voto (RN-54) e entre voto e encerramento (RN-18)."""
 
 import threading
 from datetime import datetime
@@ -8,11 +8,13 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
+from app.apuracao import servico as servico_apuracao
 from app.compartilhado.banco import SessionLocal
 from app.compartilhado.dominio import Cargo
-from app.compartilhado.erros import ConflitoDeEstado
+from app.compartilhado.erros import ConflitoDeEstado, NaoEncontrado
 from app.eleicoes import repositorio as repositorio_eleicoes
 from app.eleicoes import servico as servico_eleicoes
+from app.eleitores.dominio import EleitorResumo
 from app.identidade.dominio import Perfil, UsuarioAutenticado
 from app.votacao import cedulas, servico
 from app.votacao.dominio import Escolha, TipoVoto
@@ -165,3 +167,53 @@ def test_confirmacao_repassa_erro_de_integridade_desconhecido(
         servico.confirmar_voto(sessao, usuario, eleicao_id, token, agora)
     with SessionLocal() as sessao:
         assert sessao.execute(text("SELECT COUNT(*) FROM registros_votacao")).scalar_one() == 0
+
+
+def test_d145_eleitor_excluido_durante_a_confirmacao_da_404(
+    cliente, cabecalho_chefe, relogio, monkeypatch
+):
+    """D-145 / RN-54: eleitor excluído no meio da confirmação → 404, sem gravar nada."""
+    eleicao_id = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)["eleicao_id"]
+    agora = relogio()
+    usuario, token = _eleitor_com_cedula(cliente, cabecalho_chefe, eleicao_id, agora)
+    # Simula a corrida: o eleitor foi lido, mas a linha já não existe quando o registro é gravado.
+    sumido = EleitorResumo(id=999_999, usuario_id=usuario.id, criado_em=agora)
+    monkeypatch.setattr(
+        servico.eleitores_servico, "obter_eleitor_do_usuario", lambda sessao, usuario_id: sumido
+    )
+
+    with SessionLocal() as sessao, pytest.raises(NaoEncontrado) as erro:
+        servico.confirmar_voto(sessao, usuario, eleicao_id, token, agora)
+
+    assert erro.value.codigo == "ELEITOR_NAO_ENCONTRADO"
+    with SessionLocal() as sessao:
+        assert sessao.execute(text("SELECT COUNT(*) FROM votos")).scalar_one() == 0
+        assert sessao.execute(text("SELECT COUNT(*) FROM registros_votacao")).scalar_one() == 0
+
+
+def test_d146_apuracao_le_votos_e_votantes_no_mesmo_instante(
+    cliente, cabecalho_chefe, relogio, monkeypatch
+):
+    """D-146 / RN-74, RN-79: um voto confirmado no meio da apuração não aparece pela metade."""
+    eleicao_id = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)["eleicao_id"]
+    agora = relogio()
+    eleitor, token = _eleitor_com_cedula(cliente, cabecalho_chefe, eleicao_id, agora)
+    contar_votos_original = servico.contar_votos
+
+    def contar_e_deixar_um_voto_entrar(sessao, eleicao):
+        contagens = contar_votos_original(sessao, eleicao)
+        with SessionLocal() as outra:  # outra requisição confirma um voto bem agora
+            servico.confirmar_voto(outra, eleitor, eleicao_id, token, agora)
+        return contagens
+
+    monkeypatch.setattr(servico, "contar_votos", contar_e_deixar_um_voto_entrar)
+    with SessionLocal() as sessao:
+        durante = servico_apuracao.apuracao_parcial(sessao, eleitor, eleicao_id, None, agora)
+    monkeypatch.undo()
+    with SessionLocal() as sessao:
+        depois = servico_apuracao.apuracao_parcial(sessao, eleitor, eleicao_id, None, agora)
+
+    assert durante.comparecimento.votantes == 0  # mesmo instante da contagem: ainda sem votos
+    assert sum(cargo.total_votos for cargo in durante.cargos) == 0
+    assert depois.comparecimento.votantes == 1  # o voto entrou de verdade
+    assert sum(cargo.total_votos for cargo in depois.cargos) == 1
