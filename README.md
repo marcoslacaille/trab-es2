@@ -4,7 +4,7 @@
 
 ## 1. Visão geral
 
-Backend do **Sistema de Simulação de Eleição Eletrônica**, trabalho da disciplina de Engenharia de Software II (Prof. Marcelo Soares Loutfi, UNIRIO). É uma API REST em Python + FastAPI + PostgreSQL, organizada como **monólito modular**, que simula uma eleição de uma seção com três perfis: **Chefe da Seção** (cadastra eleitores, candidatos, partidos e eleições; abre e encerra a votação), **Eleitor** (consulta a cédula, registra e confirma o voto, acompanha a votação) e **Candidato** (acompanha a votação do cargo que disputa). O voto é secreto por construção: o banco nunca liga quem votou ao que foi votado.
+Backend do **Sistema de Simulação de Eleição Eletrônica**, trabalho da disciplina de Engenharia de Software II (Prof. Marcelo Soares Loutfi, UNIRIO). É uma API REST em Python + FastAPI + PostgreSQL, organizada como **monólito modular**, que simula uma eleição de uma seção com três perfis: **Chefe da Seção** (cadastra eleitores, candidatos, partidos e eleições; abre e encerra a votação), **Eleitor** (consulta a cédula, registra e confirma o voto, acompanha a votação) e **Candidato** (acompanha a votação do cargo que disputa). O voto é secreto na API e no modelo de dados: nenhuma tabela, rota, resposta ou log liga quem votou ao que foi votado (o limite para quem acessa o banco diretamente está nas [Limitações conhecidas](#10-limitações-conhecidas)).
 
 Integrantes: Marcos Lacaille e demais membros do grupo (completar antes da entrega).
 
@@ -119,7 +119,7 @@ py -3.12 -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 .venv\Scripts\python.exe -m alembic upgrade head      # cria as tabelas
 .venv\Scripts\python.exe -m app.scripts.seed_demo     # dados de demonstração (opcional; já cria o Chefe)
-.venv\Scripts\python.exe -m uvicorn app.main:app --reload
+.venv\Scripts\python.exe -m uvicorn app.main:app --reload --no-access-log
 ```
 
 ### Linux / macOS
@@ -132,14 +132,15 @@ source .venv/bin/activate
 pip install -r requirements-dev.txt
 alembic upgrade head                                  # cria as tabelas
 python -m app.scripts.seed_demo                       # dados de demonstração (opcional; já cria o Chefe)
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --no-access-log
 ```
 
 A API fica em http://localhost:8000, o Swagger em http://localhost:8000/docs e a verificação de saúde em http://localhost:8000/health.
 
-- **Credenciais do banco:** o `docker-compose.yml` não tem senha escrita; lê `POSTGRES_USER` e `POSTGRES_PASSWORD` do `.env` e para com uma mensagem clara se faltarem. Se trocar a senha, troque também em `DATABASE_URL` e `TEST_DATABASE_URL`, e rode `docker compose down -v` (o PostgreSQL só usa a senha na criação do volume).
+- **Credenciais do banco:** o `docker-compose.yml` não tem senha escrita; lê `POSTGRES_USER` e `POSTGRES_PASSWORD` do `.env` e para com uma mensagem clara se faltarem. Se trocar a senha, troque também em `DATABASE_URL` e `TEST_DATABASE_URL`. O PostgreSQL só lê `POSTGRES_PASSWORD` ao criar o volume, então, num banco que já tem dados, troque a senha dentro dele (`ALTER USER <usuário> PASSWORD '<nova>';` pelo `psql` do contêiner) e mantenha o volume: `docker compose down -v` apaga todas as eleições e votos e só serve para recomeçar a demonstração do zero.
+- **Log de acesso:** `--no-access-log` desliga o log de acesso do uvicorn, que gravaria a URL inteira, com a query string (nomes usados nos filtros, por exemplo). O log da própria API registra só método, caminho, status e duração (D-132).
 - **Sem a demonstração:** em vez do `seed_demo`, rode `python -m app.scripts.criar_chefe` (usa `CHEFE_CPF`, `CHEFE_NOME` e `CHEFE_SENHA` do `.env`). Não existe rota para criar Chefe.
-- **Dados de demonstração:** `seed_demo` cria o Chefe, 3 partidos, 6 eleitores, 10 candidatos e a eleição de hoje (00:00 às 23:59) com as 10 candidaturas, ainda AGENDADA, e imprime a tabela de logins. Se já houver dados, avisa e não altera nada. Chefe: CPF `291.417.776-38`, senha `Chefe@2026`; eleitores: `Eleitor@123`; candidatos: `Candidato@123` (senhas fixas, só para a demo).
+- **Dados de demonstração:** `seed_demo` cria o Chefe, 3 partidos, 6 eleitores, 10 candidatos e a eleição de hoje (00:00 às 23:59) com as 10 candidaturas, ainda AGENDADA, e imprime a tabela de logins. Se já houver dados, avisa e não altera nada. O cenário é gravado de uma vez: se uma regra barrar no meio (por exemplo, já existir eleição de 1º turno hoje), ele avisa e não grava nada (D-147). Chefe: CPF `291.417.776-38`, senha `Chefe@2026`; eleitores: `Eleitor@123`; candidatos: `Candidato@123` (senhas fixas, só para a demo).
 - **Recomeçar do zero:** `docker compose down -v`, `docker compose up -d`, `alembic upgrade head`, `seed_demo`.
 - **Demonstração no Postman:** importe `docs/colecao-postman.json` e `docs/ambiente-postman.json` e siga o [`docs/DEMO.md`](docs/DEMO.md).
 
@@ -163,11 +164,11 @@ No Windows, use `.venv\Scripts\python.exe -m <comando>` no lugar de `<comando>` 
 | Integração | `tests/integracao/` | A API de ponta a ponta contra o PostgreSQL de teste: rotas, permissões, restrições e trigger do banco, concorrência, sigilo e o roteiro completo da demonstração (TI-74) | Banco de teste |
 | Arquitetura | `tests/arquitetura/` | Fronteiras entre módulos (TA-01), todas as rotas protegidas e documentadas, `docs/openapi.json` atualizado (TA-03) | Nada |
 
-São 545 testes. O CI do GitHub Actions roda lint, formatação e testes a cada push e Pull Request.
+São 564 testes. O CI do GitHub Actions roda lint, formatação e testes a cada push e Pull Request.
 
 ## 5. Arquitetura
 
-O sistema é um **monólito modular organizado por domínio**: um único processo FastAPI e um único banco PostgreSQL, divididos em 6 módulos de domínio (`identidade`, `eleitores`, `candidatos`, `eleicoes`, `votacao`, `apuracao`) mais um módulo `compartilhado`. Cada módulo é dono das suas tabelas e só conversa com os outros pelas funções do `servico.py` deles. As dependências formam um grafo sem ciclos, verificado por um teste automático.
+O sistema é um **monólito modular organizado por domínio**: um único processo FastAPI e um único banco PostgreSQL, divididos em 6 módulos de domínio (`identidade`, `eleitores`, `candidatos`, `eleicoes`, `votacao`, `apuracao`) mais um módulo `compartilhado`. Cada módulo é dono das suas tabelas e só conversa com os outros pelas funções do `servico.py` deles (e pelos tipos que essas funções recebem e devolvem). As dependências formam um grafo sem ciclos, verificado por um teste automático.
 
 ```mermaid
 graph TD
@@ -181,7 +182,7 @@ graph TD
     apuracao --> eleitores
 ```
 
-Todo módulo também pode usar `compartilhado` e `identidade.dependencias` (autenticação nas rotas).
+Todo módulo também pode usar `compartilhado`, `identidade.dependencias` (autenticação nas rotas) e os tipos `Perfil` e `UsuarioAutenticado` de `identidade.dominio`.
 
 **Camadas de cada módulo** (a mesma forma em todos): `rotas.py` (HTTP, sem regra de negócio) → `servico.py` (casos de uso, única porta de entrada, controla a transação) → `dominio.py` (regras puras, sem FastAPI nem SQLAlchemy) e `repositorio.py` (consultas, só nas tabelas do módulo) → `modelos.py` (tabelas ORM); `esquemas.py` tem os contratos de entrada e saída.
 
@@ -199,7 +200,7 @@ A diferença para o MVC com pastas globais (`controllers/`, `models/`, `views/`)
 **Principais decisões** (todas, com as alternativas descartadas, em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md)):
 
 - **D01, monólito modular:** o enunciado não exige distribuição; mantém as fronteiras dos *bounded contexts* sem o custo de rede, vários bancos e deploy dos microsserviços.
-- **D05, voto em duas etapas:** o registro devolve uma cédula assinada (token) e só a confirmação grava; o banco nunca guarda eleitor e escolha juntos, nem por um segundo.
+- **D05, voto em duas etapas:** o registro devolve uma cédula cifrada (token opaco, D-144) e só a confirmação grava; o banco nunca guarda eleitor e escolha juntos, nem por um segundo.
 - **D06, sigilo:** duas tabelas sem ligação (`registros_votacao` diz quem votou em qual cargo; `votos` diz o quê, sem quem).
 - **D09, candidaturas no agregado da Eleição:** a eleição é a raiz; toda mudança passa por ela, e a regra "só com eleição AGENDADA" fica num lugar só.
 
@@ -221,13 +222,13 @@ Fluxo do voto (diagrama de sequência em [`docs/ARQUITETURA.md`](docs/ARQUITETUR
 
 **Regras de fronteira:**
 
-1. Um módulo importa de outro **apenas** `app.<outro>.servico` (e `app.identidade.dependencias` nas rotas).
+1. Um módulo importa de outro **apenas** `app.<outro>.servico` e, como contrato dessas funções, os tipos públicos (`dataclass`es e enums) do `dominio.py` dos módulos vizinhos no grafo (D-077, D-098). De `app.identidade.dominio`, todo `servico.py` pode usar `Perfil` e `UsuarioAutenticado` (D-103); `app.identidade.dependencias`, só nas rotas.
 2. Serviços devolvem `dataclass`es do `dominio.py`, nunca objetos ORM.
 3. Nenhum `import` forma ciclo; as arestas permitidas são as do diagrama.
-4. `dominio.py` não importa `fastapi` nem `sqlalchemy`.
+4. `dominio.py` não importa `fastapi`, `sqlalchemy`, `repositorio` nem `modelos`; `esquemas.py` não importa `sqlalchemy`.
 5. Exceções só na "raiz de composição": `app/main.py`, `app/registro_modelos.py`, `app/scripts/*` e `migrations/env.py`.
 
-**O teste TA-01** (`tests/arquitetura/test_dependencias.py`) lê o código com `ast` e falha se algum `import` violar essas regras, se houver ciclo ou se um `dominio.py` importar framework ou banco. As fronteiras deixam de ser combinado e viram teste.
+**O teste TA-01** (`tests/arquitetura/test_dependencias.py`) lê o código com `ast` e falha se algum `import` violar essas regras (inclusive um import relativo, que esconderia o destino), se houver ciclo ou se um `dominio.py` importar framework ou banco. As fronteiras deixam de ser combinado e viram teste.
 
 **Conceitos da disciplina no código:** *módulos profundos* (poucas funções públicas em cada `servico.py`, muita lógica escondida atrás delas); *ocultação de informação* (só `identidade` conhece bcrypt e JWT de acesso; só `votacao` conhece as tabelas de voto); *baixo acoplamento* (nenhum módulo toca tabela de outro); *bounded contexts* (cada módulo com vocabulário próprio; `Cargo` no núcleo compartilhado); *agregados* (`Eleicao` é a raiz; candidaturas só mudam por ela); *sem flags de controle* (`abrir_eleicao()` e `encerrar_eleicao()`, nunca `alterar_status(abrir=True)`).
 
@@ -266,15 +267,15 @@ erDiagram
 - **Um voto por eleitor e cargo:** chave primária (`eleitor_id`, `eleicao_id`, `cargo`) de `registros_votacao`; vale inclusive com duas requisições simultâneas.
 - **Uma eleição aberta por vez:** índice único parcial `uq_eleicoes_uma_aberta` (`WHERE status = 'ABERTA'`).
 - **Voto coerente com a candidatura:** chave estrangeira composta (`candidatura_id`, `eleicao_id`, `cargo`) → `candidaturas`; um voto para Senador nunca aponta para uma candidatura a Presidente, nem de outra eleição.
-- **Voto imutável:** trigger `BEFORE UPDATE OR DELETE` em `votos` e `registros_votacao`.
+- **Voto imutável:** trigger `BEFORE UPDATE OR DELETE` em `votos` e `registros_votacao` (o `TRUNCATE`, que só o administrador do banco faz, não passa por trigger de linha).
 - **Número do candidato coerente com o cargo:** `ck_candidaturas_numero_por_cargo` (2, 3, 4 ou 5 dígitos conforme o cargo); número único por cargo na eleição.
 - **Situação coerente com os carimbos de tempo:** `ck_eleicoes_status_coerente`.
 
-**Sigilo:** `registros_votacao` (quem votou em qual cargo) e `votos` (o quê, sem quem) não têm nenhuma ligação entre si. O voto tem UUID aleatório, não tem horário nem id sequencial, a resposta da confirmação não devolve a escolha. Nenhuma rota nem log expõe a correlação.
+**Sigilo:** `registros_votacao` (quem votou em qual cargo) e `votos` (o quê, sem quem) não têm nenhuma ligação entre si. O voto tem UUID aleatório, não tem horário nem id sequencial, a resposta da confirmação não devolve a escolha e a cédula é cifrada (D-144). Nenhuma rota nem log expõe a correlação; o limite para quem acessa o banco diretamente está nas Limitações conhecidas.
 
 ## 8. Regras de negócio
 
-O catálogo completo (58 regras RN-01 a RN-58, cada uma com onde é implementada, o erro e a origem) está em [`docs/PLANO.md`](docs/PLANO.md), seção 8. Cada RN é citada na docstring da função que a implementa e no teste que a verifica.
+O catálogo completo (58 regras de RN-01 a RN-79, com saltos na numeração entre os módulos, cada uma com onde é implementada, o erro e a origem) está em [`docs/PLANO.md`](docs/PLANO.md), seção 8. Cada RN é citada na docstring da função que a implementa e no teste que a verifica.
 
 Destaque, **regras complementares definidas pelo grupo** (não estão no enunciado, tornam a simulação coerente com a eleição brasileira):
 
@@ -284,6 +285,8 @@ Destaque, **regras complementares definidas pelo grupo** (não estão no enuncia
 - Empate no mais votado: vence o candidato mais idoso.
 - Segundo turno: só Governador e Presidente, com exatamente 2 candidatos por cargo.
 - Só vota quem foi cadastrado antes da abertura da eleição ("previamente cadastrado").
+- Abertura só no dia da eleição e dentro da janela de horário cadastrada; passado o horário de encerramento, o voto é recusado mesmo que o Chefe ainda não tenha encerrado (RN-15, RN-52). Numa demonstração ao vivo, cadastre a eleição para o dia de hoje com uma janela que inclua o horário da apresentação.
+- Só uma eleição aberta por vez (RN-16).
 
 ## 9. Segurança e sigilo
 
@@ -291,7 +294,8 @@ Destaque, **regras complementares definidas pelo grupo** (não estão no enuncia
 - Senhas só como hash bcrypt (mínimo 8 caracteres, máximo 72 bytes); nenhuma resposta ou log contém senha, hash ou conteúdo de voto.
 - Cada usuário tem exatamente um perfil; não há autocadastro. Toda rota exige login (exceto `/auth/login`, `/health` e a documentação) e declara os perfis aceitos; um teste automático verifica.
 - Esquemas de entrada com `extra="forbid"` (sem atribuição em massa), respostas sempre por esquema explícito, só consultas SQLAlchemy parametrizadas, limites de tamanho e paginação.
-- A cédula é um token assinado com audiência própria: não serve como token de acesso, só vale para o eleitor que a pediu e expira em 5 minutos.
+- A cédula é cifrada e autenticada (Fernet, com chave derivada do `JWT_SEGREDO` só para ela): quem vê o token não lê o eleitor nem a escolha, e qualquer alteração o invalida. Ela não serve como token de acesso, só vale para o eleitor e a eleição em que foi emitida e expira em 5 minutos; a resposta do registro vem com `Cache-Control: no-store` (D-144).
+- A apuração lê votos, votantes e aptos num mesmo instante do banco (transação `REPEATABLE READ`, D-146).
 - Voto único e imutável garantido pelo banco (chave primária e trigger); trava compartilhada na eleição impede votar no instante em que o Chefe encerra.
 - Segredos só no `.env` (fora do Git); o `.env.example` tem valores de exemplo e deve ser trocado fora da demonstração.
 
@@ -301,7 +305,7 @@ Detalhes e a tabela de ameaças em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md).
 
 - **Sigilo no banco:** quem tiver acesso administrativo direto ao PostgreSQL ainda poderia tentar correlacionar a **ordem física** em que as linhas foram gravadas nas duas tabelas. A urna real embaralha o registro digital do voto; aqui isso está fora do escopo.
 - **Sigilo no banco (transação):** o registro de quem votou e o voto são gravados na mesma transação, então as duas linhas têm o mesmo `xmin` (o ID da transação no PostgreSQL). Quem pode ler as duas tabelas liga cada voto ao eleitor com `JOIN ... ON v.xmin = r.xmin`, com precisão total e sem prazo. Por isso o acesso direto ao banco precisa ficar restrito; mudar o desenho (por exemplo, gravar os votos em lote e embaralhados) é uma decisão em aberto (D-134).
-- **Poucos votos:** com pouquíssimos votos, a apuração parcial pode permitir deduzir escolhas (o mesmo acontece em qualquer seção real com um único eleitor).
+- **Parcial exata:** a apuração parcial mostra os totais exatos a cada consulta. Quem consulta antes e depois de um único voto, e sabe quem votou nesse intervalo, deduz a escolha; o mesmo vale para um cargo com um único votante no resultado final (como numa seção real com um único eleitor). Mostrar a parcial é exigência do enunciado; atualizar em lotes seria a mitigação.
 - **Comparecimento recalculado:** a apuração é calculada a cada consulta (D07), inclusive a de uma eleição já encerrada. Nome de urna e nascimento dos candidatos ficam congelados na abertura (D-140), então editar um candidato depois não muda o resultado. Mas excluir um eleitor apto que não votou ainda reduz os aptos e a abstenção da eleição (D-138).
 - **Token não revogável:** o token de acesso não pode ser revogado antes de expirar (60 min); isso é mitigado porque o usuário é recarregado do banco a cada requisição.
 - **HTTPS:** responsabilidade do ambiente onde a API for publicada.
