@@ -59,12 +59,12 @@ Não estão no enunciado, mas deixam a simulação coerente com a eleição bras
 
 ## 2. Princípios de design
 
-O código será avaliado com a régua da disciplina (Ousterhout nas aulas 02 a 05, Newman e DDD nas aulas 06 e 07). Cada princípio abaixo vira uma regra concreta que o agente deve seguir e que o grupo deve saber apontar no código.
+O código será avaliado com a régua da disciplina (Ousterhout nas aulas 02 a 05, Newman e DDD nas aulas 06 e 07). Cada princípio abaixo vira uma regra concreta no código, que o grupo deve saber apontar.
 
 | Princípio (aula) | Regra no código | Onde aparece |
 | --- | --- | --- |
 | Tolerância zero à complexidade (02) | Nomes que dizem o que a coisa é. Proibido: `temp`, `aux`, `data2`, `x`, `processa()`. | Todo o projeto |
-| Programação estratégica (02) | Ao fim de cada tarefa, uma rodada de refatoração antes do commit final (investimento contínuo de 10 a 20%). | Fluxo de cada tarefa (`CLAUDE.md`) |
+| Programação estratégica (02) | Ao fim de cada fase, uma rodada de refatoração antes do commit final (investimento contínuo de 10 a 20%). | Plano de fases (`PLANO.md`, seção 13) |
 | Módulos profundos (03) | Cada módulo expõe poucas funções públicas em `servico.py` e esconde muita lógica atrás delas. | `servico.py` de cada módulo |
 | Evitar classite (03) | Funções e `dataclass` simples. Nada de uma classe por operação, nem Interface + Implementação para tudo. | Todo o projeto |
 | Interface formal e informal (03) | Assinaturas tipadas (formal) + docstring com regras de uso e RN (informal). | Funções públicas |
@@ -75,7 +75,7 @@ O código será avaliado com a régua da disciplina (Ousterhout nas aulas 02 a 0
 | Baixo acoplamento (04, 06) | Nenhum módulo lê ou escreve tabela de outro (evita acoplamento de recurso comum e de conteúdo). Sem acoplamento de passagem: não repassar objetos que o módulo não usa. | Teste de arquitetura |
 | Propósito geral (05) | Interfaces genéricas, implementações específicas. Um único `registrar_voto(cargo, modo, numero)` para todos os cargos; nunca `votar_presidente()`. | `votacao` |
 | Especialização nas bordas (05) | Rotas e esquemas são específicos do HTTP; o domínio no meio é genérico. | Camadas |
-| Lei de Conway (06) | A divisão de módulos espelha a divisão de trabalho do grupo. | Divisão em tarefas (`docs/prompts/`) |
+| Lei de Conway (06) | A divisão de módulos espelha a divisão de trabalho do grupo. | Divisão do grupo (`PLANO.md`, seção 13) |
 | Bounded contexts (07) | Cada módulo é um contexto com vocabulário próprio. `Cargo` vive no núcleo compartilhado (shared kernel). | `app/compartilhado/dominio.py` |
 | Agregados (07) | `Eleicao` é raiz; candidaturas só mudam pela eleição (`/eleicoes/{id}/candidaturas`). Entre agregados, referência por ID. | `eleicoes` |
 | Regra de dependência (07) | Dependências apontam para dentro: rotas → serviço → domínio. `dominio.py` não importa FastAPI nem SQLAlchemy. | Teste de arquitetura |
