@@ -1372,21 +1372,24 @@ Casos de uso em `votacao/servico.py`:
 - **`contar_votos(sessao, eleicao_id) -> list[ContagemVoto]`** (`cargo`, `tipo`, `candidatura_id`, `total`): `SELECT cargo, tipo, candidatura_id, COUNT(*) FROM votos WHERE eleicao_id = :id GROUP BY cargo, tipo, candidatura_id` (RN-74).
 - **`contar_comparecimento(sessao, eleicao_id) -> Comparecimento`**: `COUNT(DISTINCT eleitor_id)` e contagem por cargo em `registros_votacao`.
 
-`app/votacao/cedulas.py`. A expiração usa o relógio injetável, por isso fica num campo próprio (`expira_em`) e é conferida à mão, e não no `exp` padrão do JWT (que o PyJWT confere com o relógio real):
+`app/votacao/cedulas.py`. A cédula é cifrada e autenticada com Fernet (pacote `cryptography`), com chave derivada do `JWT_SEGREDO` por HKDF e contexto próprio (D-144): quem vê o token, sem a chave, não lê o eleitor nem a escolha, e ela é diferente da chave do token de acesso. A expiração usa o relógio injetável, por isso fica no próprio conteúdo (`expira_em`, com a mesma precisão devolvida ao eleitor) e é conferida à mão. A resposta do registro vem com `Cache-Control: no-store`.
 
 ```python
+import base64
+import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-import jwt
+from cryptography.fernet import Fernet, InvalidToken
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 from app.compartilhado.config import obter_configuracao
 from app.compartilhado.dominio import Cargo
 from app.compartilhado.erros import DadosInvalidos
 from app.votacao.dominio import Escolha, TipoVoto
 
-ALGORITMO = "HS256"
-AUDIENCIA_CEDULA = "eleicao-api:cedula"
+CONTEXTO_DA_CHAVE = b"eleicao-api:cedula"
 
 
 @dataclass(frozen=True)
@@ -1398,29 +1401,33 @@ class Cedula:
     candidatura_id: int | None
 
 
+def _cifrador() -> Fernet:
+    segredo = obter_configuracao().jwt_segredo.encode("utf-8")
+    chave = HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=CONTEXTO_DA_CHAVE).derive(segredo)
+    return Fernet(base64.urlsafe_b64encode(chave))
+
+
 def emitir_cedula(usuario_id: int, eleicao_id: int, cargo: Cargo, escolha: Escolha,
                   agora: datetime) -> tuple[str, datetime]:
-    """Assina a escolha e devolve ao eleitor. Nada vai para o banco (RN-56, RN-57, RN-60)."""
-    cfg = obter_configuracao()
-    expira_em = agora + timedelta(minutes=cfg.cedula_expiracao_minutos)
+    """Cifra a escolha e devolve ao eleitor. Nada vai para o banco (RN-56, RN-57, RN-60)."""
+    expira_em = agora + timedelta(minutes=obter_configuracao().cedula_expiracao_minutos)
     dados = {
-        "sub": str(usuario_id), "aud": AUDIENCIA_CEDULA, "eleicao_id": eleicao_id,
-        "cargo": cargo.value, "tipo": escolha.tipo.value,
-        "candidatura_id": escolha.candidatura_id, "expira_em": int(expira_em.timestamp()),
+        "usuario_id": usuario_id, "eleicao_id": eleicao_id, "cargo": cargo.value,
+        "tipo": escolha.tipo.value, "candidatura_id": escolha.candidatura_id,
+        "expira_em": expira_em.isoformat(),
     }
-    return jwt.encode(dados, cfg.jwt_segredo, algorithm=ALGORITMO), expira_em
+    return _cifrador().encrypt(json.dumps(dados).encode("utf-8")).decode("ascii"), expira_em
 
 
 def ler_cedula(token: str, agora: datetime) -> Cedula:
-    cfg = obter_configuracao()
     try:
-        dados = jwt.decode(token, cfg.jwt_segredo, algorithms=[ALGORITMO], audience=AUDIENCIA_CEDULA)
-        cedula = Cedula(int(dados["sub"]), int(dados["eleicao_id"]), Cargo(dados["cargo"]),
+        dados = json.loads(_cifrador().decrypt(token.encode("utf-8")))
+        cedula = Cedula(int(dados["usuario_id"]), int(dados["eleicao_id"]), Cargo(dados["cargo"]),
                         TipoVoto(dados["tipo"]), dados["candidatura_id"])
-        expira_em = int(dados["expira_em"])
-    except (jwt.InvalidTokenError, KeyError, ValueError, TypeError) as erro:
+        expira_em = datetime.fromisoformat(dados["expira_em"])
+    except (InvalidToken, KeyError, ValueError, TypeError) as erro:
         raise DadosInvalidos("Cédula inválida.", codigo="CEDULA_INVALIDA") from erro
-    if agora.timestamp() > expira_em:
+    if agora > expira_em:
         raise DadosInvalidos("Cédula expirada. Registre o voto novamente.", codigo="CEDULA_EXPIRADA")
     return cedula
 ```
@@ -1450,6 +1457,8 @@ def confirmar_voto(sessao: Session, usuario: UsuarioAutenticado, eleicao_id: int
         sessao.rollback()
         if nome_da_restricao(erro) == "pk_registros_votacao":
             raise ConflitoDeEstado("Você já votou para este cargo.", codigo="VOTO_JA_REGISTRADO") from erro
+        if nome_da_restricao(erro) == "fk_registros_votacao_eleitor_id_eleitores":  # D-145
+            raise NaoEncontrado("Eleitor não encontrado.", codigo="ELEITOR_NAO_ENCONTRADO") from erro
         raise
 
     # A resposta NÃO contém a escolha (RN-60)
