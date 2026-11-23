@@ -41,7 +41,7 @@ Agora = Annotated[datetime, Depends(obter_agora)]
         "Lista os cargos disputados, na ordem da urna, com os candidatos e se o eleitor já votou "
         "em cada um. Só com a eleição aberta e dentro da janela (RN-50 a 53, RN-55, RN-61)."
     ),
-    responses=respostas_de_erro(401, 403, 404, 409),
+    responses=respostas_de_erro(401, 403, 404, 409, 422),
 )
 def obter_cedula(
     eleicao_id: IdDaEleicao, usuario: UsuarioEleitor, sessao: Sessao, agora: Agora
@@ -101,7 +101,7 @@ def confirmar_voto(
     response_model=ParticipacaoResposta,
     summary="Consulta em quais cargos já votou",
     description="Lista os cargos disputados e se o eleitor já votou, sem a escolha (RN-61).",
-    responses=respostas_de_erro(401, 403, 404),
+    responses=respostas_de_erro(401, 403, 404, 422),
 )
 def obter_participacao(
     eleicao_id: IdDaEleicao, usuario: UsuarioEleitor, sessao: Sessao
