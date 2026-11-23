@@ -2,13 +2,15 @@ import base64
 import json
 from datetime import UTC, datetime, timedelta
 
-import jwt
 import pytest
 
 from app.compartilhado.config import obter_configuracao
+from app.compartilhado.dominio import Cargo
 from app.compartilhado.erros import DadosInvalidos, NaoAutenticado
 from app.identidade import senhas, tokens
 from app.identidade.dominio import Perfil, validar_senha
+from app.votacao import cedulas
+from app.votacao.dominio import Escolha, TipoVoto
 
 
 @pytest.mark.parametrize(
@@ -95,15 +97,9 @@ def test_token_expirado_e_recusado(monkeypatch):
 
 
 def test_token_de_cedula_nao_serve_como_token_de_acesso():
-    """TU-12 / RN-02, RN-57: token válido mas com a audiência da cédula é recusado."""
-    token_de_cedula = jwt.encode(
-        {
-            "sub": "42",
-            "aud": "eleicao-api:cedula",
-            "exp": datetime.now(UTC) + timedelta(minutes=5),
-        },
-        obter_configuracao().jwt_segredo,
-        algorithm="HS256",
+    """TU-12 / RN-02, RN-57: uma cédula de verdade, emitida pela votação, não é token de acesso."""
+    token_de_cedula, _ = cedulas.emitir_cedula(
+        42, 7, Cargo.PRESIDENTE, Escolha(TipoVoto.BRANCO), datetime.now(UTC)
     )
 
     with pytest.raises(NaoAutenticado) as erro:

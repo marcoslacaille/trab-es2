@@ -132,7 +132,7 @@ class PreviaVotoResposta(BaseModel):
                 "tipo_voto": "NOMINAL",
                 "candidato": {"numero": "10", "nome_urna": "Carlos Lima", "partido_sigla": "PINO"},
                 "mensagem": "Confira os dados e confirme o voto.",
-                "token_cedula": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                "token_cedula": "gAAAAABpQ2...",
                 "expira_em": "2026-11-25T10:05:00-03:00",
                 "links": [
                     {
@@ -149,7 +149,9 @@ class PreviaVotoResposta(BaseModel):
     tipo_voto: TipoVoto = Field(description="NOMINAL, BRANCO ou NULO.", examples=["NOMINAL"])
     candidato: CandidatoNaCedula | None = Field(description="Nulo nos votos BRANCO e NULO.")
     mensagem: str = Field(description="Texto para o eleitor conferir.")
-    token_cedula: str = Field(description="Cédula assinada, válida por 5 minutos (RN-57).")
+    token_cedula: str = Field(
+        description="Cédula cifrada (opaca), válida por 5 minutos (RN-57, RN-60)."
+    )
     expira_em: datetime = Field(description="Instante em que o token_cedula expira.")
     links: list[LinkDaVotacao] = Field(description="Próximas ações possíveis.")
 
