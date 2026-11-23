@@ -142,6 +142,7 @@ A API fica em http://localhost:8000, o Swagger em http://localhost:8000/docs e a
 - **Sem a demonstração:** em vez do `seed_demo`, rode `python -m app.scripts.criar_chefe` (usa `CHEFE_CPF`, `CHEFE_NOME` e `CHEFE_SENHA` do `.env`). Não existe rota para criar Chefe.
 - **Dados de demonstração:** `seed_demo` cria o Chefe, 3 partidos, 6 eleitores, 10 candidatos e a eleição de hoje (00:00 às 23:59) com as 10 candidaturas, ainda AGENDADA, e imprime a tabela de logins. Se já houver dados, avisa e não altera nada. O cenário é gravado de uma vez: se uma regra barrar no meio (por exemplo, já existir eleição de 1º turno hoje), ele avisa e não grava nada (D-147). Chefe: CPF `291.417.776-38`, senha `Chefe@2026`; eleitores: `Eleitor@123`; candidatos: `Candidato@123` (senhas fixas, só para a demo).
 - **Recomeçar do zero:** `docker compose down -v`, `docker compose up -d`, `alembic upgrade head`, `seed_demo`.
+- **Quem já tinha o projeto:** depois do `git pull`, rode `pip install -r requirements-dev.txt` (entrou o pacote `cryptography`) e `alembic upgrade head` (migração `0006`). O `.env` precisa ter `POSTGRES_USER` e `POSTGRES_PASSWORD` (copie do `.env.example`).
 - **Demonstração no Postman:** importe `docs/colecao-postman.json` e `docs/ambiente-postman.json` e siga o [`docs/DEMO.md`](docs/DEMO.md).
 
 ## 4. Como testar
@@ -347,8 +348,7 @@ trab-es2/
 │   ├── colecao-postman.json     # coleção do roteiro (Postman v2.1)
 │   ├── ambiente-postman.json    # ambiente do Postman
 │   ├── openapi.json             # especificação exportada
-│   ├── index.html               # Swagger UI estático
-│   └── prompts/                 # tarefas e progresso
+│   └── index.html               # Swagger UI estático
 ├── .github/workflows/ci.yml
 ├── alembic.ini
 ├── docker-compose.yml
