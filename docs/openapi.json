@@ -2543,7 +2543,7 @@
           "Votação"
         ],
         "summary": "Registra o voto (etapa 1)",
-        "description": "Devolve a prévia do voto e a cédula assinada. **Nada é gravado**: pode repetir para mudar de ideia. Número com candidatura vira voto NOMINAL, número sem candidatura vira NULO, modo BRANCO vira BRANCO. A cédula vale 5 minutos (RN-54 a 58).",
+        "description": "Devolve a prévia do voto e a cédula assinada. **Nada é gravado**: pode repetir para mudar de ideia. Número com candidatura vira voto NOMINAL, número sem candidatura vira NULO, modo BRANCO vira BRANCO. A cédula é cifrada e vale 5 minutos (RN-54 a 58). A resposta vem com `Cache-Control: no-store`, para a prévia não ficar guardada em cache.",
         "operationId": "registrar_voto",
         "security": [
           {
@@ -4999,7 +4999,7 @@
           "token_cedula": {
             "type": "string",
             "title": "Token Cedula",
-            "description": "Cédula assinada, válida por 5 minutos (RN-57)."
+            "description": "Cédula cifrada (opaca), válida por 5 minutos (RN-57, RN-60)."
           },
           "expira_em": {
             "type": "string",
@@ -5045,7 +5045,7 @@
           ],
           "mensagem": "Confira os dados e confirme o voto.",
           "tipo_voto": "NOMINAL",
-          "token_cedula": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          "token_cedula": "gAAAAABpQ2..."
         }
       },
       "ResultadoCargoResposta": {

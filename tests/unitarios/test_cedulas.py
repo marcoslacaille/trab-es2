@@ -1,21 +1,28 @@
-"""TU-22 a TU-24: cédula assinada (RN-57)."""
+"""TU-22 a TU-24: cédula cifrada (RN-57, RN-60, D-144)."""
 
+import base64
+import json
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-import jwt
 import pytest
+from cryptography.fernet import Fernet
 
-from app.compartilhado.config import obter_configuracao
 from app.compartilhado.dominio import Cargo
 from app.compartilhado.erros import DadosInvalidos
 from app.identidade.dominio import Perfil
 from app.identidade.tokens import criar_token_acesso
-from app.votacao.cedulas import ALGORITMO, AUDIENCIA_CEDULA, emitir_cedula, ler_cedula
+from app.votacao import cedulas
+from app.votacao.cedulas import emitir_cedula, ler_cedula
 from app.votacao.dominio import Escolha, TipoVoto
 
 AGORA = datetime(2026, 11, 25, 10, 0, tzinfo=ZoneInfo("America/Sao_Paulo"))
 NOMINAL = Escolha(TipoVoto.NOMINAL, candidatura_id=42, numero="13", nome_urna="Ana")
+
+
+def _cifrar(dados: dict) -> str:
+    """Monta uma cédula com a chave certa e o conteúdo escolhido pelo teste."""
+    return cedulas._cifrador().encrypt(json.dumps(dados).encode("utf-8")).decode("ascii")
 
 
 def test_tu22_emitir_e_ler_devolve_os_mesmos_dados():
@@ -45,20 +52,29 @@ def test_tu23_ler_seis_minutos_depois_da_cedula_expirada():
     assert erro.value.codigo == "CEDULA_EXPIRADA"
 
 
+def test_tu23_vale_ate_o_instante_exato_de_expira_em():
+    """TU-23 / RN-57: com frações de segundo, a cédula vale até o `expira_em` informado."""
+    com_fracao = AGORA.replace(microsecond=900_000)
+    token, expira_em = emitir_cedula(5, 7, Cargo.PRESIDENTE, NOMINAL, com_fracao)
+    ler_cedula(token, expira_em)  # ainda vale no instante informado ao eleitor
+    with pytest.raises(DadosInvalidos) as erro:
+        ler_cedula(token, expira_em + timedelta(microseconds=1))
+    assert erro.value.codigo == "CEDULA_EXPIRADA"
+
+
 def test_tu24_cedula_adulterada_e_invalida():
-    """TU-24 / RN-57: trocar qualquer parte do token quebra a assinatura."""
+    """TU-24 / RN-57: trocar qualquer parte do token quebra a autenticação."""
     token, _ = emitir_cedula(5, 7, Cargo.PRESIDENTE, NOMINAL, AGORA)
-    cabecalho, corpo, assinatura = token.split(".")
-    adulterado = f"{cabecalho}.{corpo}.{assinatura[:-2]}AA"
+    meio = len(token) // 2
+    adulterado = token[:meio] + ("A" if token[meio] != "A" else "B") + token[meio + 1 :]
     with pytest.raises(DadosInvalidos) as erro:
         ler_cedula(adulterado, AGORA)
     assert erro.value.codigo == "CEDULA_INVALIDA"
 
 
-def test_tu24_cedula_com_outro_segredo_ou_lixo_e_invalida():
-    """TU-24 / RN-57: assinada por outro segredo, ou texto qualquer, não é cédula."""
-    segredo_falso = "outro-segredo-com-mais-de-32-caracteres!!"
-    falsa = jwt.encode({"sub": "5", "aud": AUDIENCIA_CEDULA}, segredo_falso, ALGORITMO)
+def test_tu24_cedula_com_outra_chave_ou_lixo_e_invalida():
+    """TU-24 / RN-57: cifrada com outra chave, ou texto qualquer, não é cédula."""
+    falsa = Fernet(Fernet.generate_key()).encrypt(b'{"usuario_id": 5}').decode("ascii")
     for token in (falsa, "isto-nao-e-um-token", ""):
         with pytest.raises(DadosInvalidos) as erro:
             ler_cedula(token, AGORA)
@@ -66,29 +82,35 @@ def test_tu24_cedula_com_outro_segredo_ou_lixo_e_invalida():
 
 
 def test_tu24_token_de_acesso_no_lugar_da_cedula_e_invalido():
-    """TU-24 / RN-57: a audiência separa o token de acesso da cédula."""
+    """TU-24 / RN-57: o token de acesso não é uma cédula (chaves e formatos diferentes)."""
     token_de_acesso, _ = criar_token_acesso(5, Perfil.ELEITOR)
     with pytest.raises(DadosInvalidos) as erro:
         ler_cedula(token_de_acesso, AGORA)
     assert erro.value.codigo == "CEDULA_INVALIDA"
 
 
-def test_tu24_cedula_assinada_com_campos_faltando_ou_errados_e_invalida():
-    """TU-24 / RN-57: assinatura certa, mas sem `expira_em` ou com cargo desconhecido."""
-    segredo = obter_configuracao().jwt_segredo
+def test_tu24_cedula_com_campos_faltando_ou_errados_e_invalida():
+    """TU-24 / RN-57: chave certa, mas sem `expira_em` ou com cargo desconhecido."""
     base = {
-        "sub": "5",
-        "aud": AUDIENCIA_CEDULA,
+        "usuario_id": 5,
         "eleicao_id": 7,
         "cargo": "PRESIDENTE",
         "tipo": "BRANCO",
         "candidatura_id": None,
-        "expira_em": int(AGORA.timestamp()) + 60,
+        "expira_em": (AGORA + timedelta(minutes=1)).isoformat(),
     }
     sem_expiracao = {chave: valor for chave, valor in base.items() if chave != "expira_em"}
     cargo_errado = {**base, "cargo": "PREFEITO"}
     for dados in (sem_expiracao, cargo_errado):
-        token = jwt.encode(dados, segredo, algorithm=ALGORITMO)
         with pytest.raises(DadosInvalidos) as erro:
-            ler_cedula(token, AGORA)
+            ler_cedula(_cifrar(dados), AGORA)
         assert erro.value.codigo == "CEDULA_INVALIDA"
+
+
+def test_d144_cedula_nao_expoe_eleitor_nem_escolha():
+    """D-144 / RN-60: sem a chave, o token não revela o eleitor, o cargo nem a escolha."""
+    token, _ = emitir_cedula(987654, 7, Cargo.PRESIDENTE, NOMINAL, AGORA)
+    aberto = base64.urlsafe_b64decode(token + "=" * (-len(token) % 4))
+    for revelador in (b"987654", b"candidatura_id", b"PRESIDENTE", b"NOMINAL", b"usuario"):
+        assert revelador not in aberto
+    assert not token.startswith("eyJ")  # não é mais um JWT legível

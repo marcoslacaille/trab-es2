@@ -1,5 +1,6 @@
 """TI-69 a TI-72: sigilo do voto no esquema, nas respostas e nos logs (RN-60)."""
 
+import base64
 import logging
 import re
 import uuid
@@ -128,3 +129,22 @@ def test_ti72_logs_nao_contem_token_numero_nem_candidatura(
     assert NUMERO_ESCOLHIDO not in texto
     assert f"candidatura_id={candidatura}" not in texto
     assert "candidatura_id" not in texto
+
+
+def test_d144_previa_nao_fica_em_cache_e_a_cedula_e_opaca(
+    cliente, cabecalho_chefe, cabecalho_eleitor
+):
+    """D-144 / RN-60: a prévia vem com `no-store` e o `token_cedula` não revela a escolha."""
+    ids = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)
+    resposta = cliente.post(
+        f"{BASE}/{ids['eleicao_id']}/votos/registro",
+        json={"cargo": "SENADOR", "modo": "NUMERO", "numero": NUMERO_ESCOLHIDO},
+        headers=cabecalho_eleitor,
+    )
+
+    assert resposta.status_code == 200, resposta.text
+    assert resposta.headers["cache-control"] == "no-store"
+    token = resposta.json()["token_cedula"]
+    aberto = base64.urlsafe_b64decode(token + "=" * (-len(token) % 4))
+    for revelador in (b"candidatura_id", b"usuario_id", b"SENADOR", b"NOMINAL"):
+        assert revelador not in aberto
