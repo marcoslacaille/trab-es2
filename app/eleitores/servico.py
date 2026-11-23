@@ -26,7 +26,7 @@ from app.eleitores.modelos import Eleitor
 # por aí porque `identidade.servico` já os importa de seu `dominio`.
 from app.identidade import servico as servico_identidade
 
-# Restrição que impede apagar quem já votou (a tabela nasce na tarefa 07).
+# Restrição que impede apagar quem já votou (a tabela nasce na migração 0005).
 FK_ELEITOR_JA_VOTOU = "fk_registros_votacao_eleitor_id_eleitores"
 
 

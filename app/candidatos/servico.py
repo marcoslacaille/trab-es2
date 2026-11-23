@@ -29,7 +29,7 @@ from app.compartilhado.paginacao import Pagina, Paginacao
 # por aí porque `identidade.servico` já os importa de seu `dominio` (mesmo caso de `eleitores`).
 from app.identidade import servico as servico_identidade
 
-# Restrição que impede apagar quem tem candidatura (a tabela nasce na tarefa 05).
+# Restrição que impede apagar quem tem candidatura (a tabela nasce na migração 0004).
 FK_CANDIDATO_COM_CANDIDATURA = "fk_candidaturas_candidato_id_candidatos"
 
 

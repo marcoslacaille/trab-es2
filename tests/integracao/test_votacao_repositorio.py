@@ -1,6 +1,6 @@
 """Repositório da votação contra o banco real (RN-54, RN-61, RN-74).
 
-Não há ID de TI no PLANO para estas funções; o serviço da tarefa 08 as usa (D-082).
+Não há ID de TI no PLANO para estas funções; o serviço da votação as usa (D-082).
 """
 
 from app.compartilhado.banco import SessionLocal
