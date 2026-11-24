@@ -11,7 +11,7 @@ Integrantes: Marcos Lacaille e demais membros do grupo (completar antes da entre
 ## 2. Links
 
 - Repositório: https://github.com/marcoslacaille/trab-es2
-- Documentação da API: [`docs/openapi.json`](docs/openapi.json) (OpenAPI 3.1) e [`docs/index.html`](docs/index.html) (Swagger UI estático). A publicação no GitHub Pages fica para depois, porque o repositório é privado (D-114); enquanto isso, use o Swagger local.
+- Documentação da API: [`docs/api.html`](docs/api.html) (arquivo único, abre direto no navegador, sem servidor), [`docs/openapi.json`](docs/openapi.json) (OpenAPI 3.1) e [`docs/index.html`](docs/index.html) (Swagger UI estático, precisa de servidor). A publicação no GitHub Pages fica para depois, porque o repositório é privado (D-114); enquanto isso, use o Swagger local.
 - Swagger local (com a API no ar): http://localhost:8000/docs (ReDoc em http://localhost:8000/redoc)
 - Documentos de apoio: [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md), [`docs/MODELAGEM.md`](docs/MODELAGEM.md), [`docs/DEMO.md`](docs/DEMO.md) (roteiro da apresentação), [`docs/PLANO.md`](docs/PLANO.md) (especificação) e [`docs/DECISOES.md`](docs/DECISOES.md) (decisões fora do plano).
 - Coleção do Postman: [`docs/colecao-postman.json`](docs/colecao-postman.json) e ambiente [`docs/ambiente-postman.json`](docs/ambiente-postman.json).
