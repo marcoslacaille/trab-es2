@@ -11,7 +11,7 @@ from app.compartilhado.dominio import Cargo
 from app.compartilhado.openapi import respostas_de_erro
 from app.compartilhado.relogio import obter_agora
 from app.compartilhado.validadores import MAIOR_ID
-from app.eleicoes import servico
+from app.eleicoes import service
 from app.eleicoes.dominio import (
     AlteracoesCandidatura,
     AlteracoesEleicao,
@@ -19,7 +19,7 @@ from app.eleicoes.dominio import (
     NovaEleicaoDados,
     StatusEleicao,
 )
-from app.eleicoes.esquemas import (
+from app.eleicoes.schemas import (
     AlteracaoCandidatura,
     AlteracaoEleicao,
     CandidaturaResposta,
@@ -68,7 +68,7 @@ def criar_eleicao(
     sessao: Annotated[Session, Depends(obter_sessao)],
     agora: Annotated[datetime, Depends(obter_agora)],
 ) -> EleicaoResposta:
-    eleicao = servico.criar_eleicao(sessao, NovaEleicaoDados(**dados.model_dump()), agora)
+    eleicao = service.criar_eleicao(sessao, NovaEleicaoDados(**dados.model_dump()), agora)
     return EleicaoResposta.de_eleicao(eleicao, usuario.perfil)
 
 
@@ -86,7 +86,7 @@ def listar_eleicoes(
 ) -> list[EleicaoResposta]:
     return [
         EleicaoResposta.de_eleicao(eleicao, usuario.perfil)
-        for eleicao in servico.listar_eleicoes(sessao, status)
+        for eleicao in service.listar_eleicoes(sessao, status)
     ]
 
 
@@ -102,7 +102,7 @@ def consultar_eleicao(
     usuario: UsuarioLogado,
     sessao: Annotated[Session, Depends(obter_sessao)],
 ) -> EleicaoResposta:
-    return EleicaoResposta.de_eleicao(servico.obter_eleicao(sessao, eleicao_id), usuario.perfil)
+    return EleicaoResposta.de_eleicao(service.obter_eleicao(sessao, eleicao_id), usuario.perfil)
 
 
 @roteador.patch(
@@ -123,7 +123,7 @@ def alterar_eleicao(
     agora: Annotated[datetime, Depends(obter_agora)],
 ) -> EleicaoResposta:
     alteracoes = AlteracoesEleicao(**alteracao.model_dump())
-    eleicao = servico.editar_eleicao(sessao, eleicao_id, alteracoes, agora)
+    eleicao = service.editar_eleicao(sessao, eleicao_id, alteracoes, agora)
     return EleicaoResposta.de_eleicao(eleicao, usuario.perfil)
 
 
@@ -145,7 +145,7 @@ def abrir_eleicao(
     agora: Annotated[datetime, Depends(obter_agora)],
 ) -> EleicaoResposta:
     return EleicaoResposta.de_eleicao(
-        servico.abrir_eleicao(sessao, eleicao_id, agora), usuario.perfil
+        service.abrir_eleicao(sessao, eleicao_id, agora), usuario.perfil
     )
 
 
@@ -166,7 +166,7 @@ def encerrar_eleicao(
     agora: Annotated[datetime, Depends(obter_agora)],
 ) -> EleicaoResposta:
     return EleicaoResposta.de_eleicao(
-        servico.encerrar_eleicao(sessao, eleicao_id, agora), usuario.perfil
+        service.encerrar_eleicao(sessao, eleicao_id, agora), usuario.perfil
     )
 
 
@@ -191,7 +191,7 @@ def listar_candidaturas(
 ) -> list[CandidaturaResposta]:
     return [
         CandidaturaResposta.de_candidatura(candidatura)
-        for candidatura in servico.listar_candidaturas(sessao, eleicao_id, cargo)
+        for candidatura in service.listar_candidaturas(sessao, eleicao_id, cargo)
     ]
 
 
@@ -214,7 +214,7 @@ def criar_candidatura(
     sessao: Annotated[Session, Depends(obter_sessao)],
     agora: Annotated[datetime, Depends(obter_agora)],
 ) -> CandidaturaResposta:
-    candidatura = servico.criar_candidatura(
+    candidatura = service.criar_candidatura(
         sessao, eleicao_id, NovaCandidaturaDados(**dados.model_dump()), agora
     )
     return CandidaturaResposta.de_candidatura(candidatura)
@@ -237,7 +237,7 @@ def alterar_candidatura(
     usuario: UsuarioChefe,
     sessao: Annotated[Session, Depends(obter_sessao)],
 ) -> CandidaturaResposta:
-    candidatura = servico.editar_candidatura(
+    candidatura = service.editar_candidatura(
         sessao, eleicao_id, candidatura_id, AlteracoesCandidatura(**alteracao.model_dump())
     )
     return CandidaturaResposta.de_candidatura(candidatura)
@@ -256,7 +256,7 @@ def remover_candidatura(
     usuario: UsuarioChefe,
     sessao: Annotated[Session, Depends(obter_sessao)],
 ) -> Response:
-    servico.remover_candidatura(sessao, eleicao_id, candidatura_id)
+    service.remover_candidatura(sessao, eleicao_id, candidatura_id)
     return Response(status_code=204)
 
 
@@ -273,5 +273,5 @@ def listar_minhas_candidaturas(
 ) -> list[CandidaturaResposta]:
     return [
         CandidaturaResposta.de_candidatura(candidatura)
-        for candidatura in servico.candidaturas_do_usuario(sessao, usuario.id)
+        for candidatura in service.candidaturas_do_usuario(sessao, usuario.id)
     ]

@@ -6,7 +6,7 @@ from sqlalchemy import text
 
 from app.compartilhado.banco import SessionLocal
 from app.compartilhado.relogio import agora
-from app.eleicoes import servico as servico_eleicoes
+from app.eleicoes import service as service_eleicoes
 from app.eleicoes.dominio import NovaEleicaoDados
 from app.scripts.seed_demo import semear
 
@@ -36,7 +36,7 @@ def test_semear_cria_o_cenario_e_repetir_nao_altera_nada(capsys):
 def test_d147_falha_no_meio_nao_grava_nada_e_permite_repetir(capsys):
     """D-147: se uma regra barra o cenário no meio, nada fica gravado e dá para repetir depois."""
     with SessionLocal() as sessao:  # já existe uma eleição de 1º turno hoje: o seed vai esbarrar
-        servico_eleicoes.criar_eleicao(
+        service_eleicoes.criar_eleicao(
             sessao,
             NovaEleicaoDados(
                 descricao="Eleição já cadastrada",

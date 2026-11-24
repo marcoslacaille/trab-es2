@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 from app.compartilhado.banco import SessionLocal
 from app.compartilhado.relogio import agora
-from app.identidade import servico
+from app.identidade import service
 from app.identidade.dominio import Perfil
 
 CPF_CHEFE = "29141777638"
@@ -46,7 +46,7 @@ def criar_chefe(
 ) -> int:
     """Cria o Chefe da Seção direto pelo serviço de identidade, com commit. Devolve o id."""
     with SessionLocal() as sessao:
-        usuario_id = servico.criar_credencial(
+        usuario_id = service.criar_credencial(
             sessao, cpf, "Chefe da Seção", senha, Perfil.CHEFE_SECAO, agora_ or agora()
         )
         sessao.commit()

@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.compartilhado.paginacao import Paginacao
-from app.identidade.modelos import Usuario
+from app.identidade.model import Usuario
 
 
 def buscar_por_id(sessao: Session, usuario_id: int) -> Usuario | None:

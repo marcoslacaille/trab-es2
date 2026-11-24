@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.compartilhado.dominio import Cargo
 from app.eleicoes.dominio import StatusEleicao
-from app.eleicoes.modelos import Candidatura, Eleicao
+from app.eleicoes.model import Candidatura, Eleicao
 
 
 def buscar_por_id(sessao: Session, eleicao_id: int) -> Eleicao | None:

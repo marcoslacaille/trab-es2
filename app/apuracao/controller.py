@@ -6,8 +6,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path, Query
 from sqlalchemy.orm import Session
 
-from app.apuracao import servico
-from app.apuracao.esquemas import ApuracaoResposta
+from app.apuracao import service
+from app.apuracao.schemas import ApuracaoResposta
 from app.compartilhado.banco import obter_sessao
 from app.compartilhado.dominio import Cargo
 from app.compartilhado.openapi import respostas_de_erro
@@ -54,7 +54,7 @@ def apuracao_parcial(
     cargo: CargoPedido = None,
 ) -> ApuracaoResposta:
     return ApuracaoResposta.de_apuracao(
-        servico.apuracao_parcial(sessao, usuario, eleicao_id, cargo, agora)
+        service.apuracao_parcial(sessao, usuario, eleicao_id, cargo, agora)
     )
 
 
@@ -76,5 +76,5 @@ def resultado_final(
     cargo: CargoPedido = None,
 ) -> ApuracaoResposta:
     return ApuracaoResposta.de_apuracao(
-        servico.resultado_final(sessao, usuario, eleicao_id, cargo, agora)
+        service.resultado_final(sessao, usuario, eleicao_id, cargo, agora)
     )

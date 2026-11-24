@@ -4,17 +4,17 @@ from fastapi import Depends, FastAPI
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.apuracao.rotas import roteador as rotas_apuracao
-from app.candidatos.rotas import roteador as rotas_candidatos
+from app.apuracao.controller import roteador as rotas_apuracao
+from app.candidatos.controller import roteador as rotas_candidatos
 from app.compartilhado.banco import obter_sessao
 from app.compartilhado.erros import registrar_tratadores
 from app.compartilhado.log_requisicoes import registrar_log_de_requisicoes
 from app.compartilhado.openapi import DESCRICAO_API, TAGS
-from app.eleicoes.rotas import roteador as rotas_eleicoes
-from app.eleicoes.rotas import roteador_candidaturas as rotas_candidaturas
-from app.eleitores.rotas import roteador as rotas_eleitores
-from app.identidade.rotas import roteador as rotas_identidade
-from app.votacao.rotas import roteador as rotas_votacao
+from app.eleicoes.controller import roteador as rotas_eleicoes
+from app.eleicoes.controller import roteador_candidaturas as rotas_candidaturas
+from app.eleitores.controller import roteador as rotas_eleitores
+from app.identidade.controller import roteador as rotas_identidade
+from app.votacao.controller import roteador as rotas_votacao
 
 app = FastAPI(
     title="API de Simulação de Eleição Eletrônica",

@@ -17,12 +17,12 @@ from app.compartilhado.erros import (
     NaoEncontrado,
     nome_da_restricao,
 )
-from app.eleicoes import servico as eleicoes_servico
+from app.eleicoes import service as eleicoes_service
 from app.eleicoes.dominio import EleicaoResumo
-from app.eleitores import servico as eleitores_servico
+from app.eleitores import service as eleitores_service
 from app.eleitores.dominio import EleitorResumo
 from app.identidade.dominio import UsuarioAutenticado
-from app.votacao import cedulas, dominio, repositorio
+from app.votacao import cedulas, dominio, repository
 from app.votacao.dominio import (
     CandidatoDaCedula,
     CargoDaCedula,
@@ -50,7 +50,7 @@ MENSAGENS_DA_PREVIA = {
 
 def _eleitor_do(sessao: Session, usuario: UsuarioAutenticado) -> EleitorResumo:
     """O eleitor desta credencial; 404 `ELEITOR_NAO_ENCONTRADO` se não houver."""
-    eleitor = eleitores_servico.obter_eleitor_do_usuario(sessao, usuario.id)
+    eleitor = eleitores_service.obter_eleitor_do_usuario(sessao, usuario.id)
     if eleitor is None:
         raise NaoEncontrado("Eleitor não encontrado.", codigo="ELEITOR_NAO_ENCONTRADO")
     return eleitor
@@ -64,7 +64,7 @@ def _eleitor_apto_a_votar(
     RN-51, RN-52 e RN-53. Devolve o eleitor e a eleição.
     """
     eleitor = _eleitor_do(sessao, usuario)
-    eleicao = eleicoes_servico.obter_eleicao(sessao, eleicao_id)
+    eleicao = eleicoes_service.obter_eleicao(sessao, eleicao_id)
     dominio.validar_pode_votar(eleicao, agora)
     dominio.validar_eleitor_apto(eleitor.criado_em, eleicao.aberta_em)
     return eleitor, eleicao
@@ -79,8 +79,8 @@ def obter_cedula(
     Não grava nada.
     """
     eleitor, _ = _eleitor_apto_a_votar(sessao, usuario, eleicao_id, agora)
-    candidaturas = eleicoes_servico.listar_candidaturas(sessao, eleicao_id)
-    votados = repositorio.cargos_votados(sessao, eleitor.id, eleicao_id)
+    candidaturas = eleicoes_service.listar_candidaturas(sessao, eleicao_id)
+    votados = repository.cargos_votados(sessao, eleitor.id, eleicao_id)
 
     cargos = []
     for cargo in Cargo:  # a ordem do enum é a da urna
@@ -115,10 +115,10 @@ def registrar_voto(
     (RN-58); cédula assinada, válida por 5 minutos (RN-57).
     """
     eleitor, _ = _eleitor_apto_a_votar(sessao, usuario, eleicao_id, agora)
-    if repositorio.ja_votou(sessao, eleitor.id, eleicao_id, pedido.cargo):
+    if repository.ja_votou(sessao, eleitor.id, eleicao_id, pedido.cargo):
         raise ConflitoDeEstado("Você já votou para este cargo.", codigo="VOTO_JA_REGISTRADO")
 
-    candidaturas = eleicoes_servico.listar_candidaturas(sessao, eleicao_id, pedido.cargo)
+    candidaturas = eleicoes_service.listar_candidaturas(sessao, eleicao_id, pedido.cargo)
     if not candidaturas:
         raise DadosInvalidos(
             "Este cargo não é disputado nesta eleição.",
@@ -166,13 +166,13 @@ def confirmar_voto(
         )
 
     eleitor = _eleitor_do(sessao, usuario)
-    eleicao = eleicoes_servico.obter_eleicao_para_votacao(sessao, eleicao_id)
+    eleicao = eleicoes_service.obter_eleicao_para_votacao(sessao, eleicao_id)
     dominio.validar_pode_votar(eleicao, agora)
     dominio.validar_eleitor_apto(eleitor.criado_em, eleicao.aberta_em)
 
     try:
-        repositorio.inserir_registro(sessao, eleitor.id, eleicao_id, cedula.cargo)
-        repositorio.inserir_voto(
+        repository.inserir_registro(sessao, eleitor.id, eleicao_id, cedula.cargo)
+        repository.inserir_voto(
             sessao, eleicao_id, cedula.cargo, cedula.tipo, cedula.candidatura_id
         )
         sessao.commit()
@@ -199,8 +199,8 @@ def obter_participacao(
     Vale em qualquer status da eleição. 404 se a eleição ou o eleitor não existirem.
     """
     eleitor = _eleitor_do(sessao, usuario)
-    candidaturas = eleicoes_servico.listar_candidaturas(sessao, eleicao_id)
-    votados = repositorio.cargos_votados(sessao, eleitor.id, eleicao_id)
+    candidaturas = eleicoes_service.listar_candidaturas(sessao, eleicao_id)
+    votados = repository.cargos_votados(sessao, eleitor.id, eleicao_id)
     disputados = {c.cargo for c in candidaturas}
     return Participacao(
         eleicao_id=eleicao_id,
@@ -212,9 +212,9 @@ def obter_participacao(
 
 def contar_votos(sessao: Session, eleicao_id: int) -> list[ContagemVoto]:
     """Contagem de votos por cargo, tipo e candidatura, para a apuração (RN-74)."""
-    return repositorio.contar_votos(sessao, eleicao_id)
+    return repository.contar_votos(sessao, eleicao_id)
 
 
 def contar_comparecimento(sessao: Session, eleicao_id: int) -> Comparecimento:
     """Eleitores que votaram em ao menos um cargo e votos registrados por cargo (RN-79)."""
-    return repositorio.contar_comparecimento(sessao, eleicao_id)
+    return repository.contar_comparecimento(sessao, eleicao_id)

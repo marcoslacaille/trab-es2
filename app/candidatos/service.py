@@ -1,6 +1,6 @@
 """Casos de uso de candidatos e partidos. É a única porta de entrada do módulo para os outros.
 
-O nome e o CPF do candidato ficam na credencial: este módulo os pede a `identidade.servico` e
+O nome e o CPF do candidato ficam na credencial: este módulo os pede a `identidade.service` e
 nunca lê a tabela `usuarios`. As funções chamadas pelas rotas fazem `commit` no final.
 """
 
@@ -9,7 +9,7 @@ from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.candidatos import repositorio
+from app.candidatos import repository
 from app.candidatos.dominio import (
     AlteracoesCandidato,
     CandidatoDetalhado,
@@ -21,20 +21,20 @@ from app.candidatos.dominio import (
     validar_nome_de_urna,
     validar_partido,
 )
-from app.candidatos.modelos import Candidato, Partido
+from app.candidatos.model import Candidato, Partido
 from app.compartilhado.erros import ConflitoDeEstado, NaoEncontrado, nome_da_restricao
 from app.compartilhado.paginacao import Pagina, Paginacao
 
-# Um módulo só importa `servico` de outro (seção 5). `Perfil` e `UsuarioAutenticado` chegam
-# por aí porque `identidade.servico` já os importa de seu `dominio` (mesmo caso de `eleitores`).
-from app.identidade import servico as servico_identidade
+# Um módulo só importa `service` de outro (seção 5). `Perfil` e `UsuarioAutenticado` chegam
+# por aí porque `identidade.service` já os importa de seu `dominio` (mesmo caso de `eleitores`).
+from app.identidade import service as service_identidade
 
 # Restrição que impede apagar quem tem candidatura (a tabela nasce na migração 0004).
 FK_CANDIDATO_COM_CANDIDATURA = "fk_candidaturas_candidato_id_candidatos"
 
 
 def _detalhar(
-    candidato: Candidato, usuario: servico_identidade.UsuarioAutenticado
+    candidato: Candidato, usuario: service_identidade.UsuarioAutenticado
 ) -> CandidatoDetalhado:
     """Junta os dados do candidato com nome e CPF da credencial. O ORM não sai do módulo."""
     return CandidatoDetalhado(
@@ -67,7 +67,7 @@ def _resumir_partido(partido: Partido) -> PartidoResumo:
 
 def _obter_modelo(sessao: Session, candidato_id: int) -> Candidato:
     """Busca o candidato ou levanta 404 `CANDIDATO_NAO_ENCONTRADO`."""
-    candidato = repositorio.buscar_candidato_por_id(sessao, candidato_id)
+    candidato = repository.buscar_candidato_por_id(sessao, candidato_id)
     if candidato is None:
         raise NaoEncontrado("Candidato não encontrado.", codigo="CANDIDATO_NAO_ENCONTRADO")
     return candidato
@@ -75,7 +75,7 @@ def _obter_modelo(sessao: Session, candidato_id: int) -> Candidato:
 
 def _com_credencial(sessao: Session, candidato: Candidato) -> CandidatoDetalhado:
     """Completa o candidato com a credencial. Credencial ausente é inconsistência (500)."""
-    usuarios = servico_identidade.obter_usuarios(sessao, [candidato.usuario_id])
+    usuarios = service_identidade.obter_usuarios(sessao, [candidato.usuario_id])
     usuario = usuarios.get(candidato.usuario_id)
     if usuario is None:
         raise LookupError(f"O candidato {candidato.id} não tem credencial.")
@@ -94,8 +94,8 @@ def cadastrar_candidato(
     nome_urna = validar_nome_de_urna(dados.nome_urna)
     validar_nascimento_do_candidato(dados.data_nascimento, agora.date())
 
-    usuario_id = servico_identidade.criar_credencial(
-        sessao, dados.cpf, dados.nome, dados.senha, servico_identidade.Perfil.CANDIDATO, agora
+    usuario_id = service_identidade.criar_credencial(
+        sessao, dados.cpf, dados.nome, dados.senha, service_identidade.Perfil.CANDIDATO, agora
     )
     candidato = Candidato(
         usuario_id=usuario_id,
@@ -103,7 +103,7 @@ def cadastrar_candidato(
         data_nascimento=dados.data_nascimento,
         criado_em=agora,
     )
-    repositorio.inserir_candidato(sessao, candidato)
+    repository.inserir_candidato(sessao, candidato)
     sessao.commit()
     return _com_credencial(sessao, candidato)
 
@@ -116,10 +116,10 @@ def listar_candidatos(
     A paginação e o filtro de nome ficam com `identidade.listar_usuarios`; aqui só se buscam,
     numa única consulta, os candidatos desses usuários.
     """
-    usuarios = servico_identidade.listar_usuarios(
-        sessao, servico_identidade.Perfil.CANDIDATO, nome, paginacao
+    usuarios = service_identidade.listar_usuarios(
+        sessao, service_identidade.Perfil.CANDIDATO, nome, paginacao
     )
-    candidatos = repositorio.buscar_candidatos_por_usuarios_ids(
+    candidatos = repository.buscar_candidatos_por_usuarios_ids(
         sessao, [u.id for u in usuarios.itens]
     )
     por_usuario = {candidato.usuario_id: candidato for candidato in candidatos}
@@ -151,7 +151,7 @@ def atualizar_candidato(
         validar_nascimento_do_candidato(alteracoes.data_nascimento, agora.date())
         candidato.data_nascimento = alteracoes.data_nascimento
     if alteracoes.nome is not None or alteracoes.senha is not None:
-        servico_identidade.atualizar_credencial(
+        service_identidade.atualizar_credencial(
             sessao, candidato.usuario_id, agora, nome=alteracoes.nome, senha=alteracoes.senha
         )
     sessao.commit()
@@ -167,7 +167,7 @@ def excluir_candidato(sessao: Session, candidato_id: int) -> None:
     candidato = _obter_modelo(sessao, candidato_id)
     usuario_id = candidato.usuario_id
     try:
-        repositorio.remover_candidato(sessao, candidato)
+        repository.remover_candidato(sessao, candidato)
     except IntegrityError as erro:
         sessao.rollback()
         if nome_da_restricao(erro) != FK_CANDIDATO_COM_CANDIDATURA:
@@ -176,7 +176,7 @@ def excluir_candidato(sessao: Session, candidato_id: int) -> None:
             "O candidato tem candidaturas. Remova as candidaturas antes.",
             codigo="EXCLUSAO_BLOQUEADA",
         ) from erro
-    servico_identidade.remover_credencial(sessao, usuario_id)
+    service_identidade.remover_credencial(sessao, usuario_id)
     sessao.commit()
 
 
@@ -185,7 +185,7 @@ def obter_candidato_logado(sessao: Session, usuario_id: int) -> CandidatoDetalha
 
     Levanta 404 `CANDIDATO_NAO_ENCONTRADO` se a credencial não tiver um candidato.
     """
-    candidato = repositorio.buscar_candidato_por_usuario_id(sessao, usuario_id)
+    candidato = repository.buscar_candidato_por_usuario_id(sessao, usuario_id)
     if candidato is None:
         raise NaoEncontrado("Candidato não encontrado.", codigo="CANDIDATO_NAO_ENCONTRADO")
     return _com_credencial(sessao, candidato)
@@ -193,7 +193,7 @@ def obter_candidato_logado(sessao: Session, usuario_id: int) -> CandidatoDetalha
 
 def obter_candidato_do_usuario(sessao: Session, usuario_id: int) -> CandidatoResumo | None:
     """Devolve o candidato dono desta credencial, ou `None` se não houver. Usada por `eleicoes`."""
-    candidato = repositorio.buscar_candidato_por_usuario_id(sessao, usuario_id)
+    candidato = repository.buscar_candidato_por_usuario_id(sessao, usuario_id)
     return _resumir_candidato(candidato) if candidato else None
 
 
@@ -204,7 +204,7 @@ def obter_resumos_de_candidatos(sessao: Session, ids: list[int]) -> dict[int, Ca
     """
     if not ids:
         return {}
-    candidatos = repositorio.buscar_candidatos_por_ids(sessao, ids)
+    candidatos = repository.buscar_candidatos_por_ids(sessao, ids)
     return {candidato.id: _resumir_candidato(candidato) for candidato in candidatos}
 
 
@@ -215,22 +215,22 @@ def criar_partido(sessao: Session, dados: NovoPartidoDados, agora: datetime) -> 
     `PARTIDO_DUPLICADO`; dados fora do formato dão 422 `DADOS_INVALIDOS`.
     """
     dados = validar_partido(dados)
-    if repositorio.existe_partido_com(sessao, dados.sigla, dados.nome, dados.numero):
+    if repository.existe_partido_com(sessao, dados.sigla, dados.nome, dados.numero):
         raise ConflitoDeEstado(
             "Já existe um partido com esta sigla, nome ou número.", codigo="PARTIDO_DUPLICADO"
         )
     partido = Partido(sigla=dados.sigla, nome=dados.nome, numero=dados.numero, criado_em=agora)
-    repositorio.inserir_partido(sessao, partido)
+    repository.inserir_partido(sessao, partido)
     sessao.commit()
     return _resumir_partido(partido)
 
 
 def listar_partidos(sessao: Session) -> list[PartidoResumo]:
     """Todos os partidos, ordenados por número (RN-30: qualquer usuário logado pode listar)."""
-    return [_resumir_partido(partido) for partido in repositorio.listar_partidos_por_numero(sessao)]
+    return [_resumir_partido(partido) for partido in repository.listar_partidos_por_numero(sessao)]
 
 
 def obter_partido(sessao: Session, partido_id: int) -> PartidoResumo | None:
     """Devolve o partido ou `None` se não existir. Usada por `eleicoes` (RN-46)."""
-    partido = repositorio.buscar_partido_por_id(sessao, partido_id)
+    partido = repository.buscar_partido_por_id(sessao, partido_id)
     return _resumir_partido(partido) if partido else None

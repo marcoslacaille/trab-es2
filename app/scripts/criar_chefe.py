@@ -10,7 +10,7 @@ from app.compartilhado.banco import SessionLocal
 from app.compartilhado.config import obter_configuracao
 from app.compartilhado.erros import ConflitoDeEstado, DadosInvalidos
 from app.compartilhado.relogio import agora
-from app.identidade import servico
+from app.identidade import service
 from app.identidade.dominio import Perfil
 
 
@@ -27,7 +27,7 @@ def criar_chefe() -> int:
 
     with SessionLocal() as sessao:
         try:
-            servico.criar_credencial(
+            service.criar_credencial(
                 sessao,
                 cpf=configuracao.chefe_cpf,
                 nome=configuracao.chefe_nome,

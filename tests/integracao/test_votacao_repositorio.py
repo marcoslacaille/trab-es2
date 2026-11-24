@@ -5,7 +5,7 @@ Não há ID de TI no PLANO para estas funções; o serviço da votação as usa 
 
 from app.compartilhado.banco import SessionLocal
 from app.compartilhado.dominio import Cargo
-from app.votacao import repositorio
+from app.votacao import repository
 from app.votacao.dominio import TipoVoto
 from tests.integracao.test_banco_restricoes import (
     inserir_candidatura,
@@ -21,30 +21,30 @@ def test_inserir_consultar_e_contar():
         eleitor_id = inserir_eleitor(sessao)
         candidatura_id = inserir_candidatura(sessao, eleicao_id, "PRESIDENTE", "13", 1)
 
-        assert not repositorio.ja_votou(sessao, eleitor_id, eleicao_id, Cargo.PRESIDENTE)
-        assert repositorio.cargos_votados(sessao, eleitor_id, eleicao_id) == set()
+        assert not repository.ja_votou(sessao, eleitor_id, eleicao_id, Cargo.PRESIDENTE)
+        assert repository.cargos_votados(sessao, eleitor_id, eleicao_id) == set()
 
-        repositorio.inserir_registro(sessao, eleitor_id, eleicao_id, Cargo.PRESIDENTE)
-        repositorio.inserir_registro(sessao, eleitor_id, eleicao_id, Cargo.SENADOR)
+        repository.inserir_registro(sessao, eleitor_id, eleicao_id, Cargo.PRESIDENTE)
+        repository.inserir_registro(sessao, eleitor_id, eleicao_id, Cargo.SENADOR)
         for tipo, candidatura in [
             (TipoVoto.NOMINAL, candidatura_id),
             (TipoVoto.NOMINAL, candidatura_id),
             (TipoVoto.NULO, None),
         ]:
-            repositorio.inserir_voto(sessao, eleicao_id, Cargo.PRESIDENTE, tipo, candidatura)
-        repositorio.inserir_voto(sessao, eleicao_id, Cargo.SENADOR, TipoVoto.BRANCO, None)
+            repository.inserir_voto(sessao, eleicao_id, Cargo.PRESIDENTE, tipo, candidatura)
+        repository.inserir_voto(sessao, eleicao_id, Cargo.SENADOR, TipoVoto.BRANCO, None)
         sessao.commit()
 
-        assert repositorio.ja_votou(sessao, eleitor_id, eleicao_id, Cargo.PRESIDENTE)
-        assert not repositorio.ja_votou(sessao, eleitor_id, eleicao_id, Cargo.GOVERNADOR)
-        assert repositorio.cargos_votados(sessao, eleitor_id, eleicao_id) == {
+        assert repository.ja_votou(sessao, eleitor_id, eleicao_id, Cargo.PRESIDENTE)
+        assert not repository.ja_votou(sessao, eleitor_id, eleicao_id, Cargo.GOVERNADOR)
+        assert repository.cargos_votados(sessao, eleitor_id, eleicao_id) == {
             Cargo.PRESIDENTE,
             Cargo.SENADOR,
         }
 
         contagens = {
             (c.cargo, c.tipo, c.candidatura_id): c.total
-            for c in repositorio.contar_votos(sessao, eleicao_id)
+            for c in repository.contar_votos(sessao, eleicao_id)
         }
         assert contagens == {
             (Cargo.PRESIDENTE, TipoVoto.NOMINAL, candidatura_id): 2,
@@ -52,7 +52,7 @@ def test_inserir_consultar_e_contar():
             (Cargo.SENADOR, TipoVoto.BRANCO, None): 1,
         }
 
-        comparecimento = repositorio.contar_comparecimento(sessao, eleicao_id)
+        comparecimento = repository.contar_comparecimento(sessao, eleicao_id)
         assert comparecimento.eleitores_que_votaram == 1
         assert comparecimento.por_cargo == {Cargo.PRESIDENTE: 1, Cargo.SENADOR: 1}
 
@@ -61,7 +61,7 @@ def test_comparecimento_sem_votos_e_zero():
     """RN-74: eleição sem registros devolve zero eleitores e nenhum cargo."""
     with SessionLocal() as sessao:
         eleicao_id = inserir_eleicao(sessao, "2026-11-25", aberta=True)
-        comparecimento = repositorio.contar_comparecimento(sessao, eleicao_id)
+        comparecimento = repository.contar_comparecimento(sessao, eleicao_id)
         assert comparecimento.eleitores_que_votaram == 0
         assert comparecimento.por_cargo == {}
-        assert repositorio.contar_votos(sessao, eleicao_id) == []
+        assert repository.contar_votos(sessao, eleicao_id) == []

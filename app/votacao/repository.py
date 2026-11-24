@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.compartilhado.dominio import Cargo
 from app.votacao.dominio import Comparecimento, ContagemVoto, TipoVoto
-from app.votacao.modelos import RegistroVotacao, Voto
+from app.votacao.model import RegistroVotacao, Voto
 
 
 def inserir_registro(sessao: Session, eleitor_id: int, eleicao_id: int, cargo: Cargo) -> None:

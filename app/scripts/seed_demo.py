@@ -9,17 +9,17 @@ from datetime import date, datetime, time
 
 from sqlalchemy.orm import Session
 
-from app.candidatos import servico as servico_candidatos
+from app.candidatos import service as service_candidatos
 from app.candidatos.dominio import NovoCandidatoDados, NovoPartidoDados
 from app.compartilhado.banco import engine
 from app.compartilhado.dominio import Cargo
 from app.compartilhado.erros import ConflitoDeEstado, ErroDeNegocio
 from app.compartilhado.relogio import agora
-from app.eleicoes import servico as servico_eleicoes
+from app.eleicoes import service as service_eleicoes
 from app.eleicoes.dominio import NovaCandidaturaDados, NovaEleicaoDados
-from app.eleitores import servico as servico_eleitores
+from app.eleitores import service as service_eleitores
 from app.eleitores.dominio import NovoEleitorDados
-from app.identidade import servico as servico_identidade
+from app.identidade import service as service_identidade
 from app.identidade.dominio import Perfil
 
 CHEFE_CPF = "291.417.776-38"
@@ -158,7 +158,7 @@ def semear() -> int:
             autoflush=False,
             expire_on_commit=False,
         ) as sessao:
-            if servico_candidatos.listar_partidos(sessao):
+            if service_candidatos.listar_partidos(sessao):
                 transacao.rollback()
                 print("Dados de demonstração já existem; nada foi alterado.")
                 print("Para recomeçar: docker compose down -v, up -d e alembic upgrade head.")
@@ -181,13 +181,13 @@ def _criar_cenario(sessao: Session, momento: datetime) -> int:
 
     partido_por_sigla = {}
     for sigla, nome, numero in PARTIDOS:
-        partido = servico_candidatos.criar_partido(
+        partido = service_candidatos.criar_partido(
             sessao, NovoPartidoDados(sigla=sigla, nome=nome, numero=numero), momento
         )
         partido_por_sigla[sigla] = partido.id
 
     for nome, cpf, titulo, nascimento in ELEITORES:
-        servico_eleitores.cadastrar_eleitor(
+        service_eleitores.cadastrar_eleitor(
             sessao,
             NovoEleitorDados(
                 nome=nome,
@@ -199,7 +199,7 @@ def _criar_cenario(sessao: Session, momento: datetime) -> int:
             momento,
         )
 
-    eleicao = servico_eleicoes.criar_eleicao(
+    eleicao = service_eleicoes.criar_eleicao(
         sessao,
         NovaEleicaoDados(
             descricao="Eleições Gerais 2026 — 1º turno (simulação)",
@@ -212,7 +212,7 @@ def _criar_cenario(sessao: Session, momento: datetime) -> int:
     )
 
     for cargo, numero, nome_urna, nome, cpf, nascimento, sigla in CANDIDATOS:
-        candidato = servico_candidatos.cadastrar_candidato(
+        candidato = service_candidatos.cadastrar_candidato(
             sessao,
             NovoCandidatoDados(
                 nome=nome,
@@ -223,7 +223,7 @@ def _criar_cenario(sessao: Session, momento: datetime) -> int:
             ),
             momento,
         )
-        servico_eleicoes.criar_candidatura(
+        service_eleicoes.criar_candidatura(
             sessao,
             eleicao.id,
             NovaCandidaturaDados(
@@ -240,7 +240,7 @@ def _criar_cenario(sessao: Session, momento: datetime) -> int:
 def _criar_chefe_se_preciso(sessao, momento) -> None:
     """Cria o Chefe da Seção da demonstração, a menos que o CPF já exista."""
     try:
-        servico_identidade.criar_credencial(
+        service_identidade.criar_credencial(
             sessao, CHEFE_CPF, CHEFE_NOME, CHEFE_SENHA, Perfil.CHEFE_SECAO, momento
         )
     except ConflitoDeEstado as erro:

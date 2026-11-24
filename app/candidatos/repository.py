@@ -5,7 +5,7 @@ from collections.abc import Iterable
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from app.candidatos.modelos import Candidato, Partido
+from app.candidatos.model import Candidato, Partido
 
 
 def buscar_candidato_por_id(sessao: Session, candidato_id: int) -> Candidato | None:

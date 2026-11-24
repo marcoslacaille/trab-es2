@@ -1,6 +1,6 @@
 import pytest
 
-from app.eleicoes import servico as servico_eleicoes
+from app.eleicoes import service as service_eleicoes
 from tests.auxiliares import (
     SENHA_CANDIDATO,
     eleicao_aberta_com_candidatos,
@@ -484,7 +484,7 @@ def test_d145_candidato_excluido_antes_da_gravacao_da_422(cliente, cabecalho_che
     eleicao = nova_eleicao(cliente, cabecalho_chefe).json()["id"]
     partido = novo_partido(cliente, cabecalho_chefe).json()["id"]
     # Simula a corrida: a conferência passa, mas o candidato já não existe na gravação.
-    monkeypatch.setattr(servico_eleicoes, "_conferir_candidato", lambda sessao, candidato_id: None)
+    monkeypatch.setattr(service_eleicoes, "_conferir_candidato", lambda sessao, candidato_id: None)
 
     resposta = cliente.post(
         rota(eleicao),

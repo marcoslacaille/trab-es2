@@ -13,11 +13,11 @@ from app.apuracao import dominio
 from app.apuracao.dominio import Apuracao, ComparecimentoEleicao, ResultadoCargo
 from app.compartilhado.dominio import Cargo
 from app.compartilhado.erros import AcessoNegado, ConflitoDeEstado, DadosInvalidos
-from app.eleicoes import servico as eleicoes_servico
+from app.eleicoes import service as eleicoes_service
 from app.eleicoes.dominio import EleicaoResumo, StatusEleicao
-from app.eleitores import servico as eleitores_servico
+from app.eleitores import service as eleitores_service
 from app.identidade.dominio import Perfil, UsuarioAutenticado
-from app.votacao import servico as votacao_servico
+from app.votacao import service as votacao_service
 
 PREFIXO_DA_API = "/api/v1"
 
@@ -55,7 +55,7 @@ def _cargo_do_candidato(
     """RN-72: o Candidato só vê o cargo da sua candidatura nesta eleição."""
     minhas = [
         c
-        for c in eleicoes_servico.candidaturas_do_usuario(sessao, usuario.id)
+        for c in eleicoes_service.candidaturas_do_usuario(sessao, usuario.id)
         if c.eleicao_id == eleicao_id
     ]
     if not minhas:
@@ -80,11 +80,11 @@ def _apurar(
     agora: datetime,
 ) -> Apuracao:
     """Monta a apuração dos cargos pedidos (`None` = todos os disputados) e o comparecimento."""
-    candidaturas = eleicoes_servico.listar_candidaturas(sessao, eleicao.id)
-    contagens = votacao_servico.contar_votos(sessao, eleicao.id)
-    comparecimento = votacao_servico.contar_comparecimento(sessao, eleicao.id)
+    candidaturas = eleicoes_service.listar_candidaturas(sessao, eleicao.id)
+    contagens = votacao_service.contar_votos(sessao, eleicao.id)
+    comparecimento = votacao_service.contar_comparecimento(sessao, eleicao.id)
     # `aberta_em` existe sempre que a eleição está ABERTA ou ENCERRADA (RN-15).
-    aptos = eleitores_servico.contar_aptos(sessao, eleicao.aberta_em)
+    aptos = eleitores_service.contar_aptos(sessao, eleicao.aberta_em)
 
     disputados = sorted({c.cargo for c in candidaturas}, key=list(Cargo).index)
     if cargos_pedidos is None:
@@ -133,7 +133,7 @@ def apuracao_parcial(
     não é disputado: 422 `CARGO_NAO_DISPUTADO`. Aqui `mais_votado` é "quem lidera até agora".
     """
     _ler_num_mesmo_instante(sessao)
-    eleicao = eleicoes_servico.obter_eleicao(sessao, eleicao_id)
+    eleicao = eleicoes_service.obter_eleicao(sessao, eleicao_id)
     _exigir_status(eleicao, StatusEleicao.ABERTA)
     if usuario.perfil == Perfil.CANDIDATO:
         cargos = [_cargo_do_candidato(sessao, usuario, eleicao_id, cargo_pedido)]
@@ -156,7 +156,7 @@ def resultado_final(
     parcial, como no PLANO. Cargo que não é disputado: 422 `CARGO_NAO_DISPUTADO`.
     """
     _ler_num_mesmo_instante(sessao)
-    eleicao = eleicoes_servico.obter_eleicao(sessao, eleicao_id)
+    eleicao = eleicoes_service.obter_eleicao(sessao, eleicao_id)
     _exigir_status(eleicao, StatusEleicao.ENCERRADA)
     cargos = [cargo_pedido] if cargo_pedido is not None else None
     return _apurar(sessao, eleicao, cargos, "FINAL", agora)

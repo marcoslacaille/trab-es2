@@ -3,17 +3,17 @@
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from app.candidatos import repositorio as repositorio_candidatos
-from app.candidatos import servico as servico_candidatos
+from app.candidatos import repository as repository_candidatos
+from app.candidatos import service as service_candidatos
 from app.compartilhado.banco import SessionLocal
 from app.compartilhado.dominio import Cargo
 from app.compartilhado.erros import DadosInvalidos, NaoEncontrado
 from app.compartilhado.relogio import agora
 from app.eleicoes import dominio as dominio_eleicoes
-from app.eleicoes import servico as servico_eleicoes
-from app.eleitores import repositorio as repositorio_eleitores
-from app.eleitores import servico as servico_eleitores
-from app.identidade import servico as servico_identidade
+from app.eleicoes import service as service_eleicoes
+from app.eleitores import repository as repository_eleitores
+from app.eleitores import service as service_eleitores
+from app.identidade import service as service_identidade
 from app.identidade.dominio import Perfil
 from tests.auxiliares import (
     SENHA_CANDIDATO,
@@ -41,15 +41,15 @@ def test_atualizar_credencial_troca_nome_e_senha():
     usuario_id = criar_chefe()
 
     with SessionLocal() as sessao:
-        servico_identidade.atualizar_credencial(
+        service_identidade.atualizar_credencial(
             sessao, usuario_id, agora(), nome="  Novo Nome  ", senha="NovaSenha@456"
         )
         sessao.commit()
 
     with SessionLocal() as sessao:
-        usuario = servico_identidade.obter_usuario(sessao, usuario_id)
+        usuario = service_identidade.obter_usuario(sessao, usuario_id)
         assert usuario is not None and usuario.nome == "Novo Nome"
-        assert servico_identidade.autenticar(sessao, usuario.cpf, "NovaSenha@456")
+        assert service_identidade.autenticar(sessao, usuario.cpf, "NovaSenha@456")
 
 
 def test_atualizar_credencial_recusa_nome_curto_e_senha_fraca():
@@ -58,9 +58,9 @@ def test_atualizar_credencial_recusa_nome_curto_e_senha_fraca():
 
     with SessionLocal() as sessao:
         with pytest.raises(DadosInvalidos) as nome_curto:
-            servico_identidade.atualizar_credencial(sessao, usuario_id, agora(), nome=" ab ")
+            service_identidade.atualizar_credencial(sessao, usuario_id, agora(), nome=" ab ")
         with pytest.raises(DadosInvalidos) as senha_fraca:
-            servico_identidade.atualizar_credencial(sessao, usuario_id, agora(), senha="fraca")
+            service_identidade.atualizar_credencial(sessao, usuario_id, agora(), senha="fraca")
 
     assert nome_curto.value.codigo == "DADOS_INVALIDOS"
     assert senha_fraca.value.codigo == "SENHA_INVALIDA"
@@ -70,9 +70,9 @@ def test_credencial_inexistente_e_inconsistencia_interna():
     """Atualizar ou remover credencial que não existe é erro de programação (`LookupError`)."""
     with SessionLocal() as sessao:
         with pytest.raises(LookupError):
-            servico_identidade.atualizar_credencial(sessao, 999, agora(), nome="Fulano")
+            service_identidade.atualizar_credencial(sessao, 999, agora(), nome="Fulano")
         with pytest.raises(LookupError):
-            servico_identidade.remover_credencial(sessao, 999)
+            service_identidade.remover_credencial(sessao, 999)
 
 
 def test_obter_usuarios_com_lista_vazia_e_ids_inexistentes():
@@ -80,8 +80,8 @@ def test_obter_usuarios_com_lista_vazia_e_ids_inexistentes():
     usuario_id = criar_chefe()
 
     with SessionLocal() as sessao:
-        assert servico_identidade.obter_usuarios(sessao, []) == {}
-        achados = servico_identidade.obter_usuarios(sessao, [usuario_id, 999])
+        assert service_identidade.obter_usuarios(sessao, []) == {}
+        achados = service_identidade.obter_usuarios(sessao, [usuario_id, 999])
 
     assert list(achados) == [usuario_id]
 
@@ -122,7 +122,7 @@ def test_obter_candidato_logado_sem_candidato_responde_404():
     chefe_id = criar_chefe()
 
     with SessionLocal() as sessao, pytest.raises(NaoEncontrado) as erro:
-        servico_candidatos.obter_candidato_logado(sessao, chefe_id)
+        service_candidatos.obter_candidato_logado(sessao, chefe_id)
 
     assert erro.value.codigo == "CANDIDATO_NAO_ENCONTRADO"
 
@@ -130,10 +130,10 @@ def test_obter_candidato_logado_sem_candidato_responde_404():
 def test_candidato_sem_credencial_e_inconsistencia_interna(cliente, cabecalho_chefe, monkeypatch):
     """Candidato cuja credencial sumiu é inconsistência (`LookupError`, vira 500)."""
     criado = novo_candidato(cliente, cabecalho_chefe).json()
-    monkeypatch.setattr(servico_identidade, "obter_usuarios", lambda sessao, ids: {})
+    monkeypatch.setattr(service_identidade, "obter_usuarios", lambda sessao, ids: {})
 
     with SessionLocal() as sessao, pytest.raises(LookupError):
-        servico_candidatos.obter_candidato(sessao, criado["id"])
+        service_candidatos.obter_candidato(sessao, criado["id"])
 
 
 def test_excluir_candidato_repassa_erro_de_integridade_desconhecido(
@@ -145,10 +145,10 @@ def test_excluir_candidato_repassa_erro_de_integridade_desconhecido(
         raise _erro_de_integridade_sem_nome()
 
     criado = novo_candidato(cliente, cabecalho_chefe).json()
-    monkeypatch.setattr(repositorio_candidatos, "remover_candidato", falhar)
+    monkeypatch.setattr(repository_candidatos, "remover_candidato", falhar)
 
     with SessionLocal() as sessao, pytest.raises(IntegrityError):
-        servico_candidatos.excluir_candidato(sessao, criado["id"])
+        service_candidatos.excluir_candidato(sessao, criado["id"])
 
 
 # ------------------------------------------------------------------- eleitores
@@ -159,9 +159,9 @@ def test_obter_eleitor_do_usuario_sem_eleitor_devolve_none():
     chefe_id = criar_chefe()
 
     with SessionLocal() as sessao:
-        assert servico_eleitores.obter_eleitor_do_usuario(sessao, chefe_id) is None
+        assert service_eleitores.obter_eleitor_do_usuario(sessao, chefe_id) is None
         with pytest.raises(NaoEncontrado) as erro:
-            servico_eleitores.obter_eleitor_logado(sessao, chefe_id)
+            service_eleitores.obter_eleitor_logado(sessao, chefe_id)
 
     assert erro.value.codigo == "ELEITOR_NAO_ENCONTRADO"
 
@@ -169,10 +169,10 @@ def test_obter_eleitor_do_usuario_sem_eleitor_devolve_none():
 def test_eleitor_sem_credencial_e_inconsistencia_interna(cliente, cabecalho_chefe, monkeypatch):
     """Eleitor cuja credencial sumiu é inconsistência (`LookupError`, vira 500)."""
     criado = novo_eleitor(cliente, cabecalho_chefe).json()
-    monkeypatch.setattr(servico_identidade, "obter_usuarios", lambda sessao, ids: {})
+    monkeypatch.setattr(service_identidade, "obter_usuarios", lambda sessao, ids: {})
 
     with SessionLocal() as sessao, pytest.raises(LookupError):
-        servico_eleitores.obter_eleitor(sessao, criado["id"])
+        service_eleitores.obter_eleitor(sessao, criado["id"])
 
 
 def test_excluir_eleitor_repassa_erro_de_integridade_desconhecido(
@@ -184,10 +184,10 @@ def test_excluir_eleitor_repassa_erro_de_integridade_desconhecido(
         raise _erro_de_integridade_sem_nome()
 
     criado = novo_eleitor(cliente, cabecalho_chefe).json()
-    monkeypatch.setattr(repositorio_eleitores, "remover", falhar)
+    monkeypatch.setattr(repository_eleitores, "remover", falhar)
 
     with SessionLocal() as sessao, pytest.raises(IntegrityError):
-        servico_eleitores.excluir_eleitor(sessao, criado["id"])
+        service_eleitores.excluir_eleitor(sessao, criado["id"])
 
 
 # -------------------------------------------------------------------- eleições
@@ -198,7 +198,7 @@ def test_candidaturas_do_usuario_sem_candidato_devolve_lista_vazia():
     chefe_id = criar_chefe()
 
     with SessionLocal() as sessao:
-        assert servico_eleicoes.candidaturas_do_usuario(sessao, chefe_id) == []
+        assert service_eleicoes.candidaturas_do_usuario(sessao, chefe_id) == []
 
 
 def test_buscar_candidatura_por_numero_acha_ou_devolve_none(cliente, cabecalho_chefe):
@@ -206,13 +206,13 @@ def test_buscar_candidatura_por_numero_acha_ou_devolve_none(cliente, cabecalho_c
     ids = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)
 
     with SessionLocal() as sessao:
-        achada = servico_eleicoes.buscar_candidatura_por_numero(
+        achada = service_eleicoes.buscar_candidatura_por_numero(
             sessao, ids["eleicao_id"], Cargo.SENADOR, "202"
         )
-        ausente = servico_eleicoes.buscar_candidatura_por_numero(
+        ausente = service_eleicoes.buscar_candidatura_por_numero(
             sessao, ids["eleicao_id"], Cargo.SENADOR, "999"
         )
-        outro_cargo = servico_eleicoes.buscar_candidatura_por_numero(
+        outro_cargo = service_eleicoes.buscar_candidatura_por_numero(
             sessao, ids["eleicao_id"], Cargo.GOVERNADOR, "202"
         )
 
@@ -225,7 +225,7 @@ def test_links_da_eleicao_aberta_para_perfil_desconhecido(cliente, cabecalho_che
     ids = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)
 
     with SessionLocal() as sessao:
-        eleicao = servico_eleicoes.obter_eleicao(sessao, ids["eleicao_id"])
+        eleicao = service_eleicoes.obter_eleicao(sessao, ids["eleicao_id"])
 
     links = dominio_eleicoes.links_da_eleicao(eleicao, "VISITANTE")
 
@@ -240,7 +240,7 @@ def test_votacao_com_perfil_eleitor_sem_cadastro_responde_404(cliente, cabecalho
     ids = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)
     eleicao = ids["eleicao_id"]
     with SessionLocal() as sessao:
-        servico_identidade.criar_credencial(
+        service_identidade.criar_credencial(
             sessao, "01152449303", "Sem Cadastro", SENHA_ELEITOR, Perfil.ELEITOR, agora()
         )
         sessao.commit()
@@ -274,13 +274,13 @@ def test_atualizar_credencial_so_com_nome_mantem_a_senha():
     usuario_id = criar_chefe()
 
     with SessionLocal() as sessao:
-        servico_identidade.atualizar_credencial(sessao, usuario_id, agora(), nome="Outro Nome")
+        service_identidade.atualizar_credencial(sessao, usuario_id, agora(), nome="Outro Nome")
         sessao.commit()
 
     with SessionLocal() as sessao:
-        usuario = servico_identidade.obter_usuario(sessao, usuario_id)
+        usuario = service_identidade.obter_usuario(sessao, usuario_id)
         assert usuario is not None and usuario.nome == "Outro Nome"
-        assert servico_identidade.autenticar(sessao, usuario.cpf, "Chefe@2026")
+        assert service_identidade.autenticar(sessao, usuario.cpf, "Chefe@2026")
 
 
 def test_alterar_candidato_so_com_nome_urna_nao_mexe_na_credencial(cliente, cabecalho_chefe):

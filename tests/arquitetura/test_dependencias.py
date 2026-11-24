@@ -19,8 +19,8 @@ ARESTAS = {
 }
 
 # D-077 e D-098: `dominio` de outro módulo (só tipos: dataclasses e enums) pode ser importado no
-# `dominio.py` e no `servico.py`, e só nas arestas do grafo.
-# D-103: todo `servico.py` recebe o `UsuarioAutenticado` da rota (assinaturas da seção 9), então
+# `dominio.py` e no `service.py`, e só nas arestas do grafo.
+# D-103: todo `service.py` recebe o `UsuarioAutenticado` da rota (assinaturas da seção 9), então
 # `app.identidade.dominio` (só tipos) também vale para módulos sem aresta para `identidade`.
 # D-148: desses tipos, só `Perfil` e `UsuarioAutenticado`; funções de identidade só pelo serviço.
 TIPOS_DE_IDENTIDADE = {
@@ -59,7 +59,7 @@ def _destino(importado: str) -> tuple[str | None, str | None]:
 
 
 def _tipo_de_identidade(importado: str, arquivo: Path) -> bool:
-    return importado in TIPOS_DE_IDENTIDADE and arquivo.name in ("dominio.py", "servico.py")
+    return importado in TIPOS_DE_IDENTIDADE and arquivo.name in ("dominio.py", "service.py")
 
 
 def _violacoes_no_arquivo(modulo: str, arquivo: Path) -> list[str]:
@@ -78,16 +78,16 @@ def _violacoes_no_arquivo(modulo: str, arquivo: Path) -> list[str]:
         if outro not in MODULOS or outro not in ARESTAS[modulo] | {"identidade"}:
             problemas.append(onde + " (aresta fora do grafo)")
         elif outro == "identidade" and camada == "dependencias":
-            if arquivo.name != "rotas.py":
+            if arquivo.name != "controller.py":
                 problemas.append(onde + " (dependencias só nas rotas)")
         elif outro not in ARESTAS[modulo]:
             problemas.append(onde + " (aresta fora do grafo)")
-        elif camada == "servico":
+        elif camada == "service":
             continue
-        elif camada == "dominio" and arquivo.name in ("dominio.py", "servico.py"):
+        elif camada == "dominio" and arquivo.name in ("dominio.py", "service.py"):
             continue  # D-077 / D-098
         else:
-            problemas.append(onde + " (só `servico` de outro módulo)")
+            problemas.append(onde + " (só `service` de outro módulo)")
     return problemas
 
 
@@ -100,7 +100,7 @@ def _violacoes_de_fronteira() -> list[str]:
 
 
 def test_ta01_modulos_so_importam_o_que_o_grafo_permite():
-    """TA-01 / RN-03: só `servico` (e `dominio` como tipo, D-077) dos módulos vizinhos."""
+    """TA-01 / RN-03: só `service` (e `dominio` como tipo, D-077) dos módulos vizinhos."""
     assert _violacoes_de_fronteira() == []
 
 
@@ -143,55 +143,55 @@ def test_ta01_dominio_compartilhado_nao_importa_fastapi_nem_sqlalchemy():
 
 
 @pytest.mark.parametrize("modulo", MODULOS)
-def test_ta01_servico_nao_importa_rotas_nem_fastapi(modulo):
-    """TA-01: `servico.py` não importa `rotas` nem FastAPI (seção 5, tabela de camadas)."""
-    for importado in _importacoes(RAIZ / modulo / "servico.py"):
+def test_ta01_service_nao_importa_controller_nem_fastapi(modulo):
+    """TA-01: `service.py` não importa `controller` nem FastAPI (seção 5, tabela de camadas)."""
+    for importado in _importacoes(RAIZ / modulo / "service.py"):
         assert importado.split(".")[0] != "fastapi", importado
-        assert not importado.startswith(f"app.{modulo}.rotas"), importado
+        assert not importado.startswith(f"app.{modulo}.controller"), importado
 
 
 @pytest.mark.parametrize("modulo", MODULOS)
-def test_ta01_rotas_nao_importam_repositorio_nem_modelos(modulo):
-    """TA-01: `rotas.py` não importa `repositorio` nem `modelos` (nem de outro módulo)."""
-    for importado in _importacoes(RAIZ / modulo / "rotas.py"):
+def test_ta01_controller_nao_importa_repository_nem_model(modulo):
+    """TA-01: `controller.py` não importa `repository` nem `model` (nem de outro módulo)."""
+    for importado in _importacoes(RAIZ / modulo / "controller.py"):
         _, camada = _destino(importado)
-        assert camada not in ("repositorio", "modelos"), importado
+        assert camada not in ("repository", "model"), importado
 
 
 def test_ta01_detecta_violacao_de_fronteira(tmp_path):
     """TA-01: o verificador de fato acusa cada importação proibida (teste do teste, D-148)."""
-    arquivo = tmp_path / "servico.py"
+    arquivo = tmp_path / "service.py"
     arquivo.write_text(
-        "from app.eleitores.repositorio import buscar\n"  # camada errada do vizinho
-        "from app.candidatos.servico import listar\n"  # aresta que o grafo não tem
-        "from ..eleicoes import repositorio\n"  # import relativo
+        "from app.eleitores.repository import buscar\n"  # camada errada do vizinho
+        "from app.candidatos.service import listar\n"  # aresta que o grafo não tem
+        "from ..eleicoes import repository\n"  # import relativo
         "from app.identidade.dominio import validar_senha\n"  # função, não tipo
-        "from app.eleicoes.servico import obter_eleicao\n"  # permitido
+        "from app.eleicoes.service import obter_eleicao\n"  # permitido
         "from app.identidade.dominio import UsuarioAutenticado\n"  # permitido (D-103)
-        "import app.votacao.modelos\n"  # o próprio módulo: permitido
+        "import app.votacao.model\n"  # o próprio módulo: permitido
     )
 
     assert _violacoes_no_arquivo("votacao", arquivo) == [
-        "app/votacao/servico.py importa app.eleitores.repositorio.buscar"
-        " (só `servico` de outro módulo)",
-        "app/votacao/servico.py importa app.candidatos.servico.listar (aresta fora do grafo)",
-        "app/votacao/servico.py importa ..eleicoes.repositorio"
+        "app/votacao/service.py importa app.eleitores.repository.buscar"
+        " (só `service` de outro módulo)",
+        "app/votacao/service.py importa app.candidatos.service.listar (aresta fora do grafo)",
+        "app/votacao/service.py importa ..eleicoes.repository"
         " (import relativo: use `app.<modulo>`)",
-        "app/votacao/servico.py importa app.identidade.dominio.validar_senha"
+        "app/votacao/service.py importa app.identidade.dominio.validar_senha"
         " (aresta fora do grafo)",
     ]
 
 
 @pytest.mark.parametrize("modulo", MODULOS)
-def test_ta01_dominio_nao_importa_repositorio_nem_modelos(modulo):
+def test_ta01_dominio_nao_importa_repository_nem_model(modulo):
     """TA-01 / D-148: `dominio.py` só tem regras puras; não lê o banco nem do próprio módulo."""
     for importado in _importacoes(RAIZ / modulo / "dominio.py"):
         _, camada = _destino(importado)
-        assert camada not in ("repositorio", "modelos"), importado
+        assert camada not in ("repository", "model"), importado
 
 
 @pytest.mark.parametrize("modulo", MODULOS)
-def test_ta01_esquemas_nao_importam_sqlalchemy(modulo):
-    """TA-01 / D-148: `esquemas.py` é o contrato HTTP; não conhece o banco."""
-    for importado in _importacoes(RAIZ / modulo / "esquemas.py"):
+def test_ta01_schemas_nao_importam_sqlalchemy(modulo):
+    """TA-01 / D-148: `schemas.py` é o contrato HTTP; não conhece o banco."""
+    for importado in _importacoes(RAIZ / modulo / "schemas.py"):
         assert importado.split(".")[0] != "sqlalchemy", importado

@@ -8,15 +8,15 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
-from app.apuracao import servico as servico_apuracao
+from app.apuracao import service as service_apuracao
 from app.compartilhado.banco import SessionLocal
 from app.compartilhado.dominio import Cargo
 from app.compartilhado.erros import ConflitoDeEstado, NaoEncontrado
-from app.eleicoes import repositorio as repositorio_eleicoes
-from app.eleicoes import servico as servico_eleicoes
+from app.eleicoes import repository as repository_eleicoes
+from app.eleicoes import service as service_eleicoes
 from app.eleitores.dominio import EleitorResumo
 from app.identidade.dominio import Perfil, UsuarioAutenticado
-from app.votacao import cedulas, servico
+from app.votacao import cedulas, service
 from app.votacao.dominio import Escolha, TipoVoto
 from tests.auxiliares import SENHA_ELEITOR, eleicao_aberta_com_candidatos, login, novo_eleitor
 
@@ -43,7 +43,7 @@ def test_ti73_duas_confirmacoes_simultaneas_geram_um_voto(cliente, cabecalho_che
         with SessionLocal() as sessao:
             barreira.wait(timeout=10)
             try:
-                resultados.append(servico.confirmar_voto(sessao, usuario, eleicao_id, token, agora))
+                resultados.append(service.confirmar_voto(sessao, usuario, eleicao_id, token, agora))
             except Exception as erro:  # noqa: BLE001  (o teste confere o tipo logo abaixo)
                 resultados.append(erro)
 
@@ -90,13 +90,13 @@ def test_d095_encerramento_espera_a_confirmacao_em_andamento(cliente, cabecalho_
     def encerrar() -> None:
         with SessionLocal() as sessao:
             try:
-                resultados.append(servico_eleicoes.encerrar_eleicao(sessao, eleicao_id, agora))
+                resultados.append(service_eleicoes.encerrar_eleicao(sessao, eleicao_id, agora))
             except Exception as erro:  # noqa: BLE001
                 resultados.append(erro)
         terminou.set()
 
     with SessionLocal() as confirmacao:
-        servico_eleicoes.obter_eleicao_para_votacao(confirmacao, eleicao_id)  # FOR SHARE
+        service_eleicoes.obter_eleicao_para_votacao(confirmacao, eleicao_id)  # FOR SHARE
         thread = threading.Thread(target=encerrar)
         thread.start()
 
@@ -108,7 +108,7 @@ def test_d095_encerramento_espera_a_confirmacao_em_andamento(cliente, cabecalho_
 
     assert len(resultados) == 1 and not isinstance(resultados[0], Exception), resultados
     with SessionLocal() as sessao:
-        assert servico_eleicoes.obter_eleicao(sessao, eleicao_id).status == "ENCERRADA"
+        assert service_eleicoes.obter_eleicao(sessao, eleicao_id).status == "ENCERRADA"
 
 
 def test_d095_confirmacao_espera_o_encerramento_e_depois_e_recusada(
@@ -124,13 +124,13 @@ def test_d095_confirmacao_espera_o_encerramento_e_depois_e_recusada(
     def confirmar() -> None:
         with SessionLocal() as sessao:
             try:
-                resultados.append(servico.confirmar_voto(sessao, usuario, eleicao_id, token, agora))
+                resultados.append(service.confirmar_voto(sessao, usuario, eleicao_id, token, agora))
             except Exception as erro:  # noqa: BLE001
                 resultados.append(erro)
         terminou.set()
 
     with SessionLocal() as encerramento:
-        eleicao = repositorio_eleicoes.obter_com_trava_exclusiva(encerramento, eleicao_id)
+        eleicao = repository_eleicoes.obter_com_trava_exclusiva(encerramento, eleicao_id)
         eleicao.status = "ENCERRADA"
         eleicao.encerrada_em = agora
         encerramento.flush()  # ainda sem commit: a trava exclusiva continua com esta sessão
@@ -161,10 +161,10 @@ def test_confirmacao_repassa_erro_de_integridade_desconhecido(
     def falhar(*argumentos, **nomeados):
         raise IntegrityError("INSERT ...", {}, Exception("violação desconhecida"))
 
-    monkeypatch.setattr(servico.repositorio, "inserir_voto", falhar)
+    monkeypatch.setattr(service.repository, "inserir_voto", falhar)
 
     with SessionLocal() as sessao, pytest.raises(IntegrityError):
-        servico.confirmar_voto(sessao, usuario, eleicao_id, token, agora)
+        service.confirmar_voto(sessao, usuario, eleicao_id, token, agora)
     with SessionLocal() as sessao:
         assert sessao.execute(text("SELECT COUNT(*) FROM registros_votacao")).scalar_one() == 0
 
@@ -179,11 +179,11 @@ def test_d145_eleitor_excluido_durante_a_confirmacao_da_404(
     # Simula a corrida: o eleitor foi lido, mas a linha já não existe quando o registro é gravado.
     sumido = EleitorResumo(id=999_999, usuario_id=usuario.id, criado_em=agora)
     monkeypatch.setattr(
-        servico.eleitores_servico, "obter_eleitor_do_usuario", lambda sessao, usuario_id: sumido
+        service.eleitores_service, "obter_eleitor_do_usuario", lambda sessao, usuario_id: sumido
     )
 
     with SessionLocal() as sessao, pytest.raises(NaoEncontrado) as erro:
-        servico.confirmar_voto(sessao, usuario, eleicao_id, token, agora)
+        service.confirmar_voto(sessao, usuario, eleicao_id, token, agora)
 
     assert erro.value.codigo == "ELEITOR_NAO_ENCONTRADO"
     with SessionLocal() as sessao:
@@ -198,20 +198,20 @@ def test_d146_apuracao_le_votos_e_votantes_no_mesmo_instante(
     eleicao_id = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)["eleicao_id"]
     agora = relogio()
     eleitor, token = _eleitor_com_cedula(cliente, cabecalho_chefe, eleicao_id, agora)
-    contar_votos_original = servico.contar_votos
+    contar_votos_original = service.contar_votos
 
     def contar_e_deixar_um_voto_entrar(sessao, eleicao):
         contagens = contar_votos_original(sessao, eleicao)
         with SessionLocal() as outra:  # outra requisição confirma um voto bem agora
-            servico.confirmar_voto(outra, eleitor, eleicao_id, token, agora)
+            service.confirmar_voto(outra, eleitor, eleicao_id, token, agora)
         return contagens
 
-    monkeypatch.setattr(servico, "contar_votos", contar_e_deixar_um_voto_entrar)
+    monkeypatch.setattr(service, "contar_votos", contar_e_deixar_um_voto_entrar)
     with SessionLocal() as sessao:
-        durante = servico_apuracao.apuracao_parcial(sessao, eleitor, eleicao_id, None, agora)
+        durante = service_apuracao.apuracao_parcial(sessao, eleitor, eleicao_id, None, agora)
     monkeypatch.undo()
     with SessionLocal() as sessao:
-        depois = servico_apuracao.apuracao_parcial(sessao, eleitor, eleicao_id, None, agora)
+        depois = service_apuracao.apuracao_parcial(sessao, eleitor, eleicao_id, None, agora)
 
     assert durante.comparecimento.votantes == 0  # mesmo instante da contagem: ainda sem votos
     assert sum(cargo.total_votos for cargo in durante.cargos) == 0

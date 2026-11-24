@@ -2,7 +2,7 @@ from datetime import datetime
 
 from app.compartilhado.banco import SessionLocal
 from app.compartilhado.relogio import agora
-from app.identidade import servico
+from app.identidade import service
 from app.identidade.dominio import Perfil
 from tests.auxiliares import (
     SENHA_ELEITOR,
@@ -27,7 +27,7 @@ def _com_pontuacao(cpf: str) -> str:
 def _criar_candidato(cpf: str) -> None:
     """Cria uma credencial de candidato direto pelo serviço (o módulo de candidatos é posterior)."""
     with SessionLocal() as sessao:
-        servico.criar_credencial(
+        service.criar_credencial(
             sessao, cpf, "Candidato de Teste", "Candidato@123", Perfil.CANDIDATO, agora()
         )
         sessao.commit()

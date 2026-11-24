@@ -85,7 +85,7 @@ def test_repassa_conflito_que_nao_e_de_cpf(configurar, monkeypatch):
         raise ConflitoDeEstado("outro", codigo="OUTRO_CONFLITO")
 
     configurar(CHEFE_CPF=CPF_CHEFE, CHEFE_SENHA="Chefe@2026")
-    monkeypatch.setattr(script.servico, "criar_credencial", conflito)
+    monkeypatch.setattr(script.service, "criar_credencial", conflito)
 
     with pytest.raises(ConflitoDeEstado):
         script.criar_chefe()

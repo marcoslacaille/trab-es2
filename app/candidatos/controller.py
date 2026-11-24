@@ -7,9 +7,9 @@ from fastapi import APIRouter, Depends, Path, Query, Response
 from pydantic import AfterValidator
 from sqlalchemy.orm import Session
 
-from app.candidatos import servico
+from app.candidatos import service
 from app.candidatos.dominio import AlteracoesCandidato, NovoCandidatoDados, NovoPartidoDados
-from app.candidatos.esquemas import (
+from app.candidatos.schemas import (
     AlteracaoCandidato,
     CandidatoResposta,
     NovoCandidato,
@@ -56,7 +56,7 @@ def cadastrar_candidato(
     sessao: Annotated[Session, Depends(obter_sessao)],
     agora: Annotated[datetime, Depends(obter_agora)],
 ) -> CandidatoResposta:
-    candidato = servico.cadastrar_candidato(sessao, NovoCandidatoDados(**dados.model_dump()), agora)
+    candidato = service.cadastrar_candidato(sessao, NovoCandidatoDados(**dados.model_dump()), agora)
     return CandidatoResposta.model_validate(candidato)
 
 
@@ -78,7 +78,7 @@ def listar_candidatos(
         AfterValidator(sem_caractere_nulo),
     ] = None,
 ) -> Pagina[CandidatoResposta]:
-    pagina = servico.listar_candidatos(sessao, nome, paginacao)
+    pagina = service.listar_candidatos(sessao, nome, paginacao)
     return Pagina[CandidatoResposta](
         itens=[CandidatoResposta.model_validate(candidato) for candidato in pagina.itens],
         pagina=pagina.pagina,
@@ -100,7 +100,7 @@ def consultar_meus_dados_de_candidato(
     usuario: Annotated[UsuarioAutenticado, Depends(exige_perfil(Perfil.CANDIDATO))],
     sessao: Annotated[Session, Depends(obter_sessao)],
 ) -> CandidatoResposta:
-    return CandidatoResposta.model_validate(servico.obter_candidato_logado(sessao, usuario.id))
+    return CandidatoResposta.model_validate(service.obter_candidato_logado(sessao, usuario.id))
 
 
 @roteador.get(
@@ -115,7 +115,7 @@ def consultar_meus_dados_de_candidato(
 def consultar_candidato(
     candidato_id: IdDoCandidato, sessao: Annotated[Session, Depends(obter_sessao)]
 ) -> CandidatoResposta:
-    return CandidatoResposta.model_validate(servico.obter_candidato(sessao, candidato_id))
+    return CandidatoResposta.model_validate(service.obter_candidato(sessao, candidato_id))
 
 
 @roteador.patch(
@@ -136,7 +136,7 @@ def alterar_candidato(
     sessao: Annotated[Session, Depends(obter_sessao)],
     agora: Annotated[datetime, Depends(obter_agora)],
 ) -> CandidatoResposta:
-    candidato = servico.atualizar_candidato(
+    candidato = service.atualizar_candidato(
         sessao, candidato_id, AlteracoesCandidato(**alteracao.model_dump()), agora
     )
     return CandidatoResposta.model_validate(candidato)
@@ -158,7 +158,7 @@ def alterar_candidato(
 def excluir_candidato(
     candidato_id: IdDoCandidato, sessao: Annotated[Session, Depends(obter_sessao)]
 ) -> Response:
-    servico.excluir_candidato(sessao, candidato_id)
+    service.excluir_candidato(sessao, candidato_id)
     return Response(status_code=204)
 
 
@@ -180,7 +180,7 @@ def cadastrar_partido(
     sessao: Annotated[Session, Depends(obter_sessao)],
     agora: Annotated[datetime, Depends(obter_agora)],
 ) -> PartidoResposta:
-    partido = servico.criar_partido(sessao, NovoPartidoDados(**dados.model_dump()), agora)
+    partido = service.criar_partido(sessao, NovoPartidoDados(**dados.model_dump()), agora)
     return PartidoResposta.model_validate(partido)
 
 
@@ -194,4 +194,4 @@ def cadastrar_partido(
     responses=respostas_de_erro(401),
 )
 def listar_partidos(sessao: Annotated[Session, Depends(obter_sessao)]) -> list[PartidoResposta]:
-    return [PartidoResposta.model_validate(partido) for partido in servico.listar_partidos(sessao)]
+    return [PartidoResposta.model_validate(partido) for partido in service.listar_partidos(sessao)]

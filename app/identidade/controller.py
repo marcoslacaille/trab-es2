@@ -8,10 +8,10 @@ from sqlalchemy.orm import Session
 
 from app.compartilhado.banco import obter_sessao
 from app.compartilhado.openapi import respostas_de_erro
-from app.identidade import servico
+from app.identidade import service
 from app.identidade.dependencias import obter_usuario_atual
 from app.identidade.dominio import UsuarioAutenticado
-from app.identidade.esquemas import LoginResposta, UsuarioLogadoResposta, UsuarioResposta
+from app.identidade.schemas import LoginResposta, UsuarioLogadoResposta, UsuarioResposta
 
 roteador = APIRouter(prefix="/auth", tags=["Autenticação"])
 
@@ -31,7 +31,7 @@ def login(
     formulario: Annotated[OAuth2PasswordRequestForm, Depends()],
     sessao: Annotated[Session, Depends(obter_sessao)],
 ) -> LoginResposta:
-    resultado = servico.autenticar(sessao, formulario.username, formulario.password)
+    resultado = service.autenticar(sessao, formulario.username, formulario.password)
     return LoginResposta(
         access_token=resultado.access_token,
         expira_em=resultado.expira_em,

@@ -14,9 +14,9 @@ from app.compartilhado.openapi import respostas_de_erro
 from app.compartilhado.relogio import obter_agora
 from app.compartilhado.validadores import MAIOR_ID
 from app.identidade.dependencias import Perfil, UsuarioAutenticado, exige_perfil
-from app.votacao import servico
+from app.votacao import service
 from app.votacao.dominio import PedidoRegistro
-from app.votacao.esquemas import (
+from app.votacao.schemas import (
     CedulaResposta,
     ComprovanteVotoResposta,
     ParticipacaoResposta,
@@ -46,7 +46,7 @@ Agora = Annotated[datetime, Depends(obter_agora)]
 def obter_cedula(
     eleicao_id: IdDaEleicao, usuario: UsuarioEleitor, sessao: Sessao, agora: Agora
 ) -> CedulaResposta:
-    return CedulaResposta.de_cedula(servico.obter_cedula(sessao, usuario, eleicao_id, agora))
+    return CedulaResposta.de_cedula(service.obter_cedula(sessao, usuario, eleicao_id, agora))
 
 
 @roteador.post(
@@ -73,7 +73,7 @@ def registrar_voto(
     resposta.headers["Cache-Control"] = "no-store"
     pedido = PedidoRegistro(cargo=dados.cargo, modo=dados.modo, numero=dados.numero)
     return PreviaVotoResposta.de_previa(
-        servico.registrar_voto(sessao, usuario, eleicao_id, pedido, agora)
+        service.registrar_voto(sessao, usuario, eleicao_id, pedido, agora)
     )
 
 
@@ -96,7 +96,7 @@ def confirmar_voto(
     sessao: Sessao,
     agora: Agora,
 ) -> ComprovanteVotoResposta:
-    comprovante = servico.confirmar_voto(sessao, usuario, eleicao_id, dados.token_cedula, agora)
+    comprovante = service.confirmar_voto(sessao, usuario, eleicao_id, dados.token_cedula, agora)
     return ComprovanteVotoResposta.de_comprovante(comprovante)
 
 
@@ -111,5 +111,5 @@ def obter_participacao(
     eleicao_id: IdDaEleicao, usuario: UsuarioEleitor, sessao: Sessao
 ) -> ParticipacaoResposta:
     return ParticipacaoResposta.de_participacao(
-        servico.obter_participacao(sessao, usuario, eleicao_id)
+        service.obter_participacao(sessao, usuario, eleicao_id)
     )

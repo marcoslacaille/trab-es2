@@ -12,9 +12,9 @@ from app.compartilhado.openapi import respostas_de_erro
 from app.compartilhado.paginacao import Pagina, Paginacao, obter_paginacao
 from app.compartilhado.relogio import obter_agora
 from app.compartilhado.validadores import MAIOR_ID, sem_caractere_nulo
-from app.eleitores import servico
+from app.eleitores import service
 from app.eleitores.dominio import AlteracoesEleitor, NovoEleitorDados
-from app.eleitores.esquemas import AlteracaoEleitor, EleitorResposta, NovoEleitor
+from app.eleitores.schemas import AlteracaoEleitor, EleitorResposta, NovoEleitor
 
 # `Perfil` e `UsuarioAutenticado` vêm de `dependencias`, a única parte de `identidade` (além do
 # serviço) que as rotas de outros módulos podem importar (seção 5).
@@ -43,7 +43,7 @@ def cadastrar_eleitor(
     sessao: Annotated[Session, Depends(obter_sessao)],
     agora: Annotated[datetime, Depends(obter_agora)],
 ) -> EleitorResposta:
-    eleitor = servico.cadastrar_eleitor(sessao, NovoEleitorDados(**dados.model_dump()), agora)
+    eleitor = service.cadastrar_eleitor(sessao, NovoEleitorDados(**dados.model_dump()), agora)
     return EleitorResposta.model_validate(eleitor)
 
 
@@ -64,7 +64,7 @@ def listar_eleitores(
         AfterValidator(sem_caractere_nulo),
     ] = None,
 ) -> Pagina[EleitorResposta]:
-    pagina = servico.listar_eleitores(sessao, nome, paginacao)
+    pagina = service.listar_eleitores(sessao, nome, paginacao)
     return Pagina[EleitorResposta](
         itens=[EleitorResposta.model_validate(eleitor) for eleitor in pagina.itens],
         pagina=pagina.pagina,
@@ -85,7 +85,7 @@ def consultar_meus_dados_de_eleitor(
     usuario: Annotated[UsuarioAutenticado, Depends(exige_perfil(Perfil.ELEITOR))],
     sessao: Annotated[Session, Depends(obter_sessao)],
 ) -> EleitorResposta:
-    return EleitorResposta.model_validate(servico.obter_eleitor_logado(sessao, usuario.id))
+    return EleitorResposta.model_validate(service.obter_eleitor_logado(sessao, usuario.id))
 
 
 @roteador.get(
@@ -99,7 +99,7 @@ def consultar_meus_dados_de_eleitor(
 def consultar_eleitor(
     eleitor_id: IdDoEleitor, sessao: Annotated[Session, Depends(obter_sessao)]
 ) -> EleitorResposta:
-    return EleitorResposta.model_validate(servico.obter_eleitor(sessao, eleitor_id))
+    return EleitorResposta.model_validate(service.obter_eleitor(sessao, eleitor_id))
 
 
 @roteador.patch(
@@ -119,7 +119,7 @@ def alterar_eleitor(
     sessao: Annotated[Session, Depends(obter_sessao)],
     agora: Annotated[datetime, Depends(obter_agora)],
 ) -> EleitorResposta:
-    eleitor = servico.atualizar_eleitor(
+    eleitor = service.atualizar_eleitor(
         sessao, eleitor_id, AlteracoesEleitor(**alteracao.model_dump()), agora
     )
     return EleitorResposta.model_validate(eleitor)
@@ -140,5 +140,5 @@ def alterar_eleitor(
 def excluir_eleitor(
     eleitor_id: IdDoEleitor, sessao: Annotated[Session, Depends(obter_sessao)]
 ) -> Response:
-    servico.excluir_eleitor(sessao, eleitor_id)
+    service.excluir_eleitor(sessao, eleitor_id)
     return Response(status_code=204)
