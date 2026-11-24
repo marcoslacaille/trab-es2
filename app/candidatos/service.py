@@ -1,4 +1,4 @@
-"""Casos de uso de candidatos e partidos. É a única porta de entrada do módulo para os outros.
+"""Service de candidatos e partidos: casos de uso e transação. Única porta de entrada do módulo.
 
 O nome e o CPF do candidato ficam na credencial: este módulo os pede a `identidade.service` e
 nunca lê a tabela `usuarios`. As funções chamadas pelas rotas fazem `commit` no final.

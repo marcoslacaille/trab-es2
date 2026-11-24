@@ -198,6 +198,35 @@ Todo módulo também pode usar `compartilhado`, `identidade.dependencias` (auten
 
 A diferença para o MVC com pastas globais (`controllers/`, `models/`, `views/`) é que aqui as camadas ficam dentro de cada módulo: tudo o que é de eleitores está em `app/eleitores/`.
 
+### Por onde passa uma requisição
+
+Todo módulo tem as mesmas camadas, com os mesmos nomes de arquivo, e a requisição atravessa sempre na mesma ordem. O exemplo é a confirmação do voto, `POST /api/v1/votacao/eleicoes/{id}/votos/confirmacao`:
+
+```text
+POST /api/v1/votacao/eleicoes/{id}/votos/confirmacao
+   │
+   ▼  votacao/controller.py   lê o JSON (PedidoConfirmacaoVoto), exige o perfil ELEITOR
+   │                          e chama o service
+   ▼  votacao/service.py      confere a cédula e as regras (dominio.py), controla a transação
+   │
+   ▼  votacao/repository.py   grava uma linha em cada tabela, na mesma transação
+   │
+   ▼  tabelas registros_votacao e votos (mapeadas em votacao/model.py)
+
+A resposta volta pelo mesmo caminho: o controller devolve o ComprovanteVotoResposta
+(votacao/schemas.py) e nunca o objeto do banco.
+```
+
+| Arquivo | Papel | No exemplo do voto |
+| --- | --- | --- |
+| `controller.py` | recebe o HTTP e chama o `service` | `confirmar_voto` (a rota) |
+| `service.py` | regras do caso de uso e transação | `service.confirmar_voto` |
+| `repository.py` | consultas ao banco | `inserir_registro`, `inserir_voto` |
+| `model.py` | tabelas ORM | `RegistroVotacao`, `Voto` |
+| `schemas.py` | formato do JSON de entrada e saída (a "view" da API) | `PedidoConfirmacaoVoto`, `ComprovanteVotoResposta` |
+
+O `dominio.py` fica ao lado do `service`: guarda as regras puras (sem banco nem FastAPI) que o `service` chama. A etapa 1 do voto, `POST .../votos/registro`, faz o mesmo caminho, mas só consulta o banco: devolve a prévia e a cédula cifrada sem gravar nada.
+
 **Principais decisões** (todas, com as alternativas descartadas, em [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md)):
 
 - **D01, monólito modular:** o enunciado não exige distribuição; mantém as fronteiras dos *bounded contexts* sem o custo de rede, vários bancos e deploy dos microsserviços.

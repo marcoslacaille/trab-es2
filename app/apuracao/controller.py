@@ -1,4 +1,4 @@
-"""Rotas da apuração. Sem regra de negócio: recebem, chamam o serviço e devolvem o esquema."""
+"""Controller da apuração: recebe o HTTP, chama o `service` e devolve o JSON de `schemas`."""
 
 from datetime import datetime
 from typing import Annotated

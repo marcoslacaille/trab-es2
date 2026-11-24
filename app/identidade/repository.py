@@ -1,4 +1,4 @@
-"""Consultas SQLAlchemy somente na tabela `usuarios`. Sem regra de negócio e sem commit."""
+"""Repository: consultas só na tabela `usuarios`. Sem regra de negócio e sem commit."""
 
 from collections.abc import Iterable
 

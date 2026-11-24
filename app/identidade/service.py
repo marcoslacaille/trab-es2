@@ -1,4 +1,4 @@
-"""Casos de uso de identidade. É a única porta de entrada do módulo para os outros.
+"""Service de identidade: casos de uso e transação. Única porta de entrada do módulo.
 
 As funções `criar_credencial`, `atualizar_credencial` e `remover_credencial` são pensadas para
 outros módulos (eleitores, candidatos) e **não fazem commit**: quem chama controla a transação,

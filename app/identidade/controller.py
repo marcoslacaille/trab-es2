@@ -1,4 +1,4 @@
-"""Rotas de autenticação: login e consulta do usuário logado. Sem regra de negócio."""
+"""Controller de identidade: login e consulta do usuário logado. Chama o `service`."""
 
 from typing import Annotated
 

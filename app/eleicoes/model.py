@@ -1,4 +1,4 @@
-"""Tabelas `eleicoes` e `candidaturas` (seção 6 do PLANO)."""
+"""Model: tabelas ORM `eleicoes` e `candidaturas` (seção 6 do PLANO)."""
 
 from datetime import date, datetime, time
 

@@ -1,4 +1,4 @@
-"""Contratos Pydantic de entrada e saída do módulo de identidade, com exemplos para o Swagger."""
+"""Schemas de identidade: o JSON de entrada e saída, com exemplos para o Swagger."""
 
 from datetime import datetime
 from typing import Literal

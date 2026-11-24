@@ -1,4 +1,4 @@
-"""Casos de uso da apuração (somente leitura, sem tabelas próprias).
+"""Service da apuração: casos de uso somente de leitura, sem tabelas próprias.
 
 Combina as contagens de `votacao`, as candidaturas de `eleicoes` e os eleitores aptos de
 `eleitores`. Nenhuma função faz commit: não há nada a gravar. Toda a apuração lê o banco num

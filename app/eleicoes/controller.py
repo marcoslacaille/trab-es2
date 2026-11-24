@@ -1,4 +1,4 @@
-"""Rotas de eleições. Sem regra de negócio: recebem, chamam o serviço e devolvem o esquema."""
+"""Controller de eleições e candidaturas: recebe o HTTP, chama o `service` e devolve o JSON."""
 
 from datetime import datetime
 from typing import Annotated

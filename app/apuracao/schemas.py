@@ -1,4 +1,4 @@
-"""Contratos da apuração (seção 10). A data de nascimento nunca aparece aqui (RN-77)."""
+"""Schemas da apuração (seção 10): o JSON de resposta. Sem data de nascimento (RN-77)."""
 
 from datetime import datetime
 from typing import Literal

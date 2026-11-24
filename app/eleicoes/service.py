@@ -1,4 +1,4 @@
-"""Casos de uso de eleições. É a única porta de entrada do módulo para os outros.
+"""Service de eleições e candidaturas: casos de uso e transação. Única porta de entrada do módulo.
 
 A eleição é a raiz do agregado: toda alteração começa travando a linha dela com
 `SELECT ... FOR UPDATE`. As funções chamadas pelas rotas fazem `commit` no final.

@@ -1,4 +1,4 @@
-"""Contratos Pydantic de entrada e saída da votação, com exemplos para o Swagger."""
+"""Schemas da votação: o JSON de entrada e saída, com exemplos para o Swagger."""
 
 from datetime import datetime
 from typing import Self

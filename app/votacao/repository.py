@@ -1,4 +1,4 @@
-"""Consultas SQLAlchemy somente nas tabelas `registros_votacao` e `votos`. Sem regra e sem commit.
+"""Repository: consultas só nas tabelas `registros_votacao` e `votos`. Sem regra e sem commit.
 
 As duas tabelas nunca são juntadas: nenhuma função daqui relaciona eleitor e escolha (RN-60).
 """

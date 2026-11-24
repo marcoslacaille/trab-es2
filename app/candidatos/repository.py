@@ -1,4 +1,4 @@
-"""Consultas SQLAlchemy somente nas tabelas `candidatos` e `partidos`. Sem regra e sem commit."""
+"""Repository: consultas só nas tabelas `candidatos` e `partidos`. Sem regra e sem commit."""
 
 from collections.abc import Iterable
 

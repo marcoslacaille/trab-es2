@@ -1,4 +1,4 @@
-"""Contratos Pydantic de entrada e saída do módulo de eleitores, com exemplos para o Swagger."""
+"""Schemas de eleitores: o JSON de entrada e saída, com exemplos para o Swagger."""
 
 from datetime import date, datetime
 from typing import Annotated

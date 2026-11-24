@@ -1,4 +1,4 @@
-"""Contratos Pydantic de entrada e saída do módulo de candidatos e partidos."""
+"""Schemas de candidatos e partidos: o JSON de entrada e saída (contratos Pydantic)."""
 
 from datetime import date, datetime
 from typing import Annotated

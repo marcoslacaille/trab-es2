@@ -1,4 +1,4 @@
-"""Rotas da votação. Sem regra de negócio: recebem, chamam o serviço e devolvem o esquema.
+"""Controller da votação: recebe o HTTP, chama o `service` e devolve o JSON de `schemas`.
 
 Todas exigem o perfil ELEITOR (RN-50): Chefe e Candidato recebem 403 `PERFIL_NAO_AUTORIZADO`.
 """

@@ -1,4 +1,4 @@
-"""Casos de uso da votação. É a única porta de entrada do módulo para os outros.
+"""Service da votação: casos de uso e transação. Única porta de entrada do módulo.
 
 O voto tem duas etapas (RN-56): `registrar_voto` só confere e devolve uma prévia com a cédula
 assinada (nada é gravado, sem commit); `confirmar_voto` grava de forma definitiva, nas duas

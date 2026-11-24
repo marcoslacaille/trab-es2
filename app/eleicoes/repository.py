@@ -1,4 +1,4 @@
-"""Consultas SQLAlchemy somente nas tabelas `eleicoes` e `candidaturas`. Sem regra e sem commit."""
+"""Repository: consultas só nas tabelas `eleicoes` e `candidaturas`. Sem regra e sem commit."""
 
 from datetime import date
 

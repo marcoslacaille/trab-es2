@@ -1,4 +1,4 @@
-"""Tabelas `registros_votacao` e `votos` (seção 6 do PLANO).
+"""Model: tabelas ORM `registros_votacao` e `votos` (seção 6 do PLANO).
 
 As duas tabelas **não têm ligação entre si**, de propósito: uma diz *quem* votou em qual cargo,
 a outra diz *o quê* foi votado. Nenhuma coluna ou chave permite juntar as duas (RN-60).
