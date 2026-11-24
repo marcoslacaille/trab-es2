@@ -65,27 +65,27 @@ Escrevemos o código aplicando os conceitos da disciplina: Ousterhout (aulas 02 
 | --- | --- | --- |
 | Tolerância zero à complexidade (02) | Nomes que dizem o que a coisa é. Proibido: `temp`, `aux`, `data2`, `x`, `processa()`. | Todo o projeto |
 | Programação estratégica (02) | Ao fim de cada módulo, uma rodada de refatoração antes do commit final (investimento contínuo de 10 a 20%). | Histórico do Git |
-| Módulos profundos (03) | Cada módulo expõe poucas funções públicas em `servico.py` e esconde muita lógica atrás delas. | `servico.py` de cada módulo |
+| Módulos profundos (03) | Cada módulo expõe poucas funções públicas em `service.py` e esconde muita lógica atrás delas. | `service.py` de cada módulo |
 | Evitar classite (03) | Funções e `dataclass` simples. Nada de uma classe por operação, nem Interface + Implementação para tudo. | Todo o projeto |
 | Interface formal e informal (03) | Assinaturas tipadas (formal) + docstring com regras de uso e RN (informal). | Funções públicas |
 | Ocultação de informação (04) | Só `identidade` conhece bcrypt e JWT de acesso. Só `votacao` conhece as tabelas de voto. Os outros módulos chamam funções, não tabelas. | Fronteiras de módulo |
-| `private` não é ocultação (04) | Nunca devolver o modelo ORM na API; sempre um esquema de resposta explícito. Nada de getter e setter que só expõem campos. | `esquemas.py` |
-| Sem flags de controle (04, 05) | Nenhuma função pública recebe booleano que muda o comportamento. `abrir_eleicao()` e `encerrar_eleicao()`, nunca `alterar_status(id, abrir=True)`. Escolhas viram enum (`ModoEscolha`). | Serviços e rotas |
-| Sem decomposição temporal (04) | Organizar por responsabilidade (rotas, serviço, domínio, repositório), nunca por etapa ("passo1", "passo2"). | Estrutura de pastas |
+| `private` não é ocultação (04) | Nunca devolver o modelo ORM na API; sempre um esquema de resposta explícito. Nada de getter e setter que só expõem campos. | `schemas.py` |
+| Sem flags de controle (04, 05) | Nenhuma função pública recebe booleano que muda o comportamento. `abrir_eleicao()` e `encerrar_eleicao()`, nunca `alterar_status(id, abrir=True)`. Escolhas viram enum (`ModoEscolha`). | `service.py` e `controller.py` |
+| Sem decomposição temporal (04) | Organizar por responsabilidade (controller, service, domínio, repository), nunca por etapa ("passo1", "passo2"). | Estrutura de pastas |
 | Baixo acoplamento (04, 06) | Nenhum módulo lê ou escreve tabela de outro (evita acoplamento de recurso comum e de conteúdo). Sem acoplamento de passagem: não repassar objetos que o módulo não usa. | Teste de arquitetura |
 | Propósito geral (05) | Interfaces genéricas, implementações específicas. Um único `registrar_voto(cargo, modo, numero)` para todos os cargos; nunca `votar_presidente()`. | `votacao` |
-| Especialização nas bordas (05) | Rotas e esquemas são específicos do HTTP; o domínio no meio é genérico. | Camadas |
+| Especialização nas bordas (05) | `controller.py` e `schemas.py` são específicos do HTTP; o domínio no meio é genérico. | Camadas |
 | Lei de Conway (06) | A divisão de módulos espelha a divisão de trabalho do grupo. | Divisão dos módulos entre os integrantes |
 | Bounded contexts (07) | Cada módulo é um contexto com vocabulário próprio. `Cargo` vive no núcleo compartilhado (shared kernel). | `app/compartilhado/dominio.py` |
 | Agregados (07) | `Eleicao` é raiz; candidaturas só mudam pela eleição (`/eleicoes/{id}/candidaturas`). Entre agregados, referência por ID. | `eleicoes` |
-| Regra de dependência (07) | Dependências apontam para dentro: rotas → serviço → domínio. `dominio.py` não importa FastAPI nem SQLAlchemy. | Teste de arquitetura |
+| Regra de dependência (07) | Dependências apontam para dentro: controller → service → domínio. `dominio.py` não importa FastAPI nem SQLAlchemy. | Teste de arquitetura |
 | HATEOAS (07) | Respostas de eleição e de votação trazem `links` com as próximas ações possíveis. | `eleicoes`, `votacao` |
 | Documentação como contrato (Swagger) | Code-first: a spec OpenAPI sai do código; toda rota documenta respostas de erro e tem exemplos reais. | `app/compartilhado/openapi.py`, `docs/openapi.json` |
 
 ### Regras de estilo
 
 - Funções com no máximo \~40 linhas e no máximo 5 parâmetros; acima disso, agrupe em uma `dataclass`.
-  - Exceção aceita (D-013): `identidade.servico.criar_credencial(sessao, cpf, nome, senha, perfil, agora)` tem 6 parâmetros. A assinatura foi definida na especificação e é chamada pelos módulos `eleitores` e `candidatos`; uma `dataclass` só para isso seria classite.
+  - Exceção aceita (D-013): `identidade.service.criar_credencial(sessao, cpf, nome, senha, perfil, agora)` tem 6 parâmetros. A assinatura foi definida na especificação e é chamada pelos módulos `eleitores` e `candidatos`; uma `dataclass` só para isso seria classite.
 - Tipagem em todas as assinaturas públicas.
 - Docstring em toda função pública: o que faz, regras (RN-xx) e erros que pode levantar.
 - Comentários explicam o **porquê**, não o quê.
@@ -94,7 +94,7 @@ Escrevemos o código aplicando os conceitos da disciplina: Ousterhout (aulas 02 
 
 ## 3. Módulos, camadas, fronteiras, transações e erros
 
-Um único processo FastAPI e um único banco, divididos em **6 módulos de domínio** mais um módulo compartilhado. Cada módulo é dono das suas tabelas e só conversa com os outros pelas funções do `servico.py` deles (e pelos tipos que essas funções recebem e devolvem). As dependências formam um grafo sem ciclos, verificado por um teste automático.
+Um único processo FastAPI e um único banco, divididos em **6 módulos de domínio** mais um módulo compartilhado. Cada módulo é dono das suas tabelas e só conversa com os outros pelas funções do `service.py` deles (e pelos tipos que essas funções recebem e devolvem). As dependências formam um grafo sem ciclos, verificado por um teste automático.
 
 ### Módulos e dependências
 
@@ -112,7 +112,7 @@ graph TD
 
 Todo módulo também pode usar `compartilhado`, `identidade.dependencias` (autenticação nas rotas) e os tipos `Perfil` e `UsuarioAutenticado` de `identidade.dominio` (D-103). Nenhuma outra dependência é permitida.
 
-| Módulo | Responsabilidade (contexto) | Tabelas que possui | Interface pública (`servico.py`) |
+| Módulo | Responsabilidade (contexto) | Tabelas que possui | Interface pública (`service.py`) |
 | --- | --- | --- | --- |
 | `compartilhado` | Infraestrutura e núcleo compartilhado: configuração, sessão do banco, erros, relógio, paginação, validadores, `Cargo` | nenhuma | (utilitários) |
 | `identidade` | Credenciais, login, token de acesso, perfis | `usuarios` | `autenticar`, `criar_credencial`, `atualizar_credencial`, `remover_credencial`, `obter_usuario`, `obter_usuarios`, `listar_usuarios` + `dependencias.py`: `obter_usuario_atual`, `exige_perfil` |
@@ -126,25 +126,25 @@ Por que `apuracao` não tem tabelas: ela só combina dados que outros módulos j
 
 ### Camadas dentro de cada módulo
 
-Todo módulo tem a mesma forma. Quem entende um entende todos.
+Todo módulo tem a mesma forma. Quem entende um entende todos. Os arquivos das camadas têm os nomes padrão (`controller`, `service`, `repository`, `model` e `schemas`); o resto do código segue em português (D11). A troca está registrada na D-154.
 
 | Arquivo | Responsabilidade | Pode importar | Não pode importar |
 | --- | --- | --- | --- |
-| `rotas.py` | HTTP: recebe a requisição, chama o serviço, devolve o esquema de resposta. Sem regra de negócio. | `esquemas`, `servico` do próprio módulo, `identidade.dependencias`, `compartilhado` | `repositorio`, `modelos` |
-| `esquemas.py` | Contratos Pydantic de entrada e saída, com exemplos para o Swagger | `dominio` do próprio módulo, `compartilhado` | SQLAlchemy |
-| `servico.py` | Casos de uso. Única porta de entrada do módulo para os outros. Controla a transação. | `dominio`, `repositorio` do próprio módulo, `servico` e tipos do `dominio` dos módulos permitidos | `rotas`, FastAPI |
-| `dominio.py` | Regras puras: enums, `dataclass`es de retorno, funções de validação. Testável sem banco. | `compartilhado.dominio`, `compartilhado.validadores`, `compartilhado.erros`, tipos do `dominio` dos módulos permitidos (D-077, D-098) | FastAPI, SQLAlchemy, `repositorio`, `modelos` |
-| `repositorio.py` | Consultas SQLAlchemy somente nas tabelas do módulo | `modelos` do próprio módulo | outros módulos |
-| `modelos.py` | Tabelas ORM do módulo | `compartilhado.banco` | modelos de outros módulos (chave estrangeira por nome da tabela em texto: `ForeignKey("eleicoes.id")`) |
+| `controller.py` | HTTP: recebe a requisição, chama o `service` e devolve o esquema de resposta. Sem regra de negócio. | `schemas`, `service` do próprio módulo, `identidade.dependencias`, `compartilhado` | `repository`, `model` |
+| `schemas.py` | Contratos Pydantic de entrada e saída, com exemplos para o Swagger | `dominio` do próprio módulo, `compartilhado` | SQLAlchemy |
+| `service.py` | Casos de uso. Única porta de entrada do módulo para os outros. Controla a transação. | `dominio`, `repository` do próprio módulo, `service` e tipos do `dominio` dos módulos permitidos | `controller`, FastAPI |
+| `dominio.py` | Regras puras: enums, `dataclass`es de retorno, funções de validação. Testável sem banco. | `compartilhado.dominio`, `compartilhado.validadores`, `compartilhado.erros`, tipos do `dominio` dos módulos permitidos (D-077, D-098) | FastAPI, SQLAlchemy, `repository`, `model` |
+| `repository.py` | Consultas SQLAlchemy somente nas tabelas do módulo | `model` do próprio módulo | outros módulos |
+| `model.py` | Tabelas ORM do módulo | `compartilhado.banco` | modelos de outros módulos (chave estrangeira por nome da tabela em texto: `ForeignKey("eleicoes.id")`) |
 
 Arquivos extras por módulo: `identidade/senhas.py`, `identidade/tokens.py`, `identidade/dependencias.py`, `votacao/cedulas.py`.
 
 ### Regras de fronteira (o teste de arquitetura verifica)
 
-1. Um módulo importa de outro **apenas** `app.<outro>.servico` e, como contrato dessas funções, os tipos públicos (`dataclass`es e enums) do `dominio.py` dos módulos vizinhos no grafo (D-077, D-098). De `app.identidade.dominio`, todo `servico.py` pode usar `Perfil` e `UsuarioAutenticado` (D-103); `app.identidade.dependencias`, só nas rotas.
+1. Um módulo importa de outro **apenas** `app.<outro>.service` e, como contrato dessas funções, os tipos públicos (`dataclass`es e enums) do `dominio.py` dos módulos vizinhos no grafo (D-077, D-098). De `app.identidade.dominio`, todo `service.py` pode usar `Perfil` e `UsuarioAutenticado` (D-103); `app.identidade.dependencias`, só nas rotas.
 2. Funções públicas do serviço devolvem `dataclass`es do `dominio.py`, **nunca** objetos ORM. O modelo do banco não vaza para fora do módulo.
 3. Nenhum `import` forma ciclo entre módulos; as arestas permitidas são exatamente as do diagrama acima.
-4. `dominio.py` não importa `fastapi`, `sqlalchemy`, `repositorio` nem `modelos`; `esquemas.py` não importa `sqlalchemy`.
+4. `dominio.py` não importa `fastapi`, `sqlalchemy`, `repository` nem `model`; `schemas.py` não importa `sqlalchemy`.
 5. Exceções à regra 1, só na "raiz de composição": `app/main.py`, `app/registro_modelos.py`, `app/scripts/*` e `migrations/env.py`.
 
 ### Transações
@@ -259,15 +259,15 @@ Não há autocadastro. Cada pessoa tem exatamente um perfil (decisão D04).
 | --- | --- | --- |
 | Descobrir quais CPFs têm conta | Mesma mensagem e mesmo tempo de resposta para CPF inexistente e senha errada | Login |
 | Usar token roubado indefinidamente | Expiração de 60 min; usuário excluído perde o acesso na hora (recarregado do banco) | `obter_usuario_atual` |
-| Virar Chefe mandando `perfil` no corpo | `extra="forbid"` + perfil lido do banco | Esquemas e dependências |
+| Virar Chefe mandando `perfil` no corpo | `extra="forbid"` + perfil lido do banco | `schemas.py` e dependências |
 | Votar duas vezes (inclusive em paralelo) | Chave primária de `registros_votacao` | Banco |
-| Votar no instante em que o Chefe encerra | Trava compartilhada na linha da eleição durante a confirmação | `votacao.servico.confirmar_voto` |
+| Votar no instante em que o Chefe encerra | Trava compartilhada na linha da eleição durante a confirmação | `votacao.service.confirmar_voto` |
 | Alterar ou apagar um voto | Não existe rota; trigger bloqueia `UPDATE` e `DELETE` no banco | API e banco |
 | Descobrir em quem alguém votou | Tabelas sem ligação, UUID aleatório, sem horário, nenhuma rota expõe, logs sem voto, confirmação não devolve a escolha, cédula cifrada | Modelo, API, logs |
-| Confirmar a cédula de outro eleitor | O `usuario_id` dentro da cédula precisa ser o usuário logado | `votacao.servico.confirmar_voto` |
+| Confirmar a cédula de outro eleitor | O `usuario_id` dentro da cédula precisa ser o usuário logado | `votacao.service.confirmar_voto` |
 | Usar a cédula como token de acesso | Formatos e chaves diferentes: o token de acesso é um JWT; a cédula é cifrada com Fernet e chave própria (D-144) | `tokens`, `cedulas` |
 | Forjar uma cédula | Cifra autenticada (Fernet: AES e HMAC) com chave derivada do segredo do servidor | `cedulas` |
-| Ler em quem o eleitor votou pela cédula (tela, cache, cópia do token) | Cédula cifrada; resposta do registro com `Cache-Control: no-store` | `cedulas`, `votacao.rotas` |
+| Ler em quem o eleitor votou pela cédula (tela, cache, cópia do token) | Cédula cifrada; resposta do registro com `Cache-Control: no-store` | `cedulas`, `votacao.controller` |
 | SQL injection | ORM com parâmetros | Repositórios |
 | Força bruta no login | Fora do escopo; extra opcional não implementado: limite de tentativas | — |
 

@@ -23,7 +23,7 @@ A API é documentada pelo próprio código (OpenAPI 3.1, *code-first*). A especi
 - **Autenticação:** `POST /api/v1/auth/login` (formulário com `username` = CPF e `password` = senha) devolve um token JWT. Envie-o em `Authorization: Bearer <token>`; no Swagger, use o botão *Authorize*.
 - **Fluxo do voto (Eleitor):** consultar a cédula → registrar o voto (recebe `token_cedula`, válido por 5 minutos) → confirmar com o token. Cada cargo é votado separadamente.
 - **Erros:** todas as rotas respondem `{"erro": {"codigo", "mensagem", "detalhes"}}`. 401 = não autenticado, 403 = perfil sem permissão, 404 = não encontrado, 409 = conflito com regra de negócio, 422 = dados inválidos, 500 = erro inesperado (código `ERRO_INTERNO`; o detalhe fica só no log). O 500 vale para todas as rotas e por isso não se repete nas tabelas abaixo.
-- Depois de mudar rotas ou esquemas, regenere a especificação com `python -m app.scripts.exportar_openapi` (o teste TA-03 falha se ela ficar desatualizada) e atualize as tabelas abaixo (copiadas dela).
+- Depois de mudar rotas ou schemas, regenere a especificação com `python -m app.scripts.exportar_openapi` (o teste TA-03 falha se ela ficar desatualizada) e atualize as tabelas abaixo (copiadas dela).
 
 #### Rotas
 
@@ -169,7 +169,7 @@ São 564 testes. O CI do GitHub Actions roda lint, formatação e testes a cada 
 
 ## 5. Arquitetura
 
-O sistema é um **monólito modular organizado por domínio**: um único processo FastAPI e um único banco PostgreSQL, divididos em 6 módulos de domínio (`identidade`, `eleitores`, `candidatos`, `eleicoes`, `votacao`, `apuracao`) mais um módulo `compartilhado`. Cada módulo é dono das suas tabelas e só conversa com os outros pelas funções do `servico.py` deles (e pelos tipos que essas funções recebem e devolvem). As dependências formam um grafo sem ciclos, verificado por um teste automático.
+O sistema é um **monólito modular organizado por domínio**: um único processo FastAPI e um único banco PostgreSQL, divididos em 6 módulos de domínio (`identidade`, `eleitores`, `candidatos`, `eleicoes`, `votacao`, `apuracao`) mais um módulo `compartilhado`. Cada módulo é dono das suas tabelas e só conversa com os outros pelas funções do `service.py` deles (e pelos tipos que essas funções recebem e devolvem). As dependências formam um grafo sem ciclos, verificado por um teste automático.
 
 ```mermaid
 graph TD
@@ -185,16 +185,16 @@ graph TD
 
 Todo módulo também pode usar `compartilhado`, `identidade.dependencias` (autenticação nas rotas) e os tipos `Perfil` e `UsuarioAutenticado` de `identidade.dominio`.
 
-**Camadas de cada módulo** (a mesma forma em todos): `rotas.py` (HTTP, sem regra de negócio) → `servico.py` (casos de uso, única porta de entrada, controla a transação) → `dominio.py` (regras puras, sem FastAPI nem SQLAlchemy) e `repositorio.py` (consultas, só nas tabelas do módulo) → `modelos.py` (tabelas ORM); `esquemas.py` tem os contratos de entrada e saída.
+**Camadas de cada módulo** (a mesma forma em todos): `controller.py` (HTTP, sem regra de negócio) → `service.py` (casos de uso, única porta de entrada, controla a transação) → `dominio.py` (regras puras, sem FastAPI nem SQLAlchemy) e `repository.py` (consultas, só nas tabelas do módulo) → `model.py` (tabelas ORM); `schemas.py` tem os contratos de entrada e saída.
 
 **Para quem pensa em MVC:** cada módulo é MVC com a camada de negócio separada. Como a API só devolve JSON, a "View" é o contrato de resposta:
 
 | Papel no MVC | Arquivo de cada módulo |
 | --- | --- |
-| Controller | `rotas.py` |
-| View (JSON de entrada e saída) | `esquemas.py` |
-| Model: regras de negócio | `servico.py` (casos de uso) + `dominio.py` (regras puras) |
-| Model: dados | `repositorio.py` (consultas) + `modelos.py` (tabelas) |
+| Controller | `controller.py` |
+| View (JSON de entrada e saída) | `schemas.py` |
+| Model: regras de negócio | `service.py` (casos de uso) + `dominio.py` (regras puras) |
+| Model: dados | `repository.py` (consultas) + `model.py` (tabelas) |
 
 A diferença para o MVC com pastas globais (`controllers/`, `models/`, `views/`) é que aqui as camadas ficam dentro de cada módulo: tudo o que é de eleitores está em `app/eleitores/`.
 
@@ -238,7 +238,7 @@ Fluxo do voto (diagrama de sequência em [`docs/ARQUITETURA.md`](docs/ARQUITETUR
 
 ## 6. Modularização
 
-| Módulo | Responsabilidade | Tabelas que possui | Interface pública (`servico.py`) |
+| Módulo | Responsabilidade | Tabelas que possui | Interface pública (`service.py`) |
 | --- | --- | --- | --- |
 | `compartilhado` | Configuração, sessão do banco, erros, relógio, paginação, validadores, `Cargo` | nenhuma | utilitários |
 | `identidade` | Credenciais, login, token de acesso, perfis | `usuarios` | `autenticar`, `criar_credencial`, `atualizar_credencial`, `remover_credencial`, `obter_usuario`, `obter_usuarios`, `listar_usuarios` e, em `dependencias.py`, `obter_usuario_atual`, `exige_perfil` |
@@ -252,15 +252,15 @@ Fluxo do voto (diagrama de sequência em [`docs/ARQUITETURA.md`](docs/ARQUITETUR
 
 **Regras de fronteira:**
 
-1. Um módulo importa de outro **apenas** `app.<outro>.servico` e, como contrato dessas funções, os tipos públicos (`dataclass`es e enums) do `dominio.py` dos módulos vizinhos no grafo (D-077, D-098). De `app.identidade.dominio`, todo `servico.py` pode usar `Perfil` e `UsuarioAutenticado` (D-103); `app.identidade.dependencias`, só nas rotas.
+1. Um módulo importa de outro **apenas** `app.<outro>.service` e, como contrato dessas funções, os tipos públicos (`dataclass`es e enums) do `dominio.py` dos módulos vizinhos no grafo (D-077, D-098). De `app.identidade.dominio`, todo `service.py` pode usar `Perfil` e `UsuarioAutenticado` (D-103); `app.identidade.dependencias`, só nas rotas.
 2. Serviços devolvem `dataclass`es do `dominio.py`, nunca objetos ORM.
 3. Nenhum `import` forma ciclo; as arestas permitidas são as do diagrama.
-4. `dominio.py` não importa `fastapi`, `sqlalchemy`, `repositorio` nem `modelos`; `esquemas.py` não importa `sqlalchemy`.
+4. `dominio.py` não importa `fastapi`, `sqlalchemy`, `repository` nem `model`; `schemas.py` não importa `sqlalchemy`.
 5. Exceções só na "raiz de composição": `app/main.py`, `app/registro_modelos.py`, `app/scripts/*` e `migrations/env.py`.
 
 **O teste TA-01** (`tests/arquitetura/test_dependencias.py`) lê o código com `ast` e falha se algum `import` violar essas regras (inclusive um import relativo, que esconderia o destino), se houver ciclo ou se um `dominio.py` importar framework ou banco. As fronteiras deixam de ser combinado e viram teste.
 
-**Conceitos da disciplina no código:** *módulos profundos* (poucas funções públicas em cada `servico.py`, muita lógica escondida atrás delas); *ocultação de informação* (só `identidade` conhece bcrypt e JWT de acesso; só `votacao` conhece as tabelas de voto); *baixo acoplamento* (nenhum módulo toca tabela de outro); *bounded contexts* (cada módulo com vocabulário próprio; `Cargo` no núcleo compartilhado); *agregados* (`Eleicao` é a raiz; candidaturas só mudam por ela); *sem flags de controle* (`abrir_eleicao()` e `encerrar_eleicao()`, nunca `alterar_status(abrir=True)`).
+**Conceitos da disciplina no código:** *módulos profundos* (poucas funções públicas em cada `service.py`, muita lógica escondida atrás delas); *ocultação de informação* (só `identidade` conhece bcrypt e JWT de acesso; só `votacao` conhece as tabelas de voto); *baixo acoplamento* (nenhum módulo toca tabela de outro); *bounded contexts* (cada módulo com vocabulário próprio; `Cargo` no núcleo compartilhado); *agregados* (`Eleicao` é a raiz; candidaturas só mudam por ela); *sem flags de controle* (`abrir_eleicao()` e `encerrar_eleicao()`, nunca `alterar_status(abrir=True)`).
 
 ## 7. Modelagem do banco
 
@@ -351,12 +351,12 @@ trab-es2/
 │   ├── main.py                  # raiz de composição: cria o app, inclui routers, tratadores de erro
 │   ├── registro_modelos.py      # importa os modelos de todos os módulos (para o Alembic)
 │   ├── compartilhado/           # config, banco, erros, relógio, paginação, validadores, openapi, Cargo
-│   ├── identidade/              # modelos, repositorio, dominio, senhas, tokens, servico, dependencias, esquemas, rotas
-│   ├── eleitores/               # modelos, repositorio, dominio, servico, esquemas, rotas
-│   ├── candidatos/              # modelos, repositorio, dominio, servico, esquemas, rotas
-│   ├── eleicoes/                # modelos, repositorio, dominio, servico, esquemas, rotas
-│   ├── votacao/                 # modelos, repositorio, dominio, cedulas, servico, esquemas, rotas
-│   ├── apuracao/                # dominio, servico, esquemas, rotas (sem tabelas)
+│   ├── identidade/              # model, repository, dominio, senhas, tokens, service, dependencias, schemas, controller
+│   ├── eleitores/               # model, repository, dominio, service, schemas, controller
+│   ├── candidatos/              # model, repository, dominio, service, schemas, controller
+│   ├── eleicoes/                # model, repository, dominio, service, schemas, controller
+│   ├── votacao/                 # model, repository, dominio, cedulas, service, schemas, controller
+│   ├── apuracao/                # dominio, service, schemas, controller (sem tabelas)
 │   └── scripts/
 │       ├── criar_chefe.py       # cria o Chefe da Seção inicial
 │       ├── seed_demo.py         # dados de demonstração
