@@ -1,12 +1,12 @@
 # Arquitetura
 
-Descrição da arquitetura do sistema como ela **existe no código** (tag `v1.0.0`). A especificação original está em [`PLANO.md`](PLANO.md); as decisões que se afastaram dela estão em [`DECISOES.md`](DECISOES.md). O resumo para leitura rápida fica no [`README.md`](../README.md).
+Este documento descreve a arquitetura do sistema como ela está no código (tag `v1.0.0`). O resumo para leitura rápida está no [`README.md`](../README.md); as regras de negócio (RN-xx) estão detalhadas em [`PLANO.md`](PLANO.md) e as escolhas que fizemos ao longo do desenvolvimento, em [`DECISOES.md`](DECISOES.md).
 
 Conteúdo: decisões de projeto (seção 1), princípios de design (seção 2), módulos, camadas, fronteiras, transações e erros (seção 3), segurança (seção 4) e o fluxo do voto (seção 5).
 
 ## 1. Decisões de projeto
 
-O sistema é uma API REST que simula uma eleição eletrônica com três perfis (Chefe da Seção, Eleitor e Candidato), organizada como **monólito modular** em Python + FastAPI + PostgreSQL, com testes unitários e de integração, histórico Git coerente e documentação Swagger. Trabalho da disciplina de Engenharia de Software II (Prof. Marcelo Soares Loutfi), em grupo de até 5 pessoas. Cada membro será arguido individualmente.
+O sistema é uma API REST que simula uma eleição eletrônica com três perfis (Chefe da Seção, Eleitor e Candidato), organizada como **monólito modular** em Python + FastAPI + PostgreSQL, com testes unitários e de integração, histórico Git coerente e documentação Swagger. É o trabalho de back-end da disciplina de Engenharia de Software II (Prof. Marcelo Soares Loutfi), feito em grupo.
 
 ### Escopo: o que o sistema faz
 
@@ -18,11 +18,11 @@ O sistema é uma API REST que simula uma eleição eletrônica com três perfis 
 6. Resultado final após o encerramento: votos por candidato e mais votado por cargo.
 7. Tudo persistido em PostgreSQL: usuários, eleitores, candidatos, partidos, eleições, candidaturas, registros de votação e votos.
 
-### Decisões de projeto
+### Principais decisões
 
 | # | Decisão | Escolha | Motivo | Alternativa descartada (e por quê) |
 | --- | --- | --- | --- | --- |
-| D01 | Arquitetura | Monólito modular organizado por domínio | O enunciado não exige distribuição; a aula 06 aponta menor complexidade operacional; fronteiras iguais às de bounded contexts | Microsserviços (rede, vários bancos, deploy) e camadas técnicas globais (toda mudança atravessa todas as camadas) |
+| D01 | Arquitetura | Monólito modular organizado por domínio | O enunciado não exige distribuição, e um único processo tem menor complexidade operacional (aula 06); as fronteiras dos módulos são as de bounded contexts | Microsserviços (rede, vários bancos, deploy) e camadas técnicas globais (toda mudança atravessa todas as camadas) |
 | D02 | Banco | PostgreSQL 16 | Restrições, transações, índice parcial e trigger garantem as regras críticas | SQLite (concorrência fraca), MongoDB (o problema é relacional) |
 | D03 | Acesso a dados | SQLAlchemy 2.0 **síncrono** + Alembic; rotas `def` | Mais fácil de ler, testar e explicar; desempenho não é gargalo nessa escala | Async (event loop, `await` e sessões assíncronas sem ganho real aqui) |
 | D04 | Perfis | Exatamente um perfil por usuário | O enunciado define três tipos de usuário | Vários papéis por usuário (RBAC mais complexo) |
@@ -33,11 +33,11 @@ O sistema é uma API REST que simula uma eleição eletrônica com três perfis 
 | D09 | Candidaturas | Parte do agregado **Eleição** (a eleição é a raiz) | Toda mudança passa pela raiz (aula 07); a regra "só com eleição AGENDADA" fica num lugar só | Candidatura dentro do módulo de candidatos (cria dependência circular entre módulos) |
 | D10 | Relógio | Função `agora()` injetável | Testes de data e horário determinísticos | `datetime.now()` espalhado pelo código |
 | D11 | Idioma do código | Português | Linguagem ubíqua: o código usa as palavras do enunciado | Inglês (tradução mental o tempo todo) |
-| D12 | Versionamento da API | Prefixo `/api/v1` | Boa prática citada no material de Swagger | Sem versão |
+| D12 | Versionamento da API | Prefixo `/api/v1` | Boa prática de versionamento de APIs REST: uma mudança futura incompatível não quebra quem usa a versão atual | Sem versão |
 
 ### Regras complementares de realismo
 
-Não estão no enunciado, mas deixam a simulação coerente com a eleição brasileira. Na apresentação, chame-as de **regras complementares definidas pelo grupo**.
+O enunciado não pede estas regras. Nós as definimos para deixar a simulação coerente com a eleição brasileira, e por isso as chamamos de **regras complementares definidas pelo grupo**.
 
 - Quantidade de dígitos do número por cargo: Presidente 2, Governador 2, Senador 3, Deputado Federal 4, Deputado Estadual 5.
 - Eleitor com pelo menos 16 anos.
@@ -45,26 +45,26 @@ Não estão no enunciado, mas deixam a simulação coerente com a eleição bras
 - Empate no mais votado: vence o candidato mais idoso.
 - Segundo turno: só Governador e Presidente, com exatamente 2 candidatos por cargo.
 - Só vota quem foi cadastrado antes da abertura da eleição ("previamente cadastrado").
-- Abertura só no dia da eleição e dentro da janela de horário cadastrada; passado o horário de encerramento, o voto é recusado mesmo que o Chefe ainda não tenha encerrado (RN-15, RN-52). Numa demonstração ao vivo, cadastre a eleição para o dia de hoje com uma janela que inclua o horário da apresentação.
+- Abertura só no dia da eleição e dentro da janela de horário cadastrada; passado o horário de encerramento, o voto é recusado mesmo que o Chefe ainda não tenha encerrado (RN-15, RN-52). Por isso, a eleição da demonstração é cadastrada para o próprio dia, com uma janela que cobre o horário da apresentação.
 - Só uma eleição aberta por vez (RN-16).
 
-### Fora do escopo (dizer isso com segurança se perguntarem)
+### Fora do escopo
 
-- Frontend: a demonstração é feita no Postman ou Insomnia, como pede o enunciado.
+- Frontend: o enunciado pede apenas o back-end, e a demonstração é feita no Postman.
 - Várias seções, zonas ou UFs: o sistema simula **uma** seção.
 - Regras de "eleito" (maioria absoluta, quociente eleitoral): o enunciado pede o **mais votado**.
 - Geração automática do 2º turno a partir do 1º.
-- Recuperação de senha, e-mail, HTTPS (responsabilidade do ambiente de deploy) e limite de tentativas de login (extra opcional, não implementado).
+- Recuperação de senha, e-mail, HTTPS (responsabilidade do ambiente de deploy) e limite de tentativas de login (não implementado).
 
 
 ## 2. Princípios de design
 
-O código será avaliado com a régua da disciplina (Ousterhout nas aulas 02 a 05, Newman e DDD nas aulas 06 e 07). Cada princípio abaixo vira uma regra concreta no código, que o grupo deve saber apontar.
+Escrevemos o código aplicando os conceitos da disciplina: Ousterhout (aulas 02 a 05), Newman e DDD (aulas 06 e 07). A tabela mostra cada princípio, a regra concreta que adotamos a partir dele e onde ela aparece no projeto.
 
 | Princípio (aula) | Regra no código | Onde aparece |
 | --- | --- | --- |
 | Tolerância zero à complexidade (02) | Nomes que dizem o que a coisa é. Proibido: `temp`, `aux`, `data2`, `x`, `processa()`. | Todo o projeto |
-| Programação estratégica (02) | Ao fim de cada fase, uma rodada de refatoração antes do commit final (investimento contínuo de 10 a 20%). | Plano de fases (`PLANO.md`, seção 13) |
+| Programação estratégica (02) | Ao fim de cada módulo, uma rodada de refatoração antes do commit final (investimento contínuo de 10 a 20%). | Histórico do Git |
 | Módulos profundos (03) | Cada módulo expõe poucas funções públicas em `servico.py` e esconde muita lógica atrás delas. | `servico.py` de cada módulo |
 | Evitar classite (03) | Funções e `dataclass` simples. Nada de uma classe por operação, nem Interface + Implementação para tudo. | Todo o projeto |
 | Interface formal e informal (03) | Assinaturas tipadas (formal) + docstring com regras de uso e RN (informal). | Funções públicas |
@@ -75,7 +75,7 @@ O código será avaliado com a régua da disciplina (Ousterhout nas aulas 02 a 0
 | Baixo acoplamento (04, 06) | Nenhum módulo lê ou escreve tabela de outro (evita acoplamento de recurso comum e de conteúdo). Sem acoplamento de passagem: não repassar objetos que o módulo não usa. | Teste de arquitetura |
 | Propósito geral (05) | Interfaces genéricas, implementações específicas. Um único `registrar_voto(cargo, modo, numero)` para todos os cargos; nunca `votar_presidente()`. | `votacao` |
 | Especialização nas bordas (05) | Rotas e esquemas são específicos do HTTP; o domínio no meio é genérico. | Camadas |
-| Lei de Conway (06) | A divisão de módulos espelha a divisão de trabalho do grupo. | Divisão do grupo (`PLANO.md`, seção 13) |
+| Lei de Conway (06) | A divisão de módulos espelha a divisão de trabalho do grupo. | Divisão dos módulos entre os integrantes |
 | Bounded contexts (07) | Cada módulo é um contexto com vocabulário próprio. `Cargo` vive no núcleo compartilhado (shared kernel). | `app/compartilhado/dominio.py` |
 | Agregados (07) | `Eleicao` é raiz; candidaturas só mudam pela eleição (`/eleicoes/{id}/candidaturas`). Entre agregados, referência por ID. | `eleicoes` |
 | Regra de dependência (07) | Dependências apontam para dentro: rotas → serviço → domínio. `dominio.py` não importa FastAPI nem SQLAlchemy. | Teste de arquitetura |
@@ -85,7 +85,7 @@ O código será avaliado com a régua da disciplina (Ousterhout nas aulas 02 a 0
 ### Regras de estilo
 
 - Funções com no máximo \~40 linhas e no máximo 5 parâmetros; acima disso, agrupe em uma `dataclass`.
-  - Exceção aceita (D-013): `identidade.servico.criar_credencial(sessao, cpf, nome, senha, perfil, agora)` tem 6 parâmetros. A assinatura é a da seção 9.2 do PLANO, chamada pelos módulos `eleitores` e `candidatos`, e uma `dataclass` só para isso seria classite.
+  - Exceção aceita (D-013): `identidade.servico.criar_credencial(sessao, cpf, nome, senha, perfil, agora)` tem 6 parâmetros. A assinatura foi definida na especificação e é chamada pelos módulos `eleitores` e `candidatos`; uma `dataclass` só para isso seria classite.
 - Tipagem em todas as assinaturas públicas.
 - Docstring em toda função pública: o que faz, regras (RN-xx) e erros que pode levantar.
 - Comentários explicam o **porquê**, não o quê.
