@@ -2,7 +2,7 @@
 
 Dicionário de dados, restrições, índices, trigger e política de exclusão do PostgreSQL 16. Foi conferido contra o banco criado pelas migrações (`alembic upgrade head`): colunas, tipos, restrições e índices abaixo são os que existem. A especificação original está em [`PLANO.md`](PLANO.md) (seção 6); a arquitetura em [`ARQUITETURA.md`](ARQUITETURA.md).
 
-São 8 tabelas. As regras mais críticas são garantidas pelo próprio PostgreSQL, mesmo que a aplicação tenha um bug: um voto por eleitor e cargo (chave primária), uma eleição aberta por vez (índice parcial), voto coerente com a candidatura (chave estrangeira composta) e voto imutável (trigger). O ponto central do modelo é que **`registros_votacao` e `votos` não têm nenhuma ligação entre si**: é isso que garante o sigilo.
+São 8 tabelas. As regras mais críticas são garantidas pelo próprio PostgreSQL, mesmo que a aplicação tenha um bug: um voto por eleitor e cargo (chave primária), uma eleição aberta por vez (índice parcial), voto coerente com a candidatura (chave estrangeira composta) e voto imutável (trigger). O ponto central do modelo é que **`registros_votacao` e `votos` não têm nenhuma ligação entre si**: é isso que impede que uma tabela, rota ou resposta ligue quem votou ao que foi votado. O sigilo tem dois limites: quem acessa o banco diretamente ainda consegue ligar as duas tabelas pelo `xmin` e pela ordem física das linhas (D-134), e quem compara a apuração parcial antes e depois de um voto, sabendo quem votou nesse intervalo, deduz a escolha. Detalhes nas [Limitações conhecidas do sigilo](#limitações-conhecidas-do-sigilo).
 
 ### Diagrama entidade-relacionamento
 

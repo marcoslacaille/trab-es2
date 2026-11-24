@@ -48,7 +48,7 @@ Vamos construir uma API REST que simula uma eleição eletrônica com três perf
 | D03 | Acesso a dados | SQLAlchemy 2.0 **síncrono** + Alembic; rotas `def` | Mais fácil de ler, testar e explicar; desempenho não é gargalo nessa escala | Async (event loop, `await` e sessões assíncronas sem ganho real aqui) |
 | D04 | Perfis | Exatamente um perfil por usuário | O enunciado define três tipos de usuário | Vários papéis por usuário (RBAC mais complexo) |
 | D05 | Fluxo do voto | Duas etapas: registro devolve uma **cédula assinada** (token); confirmação grava | O banco nunca guarda eleitor e escolha juntos, nem por um segundo | Rascunho de voto numa tabela (liga eleitor à escolha até a confirmação) |
-| D06 | Sigilo | Duas tabelas sem ligação: `registros_votacao` (quem votou em qual cargo) e `votos` (o quê, sem quem); voto com UUID aleatório e sem horário | Impossível consultar ou correlacionar eleitor e voto | Tabela única com `eleitor_id`; coluna "anônimo" |
+| D06 | Sigilo | Duas tabelas sem ligação: `registros_votacao` (quem votou em qual cargo) e `votos` (o quê, sem quem); voto com UUID aleatório e sem horário | Nenhuma tabela, rota ou resposta liga eleitor e voto (os limites para quem lê o banco direto estão na seção 6) | Tabela única com `eleitor_id`; coluna "anônimo" |
 | D07 | Apuração | Calculada a cada consulta (`GROUP BY`) | Sempre atualizada, sem estado duplicado | Contadores incrementais ou cache (risco de divergência) |
 | D08 | Abertura e encerramento | Manuais, pelo Chefe; os horários definem a janela permitida | O enunciado diz que só o Chefe abre e encerra | Agendador automático (mais peças, difícil de demonstrar) |
 | D09 | Candidaturas | Parte do agregado **Eleição** (a eleição é a raiz) | Toda mudança passa pela raiz (aula 07); a regra "só com eleição AGENDADA" fica num lugar só | Candidatura dentro do módulo de candidatos (cria dependência circular entre módulos) |
@@ -535,7 +535,7 @@ def health() -> dict:
 
 ## 6. Modelagem do banco de dados
 
-São 8 tabelas. As regras mais críticas são garantidas pelo próprio PostgreSQL, mesmo que a aplicação tenha um bug: um voto por eleitor e cargo (chave primária), uma eleição aberta por vez (índice parcial), voto coerente com a candidatura (chave estrangeira composta) e voto imutável (trigger). O ponto central do modelo é que **`registros_votacao` e `votos` não têm nenhuma ligação entre si**: é isso que garante o sigilo.
+São 8 tabelas. As regras mais críticas são garantidas pelo próprio PostgreSQL, mesmo que a aplicação tenha um bug: um voto por eleitor e cargo (chave primária), uma eleição aberta por vez (índice parcial), voto coerente com a candidatura (chave estrangeira composta) e voto imutável (trigger). O ponto central do modelo é que **`registros_votacao` e `votos` não têm nenhuma ligação entre si**: é isso que impede que uma tabela, rota ou resposta ligue quem votou ao que foi votado. O sigilo tem dois limites: quem acessa o banco diretamente ainda consegue ligar as duas tabelas pelo `xmin` e pela ordem física das linhas (D-134), e quem compara a apuração parcial antes e depois de um voto, sabendo quem votou nesse intervalo, deduz a escolha. Detalhes nas limitações conhecidas do sigilo, no fim desta seção.
 
 ### Diagrama entidade-relacionamento
 
@@ -832,9 +832,15 @@ Restrição que não está na tabela, ou que o driver não nomeia, vira `CONFLIT
 
 Gere com `python -m alembic revision --autogenerate --rev-id 0001 -m "identidade"` (use `0002`, `0003`... nas próximas). O `--rev-id` é necessário para o arquivo se chamar `0001_identidade`: o `file_template` do `alembic.ini` já é `<número>_<descrição>`, mas o Alembic só gera o número se ele for informado. **Revise o arquivo gerado** (o autogenerate não cria trigger e pode errar o índice parcial) e teste `alembic upgrade head` e `alembic downgrade -1`.
 
-### Limitação conhecida do sigilo (para o README)
+### Limitações conhecidas do sigilo (para o README)
 
-Quem tiver acesso administrativo direto ao banco ainda poderia tentar correlacionar a **ordem física** em que as linhas foram gravadas nas duas tabelas. A urna real resolve isso embaralhando o registro digital do voto. Aqui isso fica fora do escopo e é documentado como limitação. Outra: com pouquíssimos votos, a apuração parcial pode permitir deduzir escolhas (o mesmo acontece em qualquer seção real com um único eleitor).
+Na API e no modelo lógico, nada liga eleitor e voto. Os limites:
+
+- **O `xmin`:** o registro de quem votou e o voto são gravados na mesma transação (para nunca existir registro sem voto nem voto sem registro), então as duas linhas têm o mesmo identificador de transação, e quem pode ler as duas tabelas liga cada voto ao eleitor com `JOIN ... ON v.xmin = r.xmin` (D-134).
+- **A ordem física** em que as linhas foram gravadas nas duas tabelas, também para quem tem acesso direto ao banco.
+- **A parcial exata:** quem consulta a apuração antes e depois de um único voto, e sabe quem votou nesse intervalo, deduz a escolha (o mesmo acontece em qualquer seção real com um único eleitor). Mostrar a parcial é exigência do enunciado.
+
+A urna real resolve os dois primeiros embaralhando o registro digital do voto. Aqui o acesso direto ao banco precisa ficar restrito, e mudar o desenho é decisão em aberto (D-134).
 
 ## 7. Autenticação, perfis e segurança
 
@@ -2518,7 +2524,7 @@ Cada membro será arguido sozinho, então todos precisam saber explicar o sistem
 
 **15. E se duas requisições de voto chegarem ao mesmo tempo?** As duas tentam inserir a mesma chave primária; o PostgreSQL deixa uma passar e recusa a outra, que vira 409. O teste TI-73 prova isso com duas threads.
 
-**16. Como garantem o sigilo?** O banco nunca guarda eleitor e escolha juntos. `registros_votacao` diz quem votou em qual cargo; `votos` diz o quê foi votado, sem quem; as duas são gravadas na mesma transação e não têm ligação. O voto tem UUID aleatório e nenhum horário, a confirmação não devolve a escolha e os logs não a registram.
+**16. Como garantem o sigilo?** O banco nunca guarda eleitor e escolha juntos. `registros_votacao` diz quem votou em qual cargo; `votos` diz o quê foi votado, sem quem; as duas são gravadas na mesma transação e não têm coluna nem chave que as ligue. O voto tem UUID aleatório e nenhum horário, a confirmação não devolve a escolha e os logs não a registram. Os limites, ditos com franqueza: como as duas linhas nascem na mesma transação, quem lê o banco direto as liga pelo `xmin` (e também pela ordem física), por isso o acesso direto ao banco fica restrito (D-134); e a parcial exata, consultada antes e depois de um voto, permite deduzir a escolha.
 
 **17. Por que duas etapas, e o que é a cédula?** O enunciado pede registrar e confirmar. No registro, o servidor devolve a escolha numa cédula cifrada de 5 minutos (que ninguém lê sem a chave do servidor, D-144) e não grava nada; na confirmação, decifra, confere e grava. Descartamos guardar um rascunho no banco porque ele ligaria eleitor e escolha até a confirmação.
 
