@@ -9,7 +9,6 @@ from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.candidatos import repository
 from app.candidatos.dominio import (
     validar_nascimento_do_candidato,
     validar_nome_de_urna,
@@ -31,6 +30,8 @@ from app.identidade import service as service_identidade
 from app.models.candidato import Candidato
 from app.models.enums import Perfil
 from app.models.partido import Partido
+from app.repositories.candidato_repository import CandidatoRepository
+from app.repositories.partido_repository import PartidoRepository
 
 # Restrição que impede apagar quem tem candidatura (a tabela nasce na migração 0004).
 FK_CANDIDATO_COM_CANDIDATURA = "fk_candidaturas_candidato_id_candidatos"
@@ -70,7 +71,7 @@ def _resumir_partido(partido: Partido) -> PartidoResumo:
 
 def _obter_modelo(sessao: Session, candidato_id: int) -> Candidato:
     """Busca o candidato ou levanta 404 `CANDIDATO_NAO_ENCONTRADO`."""
-    candidato = repository.buscar_candidato_por_id(sessao, candidato_id)
+    candidato = CandidatoRepository(sessao).buscar_candidato_por_id(candidato_id)
     if candidato is None:
         raise NaoEncontrado("Candidato não encontrado.", codigo="CANDIDATO_NAO_ENCONTRADO")
     return candidato
@@ -106,7 +107,7 @@ def cadastrar_candidato(
         data_nascimento=dados.data_nascimento,
         criado_em=agora,
     )
-    repository.inserir_candidato(sessao, candidato)
+    CandidatoRepository(sessao).inserir_candidato(candidato)
     sessao.commit()
     return _com_credencial(sessao, candidato)
 
@@ -120,8 +121,8 @@ def listar_candidatos(
     numa única consulta, os candidatos desses usuários.
     """
     usuarios = service_identidade.listar_usuarios(sessao, Perfil.CANDIDATO, nome, paginacao)
-    candidatos = repository.buscar_candidatos_por_usuarios_ids(
-        sessao, [u.id for u in usuarios.itens]
+    candidatos = CandidatoRepository(sessao).buscar_candidatos_por_usuarios_ids(
+        [u.id for u in usuarios.itens]
     )
     por_usuario = {candidato.usuario_id: candidato for candidato in candidatos}
     return Pagina[CandidatoDetalhado](
@@ -168,7 +169,7 @@ def excluir_candidato(sessao: Session, candidato_id: int) -> None:
     candidato = _obter_modelo(sessao, candidato_id)
     usuario_id = candidato.usuario_id
     try:
-        repository.remover_candidato(sessao, candidato)
+        CandidatoRepository(sessao).remover_candidato(candidato)
     except IntegrityError as erro:
         sessao.rollback()
         if nome_da_restricao(erro) != FK_CANDIDATO_COM_CANDIDATURA:
@@ -186,7 +187,7 @@ def obter_candidato_logado(sessao: Session, usuario_id: int) -> CandidatoDetalha
 
     Levanta 404 `CANDIDATO_NAO_ENCONTRADO` se a credencial não tiver um candidato.
     """
-    candidato = repository.buscar_candidato_por_usuario_id(sessao, usuario_id)
+    candidato = CandidatoRepository(sessao).buscar_candidato_por_usuario_id(usuario_id)
     if candidato is None:
         raise NaoEncontrado("Candidato não encontrado.", codigo="CANDIDATO_NAO_ENCONTRADO")
     return _com_credencial(sessao, candidato)
@@ -194,7 +195,7 @@ def obter_candidato_logado(sessao: Session, usuario_id: int) -> CandidatoDetalha
 
 def obter_candidato_do_usuario(sessao: Session, usuario_id: int) -> CandidatoResumo | None:
     """Devolve o candidato dono desta credencial, ou `None` se não houver. Usada por `eleicoes`."""
-    candidato = repository.buscar_candidato_por_usuario_id(sessao, usuario_id)
+    candidato = CandidatoRepository(sessao).buscar_candidato_por_usuario_id(usuario_id)
     return _resumir_candidato(candidato) if candidato else None
 
 
@@ -205,7 +206,7 @@ def obter_resumos_de_candidatos(sessao: Session, ids: list[int]) -> dict[int, Ca
     """
     if not ids:
         return {}
-    candidatos = repository.buscar_candidatos_por_ids(sessao, ids)
+    candidatos = CandidatoRepository(sessao).buscar_candidatos_por_ids(ids)
     return {candidato.id: _resumir_candidato(candidato) for candidato in candidatos}
 
 
@@ -216,22 +217,25 @@ def criar_partido(sessao: Session, dados: NovoPartidoDados, agora: datetime) -> 
     `PARTIDO_DUPLICADO`; dados fora do formato dão 422 `DADOS_INVALIDOS`.
     """
     dados = validar_partido(dados)
-    if repository.existe_partido_com(sessao, dados.sigla, dados.nome, dados.numero):
+    if PartidoRepository(sessao).existe_partido_com(dados.sigla, dados.nome, dados.numero):
         raise ConflitoDeEstado(
             "Já existe um partido com esta sigla, nome ou número.", codigo="PARTIDO_DUPLICADO"
         )
     partido = Partido(sigla=dados.sigla, nome=dados.nome, numero=dados.numero, criado_em=agora)
-    repository.inserir_partido(sessao, partido)
+    PartidoRepository(sessao).inserir_partido(partido)
     sessao.commit()
     return _resumir_partido(partido)
 
 
 def listar_partidos(sessao: Session) -> list[PartidoResumo]:
     """Todos os partidos, ordenados por número (RN-30: qualquer usuário logado pode listar)."""
-    return [_resumir_partido(partido) for partido in repository.listar_partidos_por_numero(sessao)]
+    return [
+        _resumir_partido(partido)
+        for partido in PartidoRepository(sessao).listar_partidos_por_numero()
+    ]
 
 
 def obter_partido(sessao: Session, partido_id: int) -> PartidoResumo | None:
     """Devolve o partido ou `None` se não existir. Usada por `eleicoes` (RN-46)."""
-    partido = repository.buscar_partido_por_id(sessao, partido_id)
+    partido = PartidoRepository(sessao).buscar_partido_por_id(partido_id)
     return _resumir_partido(partido) if partido else None

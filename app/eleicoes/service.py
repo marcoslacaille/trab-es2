@@ -22,7 +22,6 @@ from app.dto.candidatura_dto import (
     NovaCandidaturaDados,
 )
 from app.dto.eleicao_dto import AlteracoesEleicao, EleicaoResumo, NovaEleicaoDados
-from app.eleicoes import repository
 from app.eleicoes.dominio import (
     validar_abertura,
     validar_agendamento,
@@ -34,6 +33,7 @@ from app.eleicoes.dominio import (
 from app.models.candidatura import Candidatura
 from app.models.eleicao import Eleicao
 from app.models.enums import Cargo, StatusEleicao
+from app.repositories.eleicao_repository import EleicaoRepository
 
 # FK que dispara quando o candidato some entre a conferência e a gravação (D-145).
 FK_CANDIDATO_DA_CANDIDATURA = "fk_candidaturas_candidato_id_candidatos"
@@ -66,7 +66,9 @@ def _conferir_data_e_turno_livres(
     sessao: Session, dados: NovaEleicaoDados, ignorando_id: int | None = None
 ) -> None:
     """RN-12: levanta 409 `ELEICAO_DUPLICADA` se outra eleição já usa esta data e turno."""
-    if repository.existe_eleicao_na_data_e_turno(sessao, dados.data, dados.turno, ignorando_id):
+    if EleicaoRepository(sessao).existe_eleicao_na_data_e_turno(
+        dados.data, dados.turno, ignorando_id
+    ):
         raise ConflitoDeEstado(
             "Já existe uma eleição nesta data e turno.", codigo="ELEICAO_DUPLICADA"
         )
@@ -89,7 +91,7 @@ def criar_eleicao(sessao: Session, dados: NovaEleicaoDados, agora: datetime) -> 
         status=StatusEleicao.AGENDADA.value,
         criado_em=agora,
     )
-    repository.inserir(sessao, eleicao)
+    EleicaoRepository(sessao).inserir(eleicao)
     sessao.commit()
     return _resumir(eleicao)
 
@@ -104,7 +106,7 @@ def editar_eleicao(
     eleição for de 2º turno, as candidaturas já cadastradas passam pela RN-45.
     Eleição inexistente: 404 `ELEICAO_NAO_ENCONTRADA`.
     """
-    eleicao = _ou_nao_encontrada(repository.obter_com_trava_exclusiva(sessao, eleicao_id))
+    eleicao = _ou_nao_encontrada(EleicaoRepository(sessao).obter_com_trava_exclusiva(eleicao_id))
     validar_edicao(StatusEleicao(eleicao.status))
     dados = validar_agendamento(
         NovaEleicaoDados(
@@ -118,7 +120,7 @@ def editar_eleicao(
     )
     _conferir_data_e_turno_livres(sessao, dados, ignorando_id=eleicao.id)
     validar_candidaturas_no_turno(
-        dados.turno, repository.contar_candidaturas_por_cargo(sessao, eleicao.id)
+        dados.turno, EleicaoRepository(sessao).contar_candidaturas_por_cargo(eleicao.id)
     )
     eleicao.descricao = dados.descricao
     eleicao.data = dados.data
@@ -136,12 +138,12 @@ def _ou[T](novo: T | None, atual: T) -> T:
 
 def obter_eleicao(sessao: Session, eleicao_id: int) -> EleicaoResumo:
     """Consulta uma eleição (RN-19). Levanta 404 `ELEICAO_NAO_ENCONTRADA` se não existir."""
-    return _resumir(_ou_nao_encontrada(repository.buscar_por_id(sessao, eleicao_id)))
+    return _resumir(_ou_nao_encontrada(EleicaoRepository(sessao).buscar_por_id(eleicao_id)))
 
 
 def listar_eleicoes(sessao: Session, status: StatusEleicao | None = None) -> list[EleicaoResumo]:
     """Lista as eleições, da mais antiga para a mais nova, com filtro opcional de status (RN-19)."""
-    return [_resumir(eleicao) for eleicao in repository.listar(sessao, status)]
+    return [_resumir(eleicao) for eleicao in EleicaoRepository(sessao).listar(status)]
 
 
 def abrir_eleicao(sessao: Session, eleicao_id: int, agora: datetime) -> EleicaoResumo:
@@ -154,12 +156,12 @@ def abrir_eleicao(sessao: Session, eleicao_id: int, agora: datetime) -> EleicaoR
     (409 `OUTRA_ELEICAO_ABERTA`, traduzido pelo tratador de `IntegrityError`).
     Eleição inexistente: 404 `ELEICAO_NAO_ENCONTRADA`.
     """
-    eleicao = _ou_nao_encontrada(repository.obter_com_trava_exclusiva(sessao, eleicao_id))
+    eleicao = _ou_nao_encontrada(EleicaoRepository(sessao).obter_com_trava_exclusiva(eleicao_id))
     validar_abertura(
         _resumir(eleicao),
         agora,
-        existe_outra_aberta=repository.existe_eleicao_aberta(sessao),
-        candidaturas_por_cargo=repository.contar_candidaturas_por_cargo(sessao, eleicao.id),
+        existe_outra_aberta=EleicaoRepository(sessao).existe_eleicao_aberta(),
+        candidaturas_por_cargo=EleicaoRepository(sessao).contar_candidaturas_por_cargo(eleicao.id),
     )
     _gravar_retrato_dos_candidatos(sessao, eleicao.id)
     eleicao.status = StatusEleicao.ABERTA.value
@@ -176,7 +178,7 @@ def encerrar_eleicao(sessao: Session, eleicao_id: int, agora: datetime) -> Eleic
     depois disso, nenhum voto novo entra. Levanta 409 `TRANSICAO_INVALIDA` se não estiver ABERTA
     e 404 `ELEICAO_NAO_ENCONTRADA` se não existir.
     """
-    eleicao = _ou_nao_encontrada(repository.obter_com_trava_exclusiva(sessao, eleicao_id))
+    eleicao = _ou_nao_encontrada(EleicaoRepository(sessao).obter_com_trava_exclusiva(eleicao_id))
     validar_encerramento(StatusEleicao(eleicao.status))
     eleicao.status = StatusEleicao.ENCERRADA.value
     eleicao.encerrada_em = agora
@@ -192,7 +194,7 @@ def obter_eleicao_para_votacao(sessao: Session, eleicao_id: int) -> EleicaoResum
     transação. Levanta 404 `ELEICAO_NAO_ENCONTRADA` se não existir.
     """
     return _resumir(
-        _ou_nao_encontrada(repository.obter_com_trava_compartilhada(sessao, eleicao_id))
+        _ou_nao_encontrada(EleicaoRepository(sessao).obter_com_trava_compartilhada(eleicao_id))
     )
 
 
@@ -204,7 +206,7 @@ def _eleicao_editavel(sessao: Session, eleicao_id: int) -> Eleicao:
 
     404 `ELEICAO_NAO_ENCONTRADA` se não existir; 409 `ELEICAO_NAO_EDITAVEL` se não for AGENDADA.
     """
-    eleicao = _ou_nao_encontrada(repository.obter_com_trava_exclusiva(sessao, eleicao_id))
+    eleicao = _ou_nao_encontrada(EleicaoRepository(sessao).obter_com_trava_exclusiva(eleicao_id))
     validar_edicao(StatusEleicao(eleicao.status))
     return eleicao
 
@@ -237,7 +239,9 @@ def _conferir_regras_da_candidatura(
     ignorando_id: int | None = None,
 ) -> None:
     """RN-42, RN-45 e RN-43, nesta ordem. `ignorando_id` é a candidatura em edição."""
-    quantidade = repository.contar_candidaturas_no_cargo(sessao, eleicao.id, cargo, ignorando_id)
+    quantidade = EleicaoRepository(sessao).contar_candidaturas_no_cargo(
+        eleicao.id, cargo, ignorando_id
+    )
     validar_candidatura(_resumir(eleicao), cargo, numero, quantidade)
     _conferir_numero_livre(sessao, eleicao.id, cargo, numero, ignorando_id)
 
@@ -246,7 +250,7 @@ def _conferir_numero_livre(
     sessao: Session, eleicao_id: int, cargo: Cargo, numero: str, ignorando_id: int | None = None
 ) -> None:
     """RN-43: levanta 409 `NUMERO_JA_UTILIZADO` se outra candidatura usa o número no cargo."""
-    if repository.existe_numero_no_cargo(sessao, eleicao_id, cargo, numero, ignorando_id):
+    if EleicaoRepository(sessao).existe_numero_no_cargo(eleicao_id, cargo, numero, ignorando_id):
         raise ConflitoDeEstado(
             "Este número já é usado por outra candidatura neste cargo.",
             codigo="NUMERO_JA_UTILIZADO",
@@ -259,7 +263,7 @@ def _gravar_retrato_dos_candidatos(sessao: Session, eleicao_id: int) -> None:
     Chamada na abertura. Daí em diante a cédula e a apuração usam esse retrato: editar o
     candidato depois não troca o desempate por idade (RN-77) nem os nomes da eleição.
     """
-    candidaturas = repository.listar_candidaturas(sessao, eleicao_id)
+    candidaturas = EleicaoRepository(sessao).listar_candidaturas(eleicao_id)
     candidatos = service_candidatos.obter_resumos_de_candidatos(
         sessao, [c.candidato_id for c in candidaturas]
     )
@@ -317,7 +321,7 @@ def criar_candidatura(
     _conferir_candidato(sessao, dados.candidato_id)
     _conferir_partido(sessao, dados.partido_id)
     _conferir_regras_da_candidatura(sessao, eleicao, dados.cargo, dados.numero)
-    if repository.existe_candidatura_do_candidato(sessao, eleicao.id, dados.candidato_id):
+    if EleicaoRepository(sessao).existe_candidatura_do_candidato(eleicao.id, dados.candidato_id):
         raise ConflitoDeEstado(
             "Este candidato já tem candidatura nesta eleição.", codigo="CANDIDATURA_DUPLICADA"
         )
@@ -330,7 +334,7 @@ def criar_candidatura(
         criado_em=agora,
     )
     try:
-        repository.inserir_candidatura(sessao, candidatura)
+        EleicaoRepository(sessao).inserir_candidatura(candidatura)
     except IntegrityError as erro:
         sessao.rollback()
         if nome_da_restricao(erro) != FK_CANDIDATO_DA_CANDIDATURA:
@@ -370,7 +374,7 @@ def _candidatura_ou_nao_encontrada(
     sessao: Session, eleicao_id: int, candidatura_id: int
 ) -> Candidatura:
     """Devolve a candidatura da eleição ou levanta 404 `CANDIDATURA_NAO_ENCONTRADA`."""
-    candidatura = repository.buscar_candidatura(sessao, eleicao_id, candidatura_id)
+    candidatura = EleicaoRepository(sessao).buscar_candidatura(eleicao_id, candidatura_id)
     if candidatura is None:
         raise NaoEncontrado("Candidatura não encontrada.", codigo="CANDIDATURA_NAO_ENCONTRADA")
     return candidatura
@@ -383,7 +387,7 @@ def remover_candidatura(sessao: Session, eleicao_id: int, candidatura_id: int) -
     """
     eleicao = _eleicao_editavel(sessao, eleicao_id)
     candidatura = _candidatura_ou_nao_encontrada(sessao, eleicao.id, candidatura_id)
-    repository.remover_candidatura(sessao, candidatura)
+    EleicaoRepository(sessao).remover_candidatura(candidatura)
     sessao.commit()
 
 
@@ -394,8 +398,8 @@ def listar_candidaturas(
 
     `cargo` filtra. 404 `ELEICAO_NAO_ENCONTRADA` se a eleição não existir.
     """
-    _ou_nao_encontrada(repository.buscar_por_id(sessao, eleicao_id))
-    return _detalhar(sessao, repository.listar_candidaturas(sessao, eleicao_id, cargo))
+    _ou_nao_encontrada(EleicaoRepository(sessao).buscar_por_id(eleicao_id))
+    return _detalhar(sessao, EleicaoRepository(sessao).listar_candidaturas(eleicao_id, cargo))
 
 
 def candidaturas_do_usuario(sessao: Session, usuario_id: int) -> list[CandidaturaDetalhada]:
@@ -408,7 +412,7 @@ def candidaturas_do_usuario(sessao: Session, usuario_id: int) -> list[Candidatur
     if candidato is None:
         return []
     candidaturas = _detalhar(
-        sessao, repository.listar_candidaturas_do_candidato(sessao, candidato.id)
+        sessao, EleicaoRepository(sessao).listar_candidaturas_do_candidato(candidato.id)
     )
     return sorted(candidaturas, key=lambda c: c.eleicao_id)
 
@@ -420,5 +424,5 @@ def buscar_candidatura_por_numero(
 
     Usada pela votação para decidir entre voto NOMINAL (existe) e NULO (não existe).
     """
-    candidatura = repository.buscar_candidatura_por_numero(sessao, eleicao_id, cargo, numero)
+    candidatura = EleicaoRepository(sessao).buscar_candidatura_por_numero(eleicao_id, cargo, numero)
     return _detalhar(sessao, [candidatura])[0] if candidatura else None

@@ -17,7 +17,6 @@ from app.dto.eleitor_dto import (
     EleitorResumo,
     NovoEleitorDados,
 )
-from app.eleitores import repository
 from app.eleitores.dominio import validar_idade_eleitor, validar_titulo_eleitor
 
 # Um módulo só importa `service` de outro (seção 5). `UsuarioAutenticado` chega por aí porque
@@ -25,6 +24,7 @@ from app.eleitores.dominio import validar_idade_eleitor, validar_titulo_eleitor
 from app.identidade import service as service_identidade
 from app.models.eleitor import Eleitor
 from app.models.enums import Perfil
+from app.repositories.eleitor_repository import EleitorRepository
 
 # Restrição que impede apagar quem já votou (a tabela nasce na migração 0005).
 FK_ELEITOR_JA_VOTOU = "fk_registros_votacao_eleitor_id_eleitores"
@@ -45,7 +45,7 @@ def _detalhar(eleitor: Eleitor, usuario: service_identidade.UsuarioAutenticado) 
 
 def _obter_modelo(sessao: Session, eleitor_id: int) -> Eleitor:
     """Busca o eleitor ou levanta 404 `ELEITOR_NAO_ENCONTRADO`."""
-    eleitor = repository.buscar_por_id(sessao, eleitor_id)
+    eleitor = EleitorRepository(sessao).buscar_por_id(eleitor_id)
     if eleitor is None:
         raise NaoEncontrado("Eleitor não encontrado.", codigo="ELEITOR_NAO_ENCONTRADO")
     return eleitor
@@ -72,7 +72,7 @@ def cadastrar_eleitor(
     """
     validar_idade_eleitor(dados.data_nascimento, agora.date())
     validar_titulo_eleitor(dados.titulo_eleitor)
-    if repository.buscar_por_titulo(sessao, dados.titulo_eleitor) is not None:
+    if EleitorRepository(sessao).buscar_por_titulo(dados.titulo_eleitor) is not None:
         raise ConflitoDeEstado(
             "Já existe um eleitor com este título de eleitor.", codigo="TITULO_JA_CADASTRADO"
         )
@@ -86,7 +86,7 @@ def cadastrar_eleitor(
         data_nascimento=dados.data_nascimento,
         criado_em=agora,
     )
-    repository.inserir(sessao, eleitor)
+    EleitorRepository(sessao).inserir(eleitor)
     sessao.commit()
     return _com_credencial(sessao, eleitor)
 
@@ -100,7 +100,7 @@ def listar_eleitores(
     numa única consulta, os eleitores desses usuários.
     """
     usuarios = service_identidade.listar_usuarios(sessao, Perfil.ELEITOR, nome, paginacao)
-    eleitores = repository.buscar_por_usuarios_ids(sessao, [u.id for u in usuarios.itens])
+    eleitores = EleitorRepository(sessao).buscar_por_usuarios_ids([u.id for u in usuarios.itens])
     por_usuario = {eleitor.usuario_id: eleitor for eleitor in eleitores}
     return Pagina[EleitorDetalhado](
         itens=[_detalhar(por_usuario[u.id], u) for u in usuarios.itens if u.id in por_usuario],
@@ -144,7 +144,7 @@ def excluir_eleitor(sessao: Session, eleitor_id: int) -> None:
     eleitor = _obter_modelo(sessao, eleitor_id)
     usuario_id = eleitor.usuario_id
     try:
-        repository.remover(sessao, eleitor)
+        EleitorRepository(sessao).remover(eleitor)
     except IntegrityError as erro:
         sessao.rollback()
         if nome_da_restricao(erro) != FK_ELEITOR_JA_VOTOU:
@@ -158,7 +158,7 @@ def excluir_eleitor(sessao: Session, eleitor_id: int) -> None:
 
 def obter_eleitor_do_usuario(sessao: Session, usuario_id: int) -> EleitorResumo | None:
     """Devolve o eleitor dono desta credencial, ou `None` se não houver. Usada por `votacao`."""
-    eleitor = repository.buscar_por_usuario_id(sessao, usuario_id)
+    eleitor = EleitorRepository(sessao).buscar_por_usuario_id(usuario_id)
     if eleitor is None:
         return None
     return EleitorResumo(id=eleitor.id, usuario_id=eleitor.usuario_id, criado_em=eleitor.criado_em)
@@ -169,7 +169,7 @@ def obter_eleitor_logado(sessao: Session, usuario_id: int) -> EleitorDetalhado:
 
     Levanta 404 `ELEITOR_NAO_ENCONTRADO` se a credencial não tiver um eleitor.
     """
-    eleitor = repository.buscar_por_usuario_id(sessao, usuario_id)
+    eleitor = EleitorRepository(sessao).buscar_por_usuario_id(usuario_id)
     if eleitor is None:
         raise NaoEncontrado("Eleitor não encontrado.", codigo="ELEITOR_NAO_ENCONTRADO")
     return _com_credencial(sessao, eleitor)
@@ -180,4 +180,4 @@ def contar_aptos(sessao: Session, ate: datetime) -> int:
 
     Usada por `apuracao` com o instante da abertura da eleição.
     """
-    return repository.contar_cadastrados_ate(sessao, ate)
+    return EleitorRepository(sessao).contar_cadastrados_ate(ate)

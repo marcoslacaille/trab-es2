@@ -35,7 +35,8 @@ from app.dto.votacao_dto import (
 from app.eleicoes import service as eleicoes_service
 from app.eleitores import service as eleitores_service
 from app.models.enums import DIGITOS_POR_CARGO, Cargo, TipoVoto
-from app.votacao import dominio, repository
+from app.repositories.votacao_repository import VotacaoRepository
+from app.votacao import dominio
 
 PK_REGISTRO = "pk_registros_votacao"
 # FK que dispara quando o eleitor é excluído no meio da confirmação (D-145).
@@ -80,7 +81,7 @@ def obter_cedula(
     """
     eleitor, _ = _eleitor_apto_a_votar(sessao, usuario, eleicao_id, agora)
     candidaturas = eleicoes_service.listar_candidaturas(sessao, eleicao_id)
-    votados = repository.cargos_votados(sessao, eleitor.id, eleicao_id)
+    votados = VotacaoRepository(sessao).cargos_votados(eleitor.id, eleicao_id)
 
     cargos = []
     for cargo in Cargo:  # a ordem do enum é a da urna
@@ -115,7 +116,7 @@ def registrar_voto(
     (RN-58); cédula assinada, válida por 5 minutos (RN-57).
     """
     eleitor, _ = _eleitor_apto_a_votar(sessao, usuario, eleicao_id, agora)
-    if repository.ja_votou(sessao, eleitor.id, eleicao_id, pedido.cargo):
+    if VotacaoRepository(sessao).ja_votou(eleitor.id, eleicao_id, pedido.cargo):
         raise ConflitoDeEstado("Você já votou para este cargo.", codigo="VOTO_JA_REGISTRADO")
 
     candidaturas = eleicoes_service.listar_candidaturas(sessao, eleicao_id, pedido.cargo)
@@ -171,9 +172,9 @@ def confirmar_voto(
     dominio.validar_eleitor_apto(eleitor.criado_em, eleicao.aberta_em)
 
     try:
-        repository.inserir_registro(sessao, eleitor.id, eleicao_id, cedula.cargo)
-        repository.inserir_voto(
-            sessao, eleicao_id, cedula.cargo, cedula.tipo, cedula.candidatura_id
+        VotacaoRepository(sessao).inserir_registro(eleitor.id, eleicao_id, cedula.cargo)
+        VotacaoRepository(sessao).inserir_voto(
+            eleicao_id, cedula.cargo, cedula.tipo, cedula.candidatura_id
         )
         sessao.commit()
     except IntegrityError as erro:
@@ -200,7 +201,7 @@ def obter_participacao(
     """
     eleitor = _eleitor_do(sessao, usuario)
     candidaturas = eleicoes_service.listar_candidaturas(sessao, eleicao_id)
-    votados = repository.cargos_votados(sessao, eleitor.id, eleicao_id)
+    votados = VotacaoRepository(sessao).cargos_votados(eleitor.id, eleicao_id)
     disputados = {c.cargo for c in candidaturas}
     return Participacao(
         eleicao_id=eleicao_id,
@@ -212,9 +213,9 @@ def obter_participacao(
 
 def contar_votos(sessao: Session, eleicao_id: int) -> list[ContagemVoto]:
     """Contagem de votos por cargo, tipo e candidatura, para a apuração (RN-74)."""
-    return repository.contar_votos(sessao, eleicao_id)
+    return VotacaoRepository(sessao).contar_votos(eleicao_id)
 
 
 def contar_comparecimento(sessao: Session, eleicao_id: int) -> Comparecimento:
     """Eleitores que votaram em ao menos um cargo e votos registrados por cargo (RN-79)."""
-    return repository.contar_comparecimento(sessao, eleicao_id)
+    return VotacaoRepository(sessao).contar_comparecimento(eleicao_id)

@@ -15,9 +15,10 @@ from app.core.exceptions import ConflitoDeEstado, NaoEncontrado
 from app.dto.eleitor_dto import EleitorResumo
 from app.dto.usuario_dto import UsuarioAutenticado
 from app.dto.votacao_dto import Escolha
-from app.eleicoes import repository as repository_eleicoes
 from app.eleicoes import service as service_eleicoes
 from app.models.enums import Cargo, Perfil, TipoVoto
+from app.repositories.eleicao_repository import EleicaoRepository
+from app.repositories.votacao_repository import VotacaoRepository
 from app.votacao import service
 from tests.auxiliares import SENHA_ELEITOR, eleicao_aberta_com_candidatos, login, novo_eleitor
 
@@ -131,7 +132,7 @@ def test_d095_confirmacao_espera_o_encerramento_e_depois_e_recusada(
         terminou.set()
 
     with SessionLocal() as encerramento:
-        eleicao = repository_eleicoes.obter_com_trava_exclusiva(encerramento, eleicao_id)
+        eleicao = EleicaoRepository(encerramento).obter_com_trava_exclusiva(eleicao_id)
         eleicao.status = "ENCERRADA"
         eleicao.encerrada_em = agora
         encerramento.flush()  # ainda sem commit: a trava exclusiva continua com esta sessão
@@ -159,10 +160,10 @@ def test_confirmacao_repassa_erro_de_integridade_desconhecido(
     agora = relogio()
     usuario, token = _eleitor_com_cedula(cliente, cabecalho_chefe, eleicao_id, agora)
 
-    def falhar(*argumentos, **nomeados):
+    def falhar(self, *argumentos, **nomeados):
         raise IntegrityError("INSERT ...", {}, Exception("violação desconhecida"))
 
-    monkeypatch.setattr(service.repository, "inserir_voto", falhar)
+    monkeypatch.setattr(VotacaoRepository, "inserir_voto", falhar)
 
     with SessionLocal() as sessao, pytest.raises(IntegrityError):
         service.confirmar_voto(sessao, usuario, eleicao_id, token, agora)

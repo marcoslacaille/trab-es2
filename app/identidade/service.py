@@ -14,10 +14,10 @@ from app.core.exceptions import ConflitoDeEstado, DadosInvalidos, NaoAutenticado
 from app.core.paginacao import Pagina, Paginacao
 from app.core.validadores import cpf_valido, normalizar_cpf
 from app.dto.usuario_dto import ResultadoDoLogin, UsuarioAutenticado
-from app.identidade import repository
 from app.identidade.dominio import validar_senha
 from app.models.enums import Perfil
 from app.models.usuario import Usuario
+from app.repositories.usuario_repository import UsuarioRepository
 
 NOME_MINIMO = 3
 NOME_MAXIMO = 120
@@ -49,7 +49,7 @@ def autenticar(sessao: Session, cpf: str, senha: str) -> ResultadoDoLogin:
     senha é conferida contra um hash fictício. Não grava nada, então não faz commit.
     """
     cpf_normalizado = normalizar_cpf(cpf)
-    usuario = repository.buscar_por_cpf(sessao, cpf_normalizado) if cpf_normalizado else None
+    usuario = UsuarioRepository(sessao).buscar_por_cpf(cpf_normalizado) if cpf_normalizado else None
 
     hash_conferido = usuario.senha_hash if usuario else security.hash_ficticio()
     senha_correta = security.senha_confere(senha, hash_conferido)
@@ -76,7 +76,7 @@ def criar_credencial(
         raise DadosInvalidos("CPF inválido.", codigo="CPF_INVALIDO")
     nome = _validar_nome(nome)
     validar_senha(senha)
-    if repository.buscar_por_cpf(sessao, cpf_normalizado) is not None:
+    if UsuarioRepository(sessao).buscar_por_cpf(cpf_normalizado) is not None:
         raise ConflitoDeEstado("Já existe um usuário com este CPF.", codigo="CPF_JA_CADASTRADO")
 
     usuario = Usuario(
@@ -87,7 +87,7 @@ def criar_credencial(
         criado_em=agora,
         atualizado_em=agora,
     )
-    repository.inserir(sessao, usuario)
+    UsuarioRepository(sessao).inserir(usuario)
     return usuario.id
 
 
@@ -118,12 +118,12 @@ def remover_credencial(sessao: Session, usuario_id: int) -> None:
 
     Depois disso, qualquer token emitido para ele deixa de valer na hora (RN-02).
     """
-    repository.remover(sessao, _obter_modelo(sessao, usuario_id))
+    UsuarioRepository(sessao).remover(_obter_modelo(sessao, usuario_id))
 
 
 def _obter_modelo(sessao: Session, usuario_id: int) -> Usuario:
     """Quem chama já conhece o usuário, então a ausência é inconsistência (vira 500)."""
-    usuario = repository.buscar_por_id(sessao, usuario_id)
+    usuario = UsuarioRepository(sessao).buscar_por_id(usuario_id)
     if usuario is None:
         raise LookupError(f"Usuário {usuario_id} não existe.")
     return usuario
@@ -131,7 +131,7 @@ def _obter_modelo(sessao: Session, usuario_id: int) -> Usuario:
 
 def obter_usuario(sessao: Session, usuario_id: int) -> UsuarioAutenticado | None:
     """Devolve o usuário ou `None` se não existir (por exemplo, excluído depois do login)."""
-    usuario = repository.buscar_por_id(sessao, usuario_id)
+    usuario = UsuarioRepository(sessao).buscar_por_id(usuario_id)
     return _para_usuario_autenticado(usuario) if usuario else None
 
 
@@ -139,7 +139,9 @@ def obter_usuarios(sessao: Session, ids: list[int]) -> dict[int, UsuarioAutentic
     """Devolve os usuários existentes, indexados pelo id (ids inexistentes ficam de fora)."""
     if not ids:
         return {}
-    return {u.id: _para_usuario_autenticado(u) for u in repository.buscar_por_ids(sessao, ids)}
+    return {
+        u.id: _para_usuario_autenticado(u) for u in UsuarioRepository(sessao).buscar_por_ids(ids)
+    }
 
 
 def listar_usuarios(
@@ -149,7 +151,7 @@ def listar_usuarios(
 
     Usada pelas listagens de eleitores e candidatos.
     """
-    usuarios, total = repository.listar(sessao, perfil.value, nome, paginacao)
+    usuarios, total = UsuarioRepository(sessao).listar(perfil.value, nome, paginacao)
     return Pagina[UsuarioAutenticado](
         itens=[_para_usuario_autenticado(u) for u in usuarios],
         pagina=paginacao.pagina,

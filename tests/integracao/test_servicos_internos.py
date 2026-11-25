@@ -3,16 +3,16 @@
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from app.candidatos import repository as repository_candidatos
 from app.candidatos import service as service_candidatos
 from app.core.database import SessionLocal
 from app.core.exceptions import DadosInvalidos, NaoEncontrado
 from app.core.relogio import agora
 from app.eleicoes import service as service_eleicoes
-from app.eleitores import repository as repository_eleitores
 from app.eleitores import service as service_eleitores
 from app.identidade import service as service_identidade
 from app.models.enums import Cargo, Perfil
+from app.repositories.candidato_repository import CandidatoRepository
+from app.repositories.eleitor_repository import EleitorRepository
 from app.schemas.eleicao_schema import links_da_eleicao
 from tests.auxiliares import (
     SENHA_CANDIDATO,
@@ -140,11 +140,11 @@ def test_excluir_candidato_repassa_erro_de_integridade_desconhecido(
 ):
     """Violação que não é a da candidatura não vira 409: o erro original sobe."""
 
-    def falhar(sessao, candidato):
+    def falhar(self, candidato):
         raise _erro_de_integridade_sem_nome()
 
     criado = novo_candidato(cliente, cabecalho_chefe).json()
-    monkeypatch.setattr(repository_candidatos, "remover_candidato", falhar)
+    monkeypatch.setattr(CandidatoRepository, "remover_candidato", falhar)
 
     with SessionLocal() as sessao, pytest.raises(IntegrityError):
         service_candidatos.excluir_candidato(sessao, criado["id"])
@@ -179,11 +179,11 @@ def test_excluir_eleitor_repassa_erro_de_integridade_desconhecido(
 ):
     """RN-24: só a violação `fk_registros_votacao_eleitor_id_eleitores` vira 409; outra sobe."""
 
-    def falhar(sessao, eleitor):
+    def falhar(self, eleitor):
         raise _erro_de_integridade_sem_nome()
 
     criado = novo_eleitor(cliente, cabecalho_chefe).json()
-    monkeypatch.setattr(repository_eleitores, "remover", falhar)
+    monkeypatch.setattr(EleitorRepository, "remover", falhar)
 
     with SessionLocal() as sessao, pytest.raises(IntegrityError):
         service_eleitores.excluir_eleitor(sessao, criado["id"])
