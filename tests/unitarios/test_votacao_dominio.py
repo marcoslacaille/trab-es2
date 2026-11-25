@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from app.compartilhado.dominio import Cargo
-from app.compartilhado.erros import AcessoNegado, ConflitoDeEstado, DadosInvalidos
+from app.core.exceptions import AcessoNegado, ConflitoDeEstado, DadosInvalidos
 from app.eleicoes.dominio import CandidaturaDetalhada, EleicaoResumo, StatusEleicao
 from app.votacao.dominio import (
     ModoEscolha,

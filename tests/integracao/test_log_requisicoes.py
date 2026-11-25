@@ -4,7 +4,7 @@ import logging
 
 from fastapi.testclient import TestClient
 
-from app.compartilhado.banco import obter_sessao
+from app.core.database import obter_sessao
 from app.main import app
 from tests.auxiliares import CPF_CHEFE, SENHA_CHEFE, criar_chefe
 

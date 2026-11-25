@@ -6,8 +6,8 @@ from itertools import count
 import pytest
 from fastapi.testclient import TestClient
 
-from app.compartilhado.banco import SessionLocal
-from app.compartilhado.relogio import agora
+from app.core.database import SessionLocal
+from app.core.relogio import agora
 from app.identidade import service
 from app.identidade.dominio import Perfil
 

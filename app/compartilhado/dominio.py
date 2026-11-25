@@ -2,7 +2,7 @@
 
 from enum import StrEnum
 
-from app.compartilhado.validadores import so_digitos
+from app.core.validadores import so_digitos
 
 
 class Cargo(StrEnum):

@@ -4,11 +4,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
-from app.compartilhado.erros import DadosInvalidos
+from app.core.exceptions import DadosInvalidos
+from app.core.security import BYTES_MAXIMOS_SENHA
 
 TAMANHO_MINIMO_SENHA = 8
-# Limite do bcrypt: ele só lê os 72 primeiros bytes e as versões recentes recusam senhas maiores.
-BYTES_MAXIMOS_SENHA = 72
 
 
 class Perfil(StrEnum):

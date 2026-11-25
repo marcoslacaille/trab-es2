@@ -7,11 +7,11 @@ from fastapi import APIRouter, Depends, Path, Query, Response
 from pydantic import AfterValidator
 from sqlalchemy.orm import Session
 
-from app.compartilhado.banco import obter_sessao
-from app.compartilhado.openapi import respostas_de_erro
-from app.compartilhado.paginacao import Pagina, Paginacao, obter_paginacao
-from app.compartilhado.relogio import obter_agora
-from app.compartilhado.validadores import MAIOR_ID, sem_caractere_nulo
+from app.core.database import obter_sessao
+from app.core.openapi import respostas_de_erro
+from app.core.paginacao import Pagina, Paginacao, obter_paginacao
+from app.core.relogio import obter_agora
+from app.core.validadores import MAIOR_ID, sem_caractere_nulo
 from app.eleitores import service
 from app.eleitores.dominio import AlteracoesEleitor, NovoEleitorDados
 from app.eleitores.schemas import AlteracaoEleitor, EleitorResposta, NovoEleitor

@@ -6,10 +6,10 @@ não faz nada. Não existe rota para criar Chefe; este script é o único caminh
 
 import sys
 
-from app.compartilhado.banco import SessionLocal
-from app.compartilhado.config import obter_configuracao
-from app.compartilhado.erros import ConflitoDeEstado, DadosInvalidos
-from app.compartilhado.relogio import agora
+from app.core.config import obter_configuracao
+from app.core.database import SessionLocal
+from app.core.exceptions import ConflitoDeEstado, DadosInvalidos
+from app.core.relogio import agora
 from app.identidade import service
 from app.identidade.dominio import Perfil
 

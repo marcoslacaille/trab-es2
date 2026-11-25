@@ -11,7 +11,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.compartilhado.dominio import DIGITOS_POR_CARGO, Cargo
-from app.compartilhado.erros import (
+from app.core.cedula import emitir_cedula, ler_cedula
+from app.core.exceptions import (
     ConflitoDeEstado,
     DadosInvalidos,
     NaoEncontrado,
@@ -22,7 +23,7 @@ from app.eleicoes.dominio import EleicaoResumo
 from app.eleitores import service as eleitores_service
 from app.eleitores.dominio import EleitorResumo
 from app.identidade.dominio import UsuarioAutenticado
-from app.votacao import cedulas, dominio, repository
+from app.votacao import dominio, repository
 from app.votacao.dominio import (
     CandidatoDaCedula,
     CargoDaCedula,
@@ -127,7 +128,7 @@ def registrar_voto(
         )
 
     escolha = dominio.resolver_escolha(pedido.cargo, pedido.modo, pedido.numero, candidaturas)
-    token, expira_em = cedulas.emitir_cedula(usuario.id, eleicao_id, pedido.cargo, escolha, agora)
+    token, expira_em = emitir_cedula(usuario.id, eleicao_id, pedido.cargo, escolha, agora)
     candidato = None
     if escolha.tipo == TipoVoto.NOMINAL:
         candidato = CandidatoDaCedula(escolha.numero, escolha.nome_urna, escolha.partido_sigla)
@@ -159,7 +160,7 @@ def confirmar_voto(
     a FK recusa e a resposta é 404 `ELEITOR_NAO_ENCONTRADO` (D-145). A resposta não contém a
     escolha.
     """
-    cedula = cedulas.ler_cedula(token_cedula, agora)
+    cedula = ler_cedula(token_cedula, agora)
     if cedula.usuario_id != usuario.id or cedula.eleicao_id != eleicao_id:
         raise DadosInvalidos(
             "Esta cédula não pertence a você ou a esta eleição.", codigo="CEDULA_INVALIDA"

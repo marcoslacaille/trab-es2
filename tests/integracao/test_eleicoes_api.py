@@ -3,7 +3,7 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy import text
 
-from app.compartilhado.banco import SessionLocal
+from app.core.database import SessionLocal
 from tests.auxiliares import eleicao_aberta_com_candidatos, nova_candidatura, nova_eleicao
 
 ELEICOES = "/api/v1/eleicoes"

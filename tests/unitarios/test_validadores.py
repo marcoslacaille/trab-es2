@@ -3,7 +3,7 @@ from datetime import date
 import pytest
 
 from app.compartilhado.dominio import Cargo, numero_valido_para_cargo
-from app.compartilhado.validadores import (
+from app.core.validadores import (
     calcular_idade,
     cpf_valido,
     normalizar_cpf,

@@ -6,7 +6,7 @@ from typing import Annotated
 from fastapi import Query
 from pydantic import BaseModel, Field
 
-from app.compartilhado.validadores import MAIOR_ID
+from app.core.validadores import MAIOR_ID
 
 TAMANHO_MAXIMO = 100
 # Maior página cujo deslocamento ((pagina - 1) * tamanho) cabe no BIGINT do OFFSET do banco,

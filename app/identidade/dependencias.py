@@ -6,9 +6,10 @@ from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
-from app.compartilhado.banco import obter_sessao
-from app.compartilhado.erros import AcessoNegado, NaoAutenticado
-from app.identidade import service, tokens
+from app.core import security
+from app.core.database import obter_sessao
+from app.core.exceptions import AcessoNegado, NaoAutenticado
+from app.identidade import service
 from app.identidade.dominio import Perfil, UsuarioAutenticado
 
 # auto_error=False: nós mesmos respondemos 401 no formato padrão de erro da API.
@@ -26,7 +27,7 @@ def obter_usuario_atual(
     """
     if not token:
         raise NaoAutenticado("Autenticação necessária.", codigo="NAO_AUTENTICADO")
-    usuario = service.obter_usuario(sessao, tokens.ler_token_acesso(token))
+    usuario = service.obter_usuario(sessao, security.ler_token_acesso(token))
     if usuario is None:
         raise NaoAutenticado("Token inválido ou expirado.", codigo="TOKEN_INVALIDO")
     return usuario

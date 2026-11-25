@@ -11,10 +11,10 @@ from sqlalchemy.orm import Session
 
 from app.candidatos import service as service_candidatos
 from app.candidatos.dominio import NovoCandidatoDados, NovoPartidoDados
-from app.compartilhado.banco import engine
 from app.compartilhado.dominio import Cargo
-from app.compartilhado.erros import ConflitoDeEstado, ErroDeNegocio
-from app.compartilhado.relogio import agora
+from app.core.database import engine
+from app.core.exceptions import ConflitoDeEstado, ErroDeNegocio
+from app.core.relogio import agora
 from app.eleicoes import service as service_eleicoes
 from app.eleicoes.dominio import NovaCandidaturaDados, NovaEleicaoDados
 from app.eleitores import service as service_eleitores

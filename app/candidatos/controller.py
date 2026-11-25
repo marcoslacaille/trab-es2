@@ -16,11 +16,11 @@ from app.candidatos.schemas import (
     NovoPartido,
     PartidoResposta,
 )
-from app.compartilhado.banco import obter_sessao
-from app.compartilhado.openapi import respostas_de_erro
-from app.compartilhado.paginacao import Pagina, Paginacao, obter_paginacao
-from app.compartilhado.relogio import obter_agora
-from app.compartilhado.validadores import MAIOR_ID, sem_caractere_nulo
+from app.core.database import obter_sessao
+from app.core.openapi import respostas_de_erro
+from app.core.paginacao import Pagina, Paginacao, obter_paginacao
+from app.core.relogio import obter_agora
+from app.core.validadores import MAIOR_ID, sem_caractere_nulo
 
 # `identidade.dependencias` é a única parte de `identidade` (além do serviço) que as rotas de
 # outros módulos podem importar (seção 5).

@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime, timedelta
 
-from app.compartilhado.relogio import agora, obter_agora
+from app.core.relogio import agora, obter_agora
 
 
 def test_agora_tem_fuso_de_sao_paulo():

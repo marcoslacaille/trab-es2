@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from datetime import date, datetime
 
-from app.compartilhado.erros import DadosInvalidos
+from app.core.exceptions import DadosInvalidos
 
 FORMATO_SIGLA = re.compile(r"^[A-Z0-9]{2,10}$")
 NOME_MAXIMO_DO_PARTIDO = 100

@@ -7,8 +7,8 @@ from alembic.config import Config
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
-from app.compartilhado.banco import engine
-from app.compartilhado.relogio import obter_agora
+from app.core.database import engine
+from app.core.relogio import obter_agora
 from app.main import app
 from tests.auxiliares import (  # noqa: F401  (registra as fixtures)
     cabecalho_candidato,

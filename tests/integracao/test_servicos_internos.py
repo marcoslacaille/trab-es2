@@ -5,10 +5,10 @@ from sqlalchemy.exc import IntegrityError
 
 from app.candidatos import repository as repository_candidatos
 from app.candidatos import service as service_candidatos
-from app.compartilhado.banco import SessionLocal
 from app.compartilhado.dominio import Cargo
-from app.compartilhado.erros import DadosInvalidos, NaoEncontrado
-from app.compartilhado.relogio import agora
+from app.core.database import SessionLocal
+from app.core.exceptions import DadosInvalidos, NaoEncontrado
+from app.core.relogio import agora
 from app.eleicoes import dominio as dominio_eleicoes
 from app.eleicoes import service as service_eleicoes
 from app.eleitores import repository as repository_eleitores

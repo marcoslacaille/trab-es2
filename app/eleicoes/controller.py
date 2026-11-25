@@ -6,11 +6,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path, Query, Response
 from sqlalchemy.orm import Session
 
-from app.compartilhado.banco import obter_sessao
 from app.compartilhado.dominio import Cargo
-from app.compartilhado.openapi import respostas_de_erro
-from app.compartilhado.relogio import obter_agora
-from app.compartilhado.validadores import MAIOR_ID
+from app.core.database import obter_sessao
+from app.core.openapi import respostas_de_erro
+from app.core.relogio import obter_agora
+from app.core.validadores import MAIOR_ID
 from app.eleicoes import service
 from app.eleicoes.dominio import (
     AlteracoesCandidatura,

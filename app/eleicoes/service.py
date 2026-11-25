@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.candidatos import service as service_candidatos
 from app.compartilhado.dominio import Cargo
-from app.compartilhado.erros import (
+from app.core.exceptions import (
     ConflitoDeEstado,
     DadosInvalidos,
     NaoEncontrado,

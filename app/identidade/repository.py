@@ -5,7 +5,7 @@ from collections.abc import Iterable
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.compartilhado.paginacao import Paginacao
+from app.core.paginacao import Paginacao
 from app.identidade.model import Usuario
 
 

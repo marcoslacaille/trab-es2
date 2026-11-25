@@ -3,8 +3,8 @@
 from dataclasses import dataclass
 from datetime import date, datetime
 
-from app.compartilhado.erros import DadosInvalidos
-from app.compartilhado.validadores import calcular_idade, so_digitos
+from app.core.exceptions import DadosInvalidos
+from app.core.validadores import calcular_idade, so_digitos
 
 IDADE_MINIMA_ELEITOR = 16
 DIGITOS_DO_TITULO = 12

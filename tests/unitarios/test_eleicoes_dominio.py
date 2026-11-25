@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from app.compartilhado.dominio import Cargo
-from app.compartilhado.erros import ConflitoDeEstado, DadosInvalidos
+from app.core.exceptions import ConflitoDeEstado, DadosInvalidos
 from app.eleicoes.dominio import (
     EleicaoResumo,
     NovaEleicaoDados,

@@ -3,7 +3,7 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from app.compartilhado.config import obter_configuracao
+from app.core.config import obter_configuracao
 
 
 def agora() -> datetime:

@@ -5,7 +5,7 @@ from typing import Annotated
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints
 
-from app.compartilhado.validadores import sem_caractere_nulo
+from app.core.validadores import sem_caractere_nulo
 
 # RN-08 (nome) e RN-31 (nome de urna): tamanhos conferidos sem contar espaços nas pontas.
 Nome = Annotated[

@@ -8,7 +8,7 @@ from app.candidatos.dominio import (
     validar_nome_de_urna,
     validar_partido,
 )
-from app.compartilhado.erros import DadosInvalidos
+from app.core.exceptions import DadosInvalidos
 
 HOJE = date(2026, 11, 25)
 

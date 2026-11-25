@@ -9,8 +9,8 @@ from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.compartilhado.erros import ConflitoDeEstado, NaoEncontrado, nome_da_restricao
-from app.compartilhado.paginacao import Pagina, Paginacao
+from app.core.exceptions import ConflitoDeEstado, NaoEncontrado, nome_da_restricao
+from app.core.paginacao import Pagina, Paginacao
 from app.eleitores import repository
 from app.eleitores.dominio import (
     AlteracoesEleitor,

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.apuracao import dominio
 from app.apuracao.dominio import Apuracao, ComparecimentoEleicao, ResultadoCargo
 from app.compartilhado.dominio import Cargo
-from app.compartilhado.erros import AcessoNegado, ConflitoDeEstado, DadosInvalidos
+from app.core.exceptions import AcessoNegado, ConflitoDeEstado, DadosInvalidos
 from app.eleicoes import service as eleicoes_service
 from app.eleicoes.dominio import EleicaoResumo, StatusEleicao
 from app.eleitores import service as eleitores_service

@@ -3,8 +3,8 @@
 import pytest
 from sqlalchemy import text
 
-from app.compartilhado.banco import SessionLocal
-from app.compartilhado.config import obter_configuracao
+from app.core.config import obter_configuracao
+from app.core.database import SessionLocal
 from app.scripts.criar_chefe import criar_chefe
 from tests.auxiliares import CPF_CHEFE
 
@@ -78,7 +78,7 @@ def test_recusa_cpf_ou_senha_invalidos(configurar, capsys, cpf, senha):
 
 def test_repassa_conflito_que_nao_e_de_cpf(configurar, monkeypatch):
     """Só `CPF_JA_CADASTRADO` é tratado como "já existe"; qualquer outro conflito sobe."""
-    from app.compartilhado.erros import ConflitoDeEstado
+    from app.core.exceptions import ConflitoDeEstado
     from app.scripts import criar_chefe as script
 
     def conflito(*argumentos, **nomeados):

@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 from pydantic import BaseModel, ConfigDict, field_validator
 from sqlalchemy.exc import IntegrityError
 
-from app.compartilhado.erros import (
+from app.core.exceptions import (
     AcessoNegado,
     ConflitoDeEstado,
     DadosInvalidos,
@@ -22,7 +22,7 @@ from app.compartilhado.erros import (
     registrar_tratadores,
     registro,
 )
-from app.compartilhado.validadores import cpf_valido, normalizar_cpf
+from app.core.validadores import cpf_valido, normalizar_cpf
 
 ERROS_POR_TIPO = {
     "nao-autenticado": NaoAutenticado,

@@ -7,7 +7,7 @@ import uuid
 
 from sqlalchemy import inspect, text
 
-from app.compartilhado.banco import SessionLocal, engine
+from app.core.database import SessionLocal, engine
 from tests.auxiliares import eleicao_aberta_com_candidatos, votar
 
 BASE = "/api/v1/votacao/eleicoes"

@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import CHAR
 
-from app.compartilhado.banco import Base
+from app.core.database import Base
 
 
 class Eleitor(Base):

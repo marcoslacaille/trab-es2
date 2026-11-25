@@ -9,14 +9,15 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from app.apuracao import service as service_apuracao
-from app.compartilhado.banco import SessionLocal
 from app.compartilhado.dominio import Cargo
-from app.compartilhado.erros import ConflitoDeEstado, NaoEncontrado
+from app.core import cedula
+from app.core.database import SessionLocal
+from app.core.exceptions import ConflitoDeEstado, NaoEncontrado
 from app.eleicoes import repository as repository_eleicoes
 from app.eleicoes import service as service_eleicoes
 from app.eleitores.dominio import EleitorResumo
 from app.identidade.dominio import Perfil, UsuarioAutenticado
-from app.votacao import cedulas, service
+from app.votacao import service
 from app.votacao.dominio import Escolha, TipoVoto
 from tests.auxiliares import SENHA_ELEITOR, eleicao_aberta_com_candidatos, login, novo_eleitor
 
@@ -32,7 +33,7 @@ def test_ti73_duas_confirmacoes_simultaneas_geram_um_voto(cliente, cabecalho_che
     )
 
     agora = datetime(2026, 11, 25, 10, 30, tzinfo=ZoneInfo("America/Sao_Paulo"))
-    token, _ = cedulas.emitir_cedula(
+    token, _ = cedula.emitir_cedula(
         usuario_id, eleicao_id, Cargo.PRESIDENTE, Escolha(TipoVoto.BRANCO, None), agora
     )
 
@@ -74,7 +75,7 @@ def _eleitor_com_cedula(cliente, cabecalho_chefe, eleicao_id, agora):
     usuario = UsuarioAutenticado(
         id=usuario_id, nome=eleitor["nome"], cpf=eleitor["cpf"], perfil=Perfil.ELEITOR
     )
-    token, _ = cedulas.emitir_cedula(
+    token, _ = cedula.emitir_cedula(
         usuario_id, eleicao_id, Cargo.PRESIDENTE, Escolha(TipoVoto.BRANCO, None), agora
     )
     return usuario, token

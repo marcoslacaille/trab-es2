@@ -13,7 +13,7 @@ from app.compartilhado.dominio import (
     Cargo,
     numero_valido_para_cargo,
 )
-from app.compartilhado.erros import ConflitoDeEstado, DadosInvalidos
+from app.core.exceptions import ConflitoDeEstado, DadosInvalidos
 
 PREFIXO_DA_API = "/api/v1"
 DESCRICAO_MAXIMA = 120

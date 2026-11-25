@@ -9,10 +9,11 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from app.compartilhado.erros import ConflitoDeEstado, DadosInvalidos, NaoAutenticado
-from app.compartilhado.paginacao import Pagina, Paginacao
-from app.compartilhado.validadores import cpf_valido, normalizar_cpf
-from app.identidade import repository, senhas, tokens
+from app.core import security
+from app.core.exceptions import ConflitoDeEstado, DadosInvalidos, NaoAutenticado
+from app.core.paginacao import Pagina, Paginacao
+from app.core.validadores import cpf_valido, normalizar_cpf
+from app.identidade import repository
 from app.identidade.dominio import Perfil, ResultadoDoLogin, UsuarioAutenticado, validar_senha
 from app.identidade.model import Usuario
 
@@ -48,12 +49,12 @@ def autenticar(sessao: Session, cpf: str, senha: str) -> ResultadoDoLogin:
     cpf_normalizado = normalizar_cpf(cpf)
     usuario = repository.buscar_por_cpf(sessao, cpf_normalizado) if cpf_normalizado else None
 
-    hash_conferido = usuario.senha_hash if usuario else senhas.hash_ficticio()
-    senha_correta = senhas.senha_confere(senha, hash_conferido)
+    hash_conferido = usuario.senha_hash if usuario else security.hash_ficticio()
+    senha_correta = security.senha_confere(senha, hash_conferido)
     if usuario is None or not senha_correta:
         raise NaoAutenticado("CPF ou senha inválidos.", codigo="CREDENCIAIS_INVALIDAS")
 
-    token, expira_em = tokens.criar_token_acesso(usuario.id, Perfil(usuario.perfil))
+    token, expira_em = security.criar_token_acesso(usuario.id, Perfil(usuario.perfil))
     return ResultadoDoLogin(
         access_token=token, expira_em=expira_em, usuario=_para_usuario_autenticado(usuario)
     )
@@ -79,7 +80,7 @@ def criar_credencial(
     usuario = Usuario(
         cpf=cpf_normalizado,
         nome=nome,
-        senha_hash=senhas.gerar_hash(senha),
+        senha_hash=security.gerar_hash(senha),
         perfil=perfil.value,
         criado_em=agora,
         atualizado_em=agora,
@@ -105,7 +106,7 @@ def atualizar_credencial(
         usuario.nome = _validar_nome(nome)
     if senha is not None:
         validar_senha(senha)
-        usuario.senha_hash = senhas.gerar_hash(senha)
+        usuario.senha_hash = security.gerar_hash(senha)
     usuario.atualizado_em = agora
     sessao.flush()
 

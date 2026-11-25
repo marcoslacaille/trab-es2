@@ -4,8 +4,8 @@ from alembic import context
 from sqlalchemy import create_engine, pool
 
 import app.registro_modelos  # noqa: F401  (importar registra os modelos em Base.metadata)
-from app.compartilhado.banco import Base
-from app.compartilhado.config import obter_configuracao
+from app.core.config import obter_configuracao
+from app.core.database import Base
 
 config = context.config
 

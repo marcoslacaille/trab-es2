@@ -22,8 +22,8 @@ from app.candidatos.dominio import (
     validar_partido,
 )
 from app.candidatos.model import Candidato, Partido
-from app.compartilhado.erros import ConflitoDeEstado, NaoEncontrado, nome_da_restricao
-from app.compartilhado.paginacao import Pagina, Paginacao
+from app.core.exceptions import ConflitoDeEstado, NaoEncontrado, nome_da_restricao
+from app.core.paginacao import Pagina, Paginacao
 
 # Um módulo só importa `service` de outro (seção 5). `Perfil` e `UsuarioAutenticado` chegam
 # por aí porque `identidade.service` já os importa de seu `dominio` (mesmo caso de `eleitores`).

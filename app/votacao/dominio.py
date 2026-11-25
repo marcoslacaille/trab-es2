@@ -8,7 +8,7 @@ from datetime import datetime
 from enum import StrEnum
 
 from app.compartilhado.dominio import DIGITOS_POR_CARGO, Cargo, numero_valido_para_cargo
-from app.compartilhado.erros import AcessoNegado, ConflitoDeEstado, DadosInvalidos
+from app.core.exceptions import AcessoNegado, ConflitoDeEstado, DadosInvalidos
 from app.eleicoes.dominio import CandidaturaDetalhada, EleicaoResumo, StatusEleicao
 
 

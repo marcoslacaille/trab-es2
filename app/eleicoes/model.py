@@ -18,7 +18,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.compartilhado.banco import Base
+from app.core.database import Base
 
 
 class Eleicao(Base):

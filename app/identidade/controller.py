@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
-from app.compartilhado.banco import obter_sessao
-from app.compartilhado.openapi import respostas_de_erro
+from app.core.database import obter_sessao
+from app.core.openapi import respostas_de_erro
 from app.identidade import service
 from app.identidade.dependencias import obter_usuario_atual
 from app.identidade.dominio import UsuarioAutenticado

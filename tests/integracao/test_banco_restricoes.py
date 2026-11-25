@@ -12,7 +12,7 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError, IntegrityError
 
-from app.compartilhado.banco import SessionLocal
+from app.core.database import SessionLocal
 
 MENSAGEM_DO_TRIGGER = "Votos e registros de votação confirmados são imutáveis"
 CRIADO_EM = datetime(2026, 11, 1, 9, 0).astimezone()

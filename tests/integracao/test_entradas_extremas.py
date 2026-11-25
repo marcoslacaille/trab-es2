@@ -12,10 +12,10 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 
-from app.compartilhado.banco import SessionLocal
-from app.compartilhado.config import obter_configuracao
-from app.compartilhado.paginacao import MAIOR_PAGINA, TAMANHO_MAXIMO
-from app.identidade.tokens import ALGORITMO, AUDIENCIA_ACESSO
+from app.core.config import obter_configuracao
+from app.core.database import SessionLocal
+from app.core.paginacao import MAIOR_PAGINA, TAMANHO_MAXIMO
+from app.core.security import ALGORITMO, AUDIENCIA_ACESSO
 from tests.auxiliares import nova_eleicao, novo_candidato, novo_eleitor, novo_partido
 
 ID_GIGANTE = 10**20  # maior que 9.223.372.036.854.775.807 (BIGINT)

@@ -1,3 +1,5 @@
+"""Configuração da aplicação: variáveis de ambiente e `.env`, lidas uma única vez."""
+
 from functools import lru_cache
 
 from pydantic import Field

@@ -1,6 +1,6 @@
-"""Textos e utilitários da documentação Swagger/OpenAPI (seção 11 do PLANO)."""
+"""Textos e utilitários da documentação Swagger/OpenAPI."""
 
-from app.compartilhado.erros import ErroResposta
+from app.core.exceptions import ErroResposta
 
 DESCRICAO_API = """
 API de simulação de eleição eletrônica (trabalho de Engenharia de Software II).

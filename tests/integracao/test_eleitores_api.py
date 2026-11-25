@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from app.compartilhado.banco import SessionLocal
-from app.compartilhado.relogio import agora
+from app.core.database import SessionLocal
+from app.core.relogio import agora
 from app.identidade import service
 from app.identidade.dominio import Perfil
 from tests.auxiliares import (

@@ -1,9 +1,11 @@
+"""Banco de dados: `Base` do ORM, `engine`, `SessionLocal` e a sessão de cada requisição."""
+
 from collections.abc import Iterator
 
 from sqlalchemy import MetaData, create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
-from app.compartilhado.config import obter_configuracao
+from app.core.config import obter_configuracao
 
 # Toda restrição tem nome previsível, para a aplicação traduzir uma violação do banco
 # em um código de erro amigável.

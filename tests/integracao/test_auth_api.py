@@ -1,4 +1,4 @@
-from app.compartilhado.banco import SessionLocal
+from app.core.database import SessionLocal
 from app.identidade import service
 from tests.auxiliares import CPF_CHEFE, SENHA_CHEFE, criar_chefe, gerar_cpf
 
