@@ -6,8 +6,8 @@
 
 | Entregável | Onde |
 | --- | --- |
-| Repositório | <https://github.com/marcoslacaille/trab-es2> (esta versão: [`refactor/mvc`](https://github.com/marcoslacaille/trab-es2/tree/refactor/mvc)) |
-| Documentação da API | [Swagger UI publicado](https://marcoslacaille.github.io/trab-es2/), [`docs/openapi.json`](docs/openapi.json) e, com a API no ar, <http://localhost:8000/docs> |
+| Repositório | <https://github.com/marcoslacaille/trab-es2> |
+| Documentação da API | [Swagger UI publicado](https://marcoslacaille.github.io/trab-es2/) (só para consulta), [`docs/openapi.json`](docs/openapi.json) e, com a API no ar, <http://localhost:8000/docs> |
 | Arquitetura, modularização e banco | seções [4](#4-arquitetura), [5](#5-modularização) e [6](#6-modelagem-do-banco) deste README |
 | Postman | [`docs/colecao-postman.json`](docs/colecao-postman.json) e [`docs/ambiente-postman.json`](docs/ambiente-postman.json) |
 
@@ -20,15 +20,15 @@ Trabalho de Engenharia de Software II, UNIRIO (Prof. Marcelo Soares Loutfi). Int
 
 ## 1. Visão geral
 
-É o backend de uma simulação de eleição eletrônica de uma seção, em Python 3.12, FastAPI e SQLAlchemy 2 (síncrono), com PostgreSQL 16 e migrações do Alembic. Há três perfis: o **Chefe da Seção** cadastra eleitores, candidatos, partidos e eleições e abre e encerra a votação; o **Eleitor** consulta a cédula, registra e confirma o voto e acompanha a apuração; o **Candidato** acompanha a apuração do cargo que disputa. O voto é secreto: nenhuma tabela, rota, resposta ou log liga quem votou ao que foi votado.
+É o backend de uma simulação de eleição eletrônica de uma seção, em Python 3.12, FastAPI e SQLAlchemy 2 (síncrono), com PostgreSQL 16 e migrações do Alembic. Há três perfis: o **Chefe da Seção** cadastra eleitores, candidatos, partidos e eleições e abre e encerra a votação; o **Eleitor** consulta a cédula, registra e confirma o voto e acompanha a apuração; o **Candidato** acompanha a apuração do cargo que disputa. O voto é secreto: nenhuma tabela, rota, resposta ou log liga quem votou ao que foi votado. Quem acessa o banco diretamente ainda consegue correlacionar as duas tabelas; esse e os outros limites estão nas [limitações conhecidas](#8-limitações-conhecidas).
 
 ## 2. Como rodar
 
-Pré-requisitos: Python 3.12, Git e Docker aberto. O `docker compose` sobe dois PostgreSQL 16: o da aplicação (porta 5432) e o dos testes (5433).
+Pré-requisitos: Python 3.12, Git e Docker aberto. O `docker compose` sobe dois PostgreSQL 16: o da aplicação (porta 5432) e o dos testes (5433); com `--wait`, ele só devolve o terminal quando os dois aceitam conexões.
 
 ```powershell
 copy .env.example .env                                # troque JWT_SEGREDO e as senhas fora da demonstração
-docker compose up -d
+docker compose up -d --wait
 py -3.12 -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 .venv\Scripts\python.exe -m alembic upgrade head      # cria as tabelas
@@ -38,7 +38,7 @@ py -3.12 -m venv .venv
 
 ```bash
 cp .env.example .env
-docker compose up -d
+docker compose up -d --wait
 python3.12 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
 alembic upgrade head
@@ -46,14 +46,14 @@ python -m app.scripts.seed_demo
 uvicorn app.main:app --reload --no-access-log
 ```
 
-A API fica em <http://localhost:8000>, com `/docs` e `/health`. Sem a demonstração, `python -m app.scripts.criar_chefe` cria só o Chefe, com `CHEFE_CPF`, `CHEFE_NOME` e `CHEFE_SENHA` do `.env`; não existe rota para criar Chefe. O `seed_demo` cria o Chefe, 3 partidos, 6 eleitores, 10 candidatos e a eleição de hoje (00:00 às 23:59), ainda AGENDADA, e grava tudo ou nada. Para recomeçar do zero: `docker compose down -v`, `docker compose up -d`, `alembic upgrade head` e `seed_demo`.
+A API fica em <http://localhost:8000>, com `/docs` e `/health`. Sem a demonstração, `python -m app.scripts.criar_chefe` cria só o Chefe, com `CHEFE_CPF`, `CHEFE_NOME` e `CHEFE_SENHA` do `.env`; não existe rota para criar Chefe. O `seed_demo` cria o Chefe, 3 partidos, 6 eleitores, 10 candidatos e a eleição de hoje (00:00 às 23:59), ainda AGENDADA, e grava tudo ou nada. Para recomeçar do zero: `docker compose down -v`, `docker compose up -d --wait`, `alembic upgrade head` e `seed_demo`.
 
 ## 3. Documentação da API
 
-- **Publicada:** <https://marcoslacaille.github.io/trab-es2/> (`docs/index.html` lendo `docs/openapi.json`).
+- **Publicada:** <https://marcoslacaille.github.io/trab-es2/> (`docs/index.html` lendo `docs/openapi.json`). É só para consulta: no GitHub Pages não há API, então a página não tem *Try it out* nem *Authorize*.
 - **Local:** <http://localhost:8000/docs> (Swagger UI) e <http://localhost:8000/redoc>. Para as rotas protegidas, use *Authorize*: CPF em `username` e senha em `password`; o token fica salvo ao recarregar a página.
 - **Como é gerada:** o FastAPI monta o OpenAPI 3.1 a partir dos controllers e dos schemas. Descrição, tags e parâmetros do Swagger ficam em `app/core/openapi.py`. O `python -m app.scripts.exportar_openapi` grava o `docs/openapi.json`, e o teste `test_especificacao_publicada_esta_atualizada` falha se ele ficar desatualizado.
-- **Postman:** importe a coleção e o ambiente pelo arquivo ou por link ([coleção](https://raw.githubusercontent.com/marcoslacaille/trab-es2/refactor/mvc/docs/colecao-postman.json), [ambiente](https://raw.githubusercontent.com/marcoslacaille/trab-es2/refactor/mvc/docs/ambiente-postman.json)).
+- **Postman:** importe a coleção e o ambiente pelo arquivo ou por link ([coleção](https://raw.githubusercontent.com/marcoslacaille/trab-es2/main/docs/colecao-postman.json), [ambiente](https://raw.githubusercontent.com/marcoslacaille/trab-es2/main/docs/ambiente-postman.json)).
 - **Rotas:** são 33 sob `/api/v1`, mais o `/health`. 24 vêm direto do enunciado; 9 são complementares: `GET /auth/me`, `GET /eleicoes`, `PATCH /eleicoes/{id}`, `PATCH` e `DELETE` de candidaturas, `/candidaturas/minhas`, `/eleitores/eu`, `/candidatos/eu` e a participação do eleitor na votação.
 
 ## 4. Arquitetura
@@ -105,8 +105,8 @@ sequenceDiagram
     L->>B: SELECT da eleição com trava compartilhada
     S->>S: validar_pode_votar e validar_eleitor_apto
     S->>R: inserir_registro e inserir_voto
-    R->>B: INSERT em registros_votacao e em votos
-    S->>B: COMMIT, a chave primária garante o voto único
+    R->>B: INSERT em registros_votacao (a chave primária barra o voto repetido) e em votos
+    S->>B: COMMIT: as duas gravações valem juntas
     S-->>C: ComprovanteVoto, sem a escolha
     C-->>E: 201 Voto confirmado
 ```
@@ -164,12 +164,12 @@ erDiagram
     }
     eleitores {
         bigint id PK
-        bigint usuario_id FK
+        bigint usuario_id FK, UK
         char titulo_eleitor UK
     }
     candidatos {
         bigint id PK
-        bigint usuario_id FK
+        bigint usuario_id FK, UK
         varchar nome_urna
     }
     partidos {
@@ -205,7 +205,7 @@ erDiagram
     }
 ```
 
-São 8 tabelas. Todas as chaves estrangeiras são `ON DELETE RESTRICT`, e o nome de cada restrição segue a convenção `pk_`, `uq_`, `ck_`, `fk_`, que a aplicação usa para traduzir violações em erros de negócio.
+São 8 tabelas. O diagrama mostra as chaves e as colunas que as regras citam; nomes, hash da senha e carimbos de tempo estão nos models e nas migrações. Todas as chaves estrangeiras são `ON DELETE RESTRICT`, e o nome de cada restrição segue a convenção `pk_`, `uq_`, `ck_`, `fk_`, que a aplicação usa para traduzir violações em erros de negócio.
 
 | Tabela | Chaves, restrições e índices relevantes |
 | --- | --- |
@@ -214,11 +214,13 @@ São 8 tabelas. Todas as chaves estrangeiras são `ON DELETE RESTRICT`, e o nome
 | `candidatos` | `usuario_id` único; nome de urna e nascimento (desempate por idade) |
 | `partidos` | `sigla`, `nome` e `numero` únicos; sigla de 2 a 10 letras ou dígitos; número de 10 a 99 |
 | `eleicoes` | `(data, turno)` único; turno 1 ou 2; abertura antes do encerramento; `ck_eleicoes_status_coerente` liga o status aos carimbos; índice único parcial `uq_eleicoes_uma_aberta` |
-| `candidaturas` | `(eleicao_id, cargo, numero)` e `(eleicao_id, candidato_id)` únicos; `ck_candidaturas_numero_por_cargo`; `nome_urna` e `data_nascimento` gravados na abertura |
-| `registros_votacao` | chave primária `(eleitor_id, eleicao_id, cargo)`: impede voto duplo, mesmo com duas requisições simultâneas |
-| `votos` | `id` UUID aleatório; `tipo` NOMINAL, BRANCO ou NULO; chave estrangeira composta `(candidatura_id, eleicao_id, cargo)`; índice `ix_votos_apuracao` |
+| `candidaturas` | `(eleicao_id, cargo, numero)` e `(eleicao_id, candidato_id)` únicos; `(id, eleicao_id, cargo)` único (`uq_candidaturas_id_eleicao_id_cargo`), alvo da chave estrangeira composta de `votos`; `ck_candidaturas_numero_por_cargo`; `nome_urna` e `data_nascimento` gravados na abertura (migração `0006`), para que editar o candidato depois não mude a cédula nem o desempate de uma eleição já aberta |
+| `registros_votacao` | chave primária `(eleitor_id, eleicao_id, cargo)`: impede voto duplo, mesmo com duas requisições simultâneas; índice `ix_registros_votacao_eleicao_id`, para o comparecimento |
+| `votos` | `id` UUID aleatório; `tipo` NOMINAL, BRANCO ou NULO, e só o NOMINAL tem `candidatura_id` (`ck_votos_nominal_tem_candidatura`); chave estrangeira composta `(candidatura_id, eleicao_id, cargo)`, que impede um voto num candidato de outro cargo ou de outra eleição; índice `ix_votos_apuracao` |
 
-**Sigilo.** `registros_votacao` diz quem já votou em cada cargo, e `votos` diz o que foi votado. Não há coluna nem chave que ligue uma à outra: o voto não tem eleitor, horário nem id sequencial. Um trigger `BEFORE UPDATE OR DELETE` nas duas tabelas (`impedir_alteracao_de_voto`) torna o voto confirmado imutável. A limitação conhecida é o acesso direto ao banco: os dois registros nascem na mesma transação, e quem lê as duas tabelas pode tentar correlacioná-las pelo `xmin`.
+**Banco e service.** O banco garante o voto único, o voto imutável e as referências entre as tabelas; quem decide se a eleição aceita voto naquele momento (status, janela de horário e eleitor apto) é o service.
+
+**Sigilo.** `registros_votacao` diz quem já votou em cada cargo, e `votos` diz o que foi votado. Não há coluna nem chave que ligue uma à outra: o voto não tem eleitor, horário nem id sequencial. Um trigger `BEFORE UPDATE OR DELETE` nas duas tabelas (`impedir_alteracao_de_voto`) torna o voto confirmado imutável. Quem acessa o banco diretamente ainda consegue correlacionar as duas tabelas pelo `xmin` (veja as [limitações conhecidas](#8-limitações-conhecidas)).
 
 **Migrações (Alembic, `migrations/versions/`):** `0001` usuários; `0002` eleitores; `0003` candidatos e partidos; `0004` eleições e candidaturas, com o índice parcial; `0005` registros de votação, votos e o trigger; `0006` o retrato do candidato na abertura.
 
@@ -259,7 +261,7 @@ A eleição segue um ciclo só de ida: `AGENDADA` → `ABERTA` → `ENCERRADA`. 
 | RN-30 | Só o Chefe gerencia candidatos e cadastra partidos; todo usuário lista partidos | `PERFIL_NAO_AUTORIZADO` |
 | RN-31 | Candidato com nome de urna de 3 a 30 caracteres e nascimento no passado | `DADOS_INVALIDOS` |
 | RN-32 | Partido com sigla de 2 a 10 letras ou dígitos, nome e número de 10 a 99, os três únicos | `PARTIDO_DUPLICADO` |
-| RN-33 | Só se exclui candidato sem candidaturas | `EXCLUSAO_BLOQUEADA` |
+| RN-33 | O CPF do candidato não muda depois do cadastro, e só se exclui candidato sem candidaturas | `DADOS_INVALIDOS`, `EXCLUSAO_BLOQUEADA` |
 | RN-40 | Candidatura liga candidato, eleição, cargo, partido e número; só muda com a eleição AGENDADA | `ELEICAO_NAO_EDITAVEL` |
 | RN-41 | O cargo é um dos cinco: deputado estadual, deputado federal, senador, governador, presidente | `DADOS_INVALIDOS` |
 | RN-42 | Número com 2 dígitos para presidente e governador, 3 para senador, 4 para deputado federal e 5 para estadual | `NUMERO_INVALIDO_PARA_CARGO` |
@@ -299,25 +301,36 @@ A eleição segue um ciclo só de ida: `AGENDADA` → `ABERTA` → `ENCERRADA`. 
 | Eleitor | Consulta a cédula, registra e confirma o voto (um por cargo), vê em quais cargos votou e a apuração de todos os cargos |
 | Candidato | Vê as próprias candidaturas e a apuração só do cargo que disputa; o resultado final é aberto a todos |
 
-## 8. Testes
+## 8. Limitações conhecidas
+
+- **Sigilo no banco (transação):** quem votou e o voto são gravados na mesma transação, então as duas linhas têm o mesmo `xmin` (o ID da transação no PostgreSQL). Quem pode ler as duas tabelas liga cada voto ao eleitor com `JOIN ... ON v.xmin = r.xmin`, com precisão total. Por isso o acesso direto ao banco precisa ficar restrito; mudar o desenho (por exemplo, gravar os votos em lote e embaralhados) fica como melhoria futura.
+- **Sigilo no banco (ordem física):** quem tiver acesso administrativo ao PostgreSQL também poderia tentar correlacionar a ordem em que as linhas foram gravadas nas duas tabelas. A urna real embaralha o registro digital do voto; aqui isso está fora do escopo.
+- **Parcial exata:** a apuração parcial mostra os totais exatos a cada consulta. Quem consulta antes e depois de um único voto, e sabe quem votou nesse intervalo, deduz a escolha; o mesmo vale para um cargo com um único votante. Mostrar a parcial é exigência do enunciado; atualizar em lotes seria a mitigação.
+- **Comparecimento recalculado:** a apuração é calculada a cada consulta, inclusive a de uma eleição já encerrada. Nome de urna e nascimento dos candidatos ficam congelados na abertura, então editar um candidato depois não muda o resultado; mas excluir um eleitor apto que não votou ainda reduz os aptos e a abstenção da eleição.
+- **Token não revogável:** o token de acesso não pode ser revogado antes de expirar (60 min); isso é mitigado porque o usuário é recarregado do banco a cada requisição.
+- **HTTPS:** responsabilidade do ambiente onde a API for publicada.
+- **Sem limite de tentativas de login**, sem recuperação de senha e sem e-mail.
+- **Escopo:** sem frontend (a demonstração é no Postman), uma única seção, sem regras de "eleito" (o enunciado pede o **mais votado**) e sem geração automática do 2º turno.
+
+## 9. Testes
 
 | Pasta | O que testa | Casos |
 | --- | --- | ---: |
-| `tests/unitarios/` | Regras dos services com repositories falsos, validadores, segurança, cédula e relógio; sem banco e sem HTTP | 87 |
-| `tests/integracao/` | A API contra o PostgreSQL de teste: rotas, permissões, restrições e trigger, concorrência, sigilo e o roteiro completo | 86 |
-| `tests/arquitetura/` | Regras de dependência entre as camadas, rotas protegidas e `docs/openapi.json` atualizado | 23 |
+| `tests/unitarios/` | Regras dos services com repositories falsos, validadores, segurança, cédula e relógio; sem banco e sem HTTP | 97 |
+| `tests/integracao/` | A API contra o PostgreSQL de teste: rotas, permissões, restrições e trigger, concorrência, sigilo e um roteiro completo | 92 |
+| `tests/arquitetura/` | Regras de dependência entre as camadas (também pelos imports indiretos), rotas protegidas e `docs/openapi.json` atualizado | 25 |
 
 ```bash
-pytest                                        # os 196 casos (precisa do docker compose up -d)
+pytest                                        # os 214 casos (precisa do docker compose up -d)
 pytest tests/unitarios -q                     # rápidos
 pytest --cov=app --cov-report=term-missing    # cobertura
 ```
 
-No Windows, use `.venv\Scripts\python.exe -m pytest`. A cobertura é de 98,8%. O CI roda `ruff check`, `ruff format --check` e `pytest` com PostgreSQL a cada push e Pull Request, e falha se a cobertura ficar abaixo de 96%.
+No Windows, use `.venv\Scripts\python.exe -m pytest`. O banco de teste vem do `TEST_DATABASE_URL` do ambiente ou do `.env` (sem os dois, o do `docker compose`), e a suíte só aceita um banco cujo nome termine em `_teste`. A cobertura é de 99,4%. O CI roda `ruff check`, `ruff format --check` e `pytest` com PostgreSQL a cada push e Pull Request, e falha se a cobertura ficar abaixo de 96%.
 
-## 9. Demonstração
+## 10. Demonstração
 
-Com o banco limpo, as migrações aplicadas, o `seed_demo` rodado e a API no ar, importe a coleção e o ambiente (*Eleição — local*) no Postman e rode as 23 requisições na ordem, uma a uma ou pelo Collection Runner. Logins do `seed_demo`:
+Com o banco limpo, as migrações aplicadas, o `seed_demo` rodado e a API no ar, importe a coleção e o ambiente (*Eleição — local*) no Postman e rode as 23 requisições na ordem, uma a uma ou pelo Collection Runner. Rode o `seed_demo` no próprio dia da apresentação: a eleição dele é a de hoje, e a abertura (07) só funciona na data da eleição. Num banco limpo, o seed imprime `id 1`, que é o `eleicao_id` do ambiente; se imprimir outro, ajuste o ambiente. Entre registrar e confirmar um voto há 5 minutos, a validade da cédula. Logins do `seed_demo`:
 
 | Perfil | CPF | Senha |
 | --- | --- | --- |
@@ -330,8 +343,8 @@ Com o banco limpo, as migrações aplicadas, o `seed_demo` rodado e a API no ar,
 3. **Acompanhamento (18 a 20):** Carlos Lima vê só a apuração do cargo dele; pedir outro cargo dá 403.
 4. **Encerramento e resultado (21 a 23):** o Chefe encerra, votar depois dá 409 e o resultado final mostra os votos, os percentuais e o comparecimento. Em Presidente, Carlos Lima e Marina Costa empatam em 1 voto e vence o mais idoso (Carlos Lima, RN-77).
 
-## 10. Versionamento
+## 11. Versionamento
 
-- Esta versão está na `refactor/mvc`; a `main` mantém a organização anterior por módulos. Tags: `pre-mvc` (antes da refatoração) e `v1.0.0`.
+- A versão atual é a 2.0.0, organizada em camadas (MVC). As tags `v0.2.0` a `v1.0.0` marcam a organização anterior, por módulos.
 - Conventional Commits em português, com um assunto por commit: `feat`, `fix`, `test`, `refactor`, `docs`, `chore`.
 - O CI (GitHub Actions) roda lint, formatação e testes a cada push e Pull Request.
