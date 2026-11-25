@@ -4,9 +4,10 @@ Não importa FastAPI nem SQLAlchemy: tudo aqui roda sem banco e sem HTTP.
 """
 
 from dataclasses import dataclass
-from datetime import date, datetime, time
+from datetime import date, datetime
 
 from app.core.exceptions import ConflitoDeEstado, DadosInvalidos
+from app.dto.eleicao_dto import EleicaoResumo, NovaEleicaoDados
 from app.models.enums import (
     CARGOS_DO_SEGUNDO_TURNO,
     DIGITOS_POR_CARGO,
@@ -27,89 +28,12 @@ CANDIDATO = "CANDIDATO"
 
 
 @dataclass(frozen=True)
-class EleicaoResumo:
-    """A eleição como as rotas e os outros módulos a enxergam. Nunca é o objeto ORM."""
-
-    id: int
-    descricao: str
-    data: date
-    turno: int
-    horario_abertura: time
-    horario_encerramento: time
-    status: StatusEleicao
-    aberta_em: datetime | None
-    encerrada_em: datetime | None
-    criado_em: datetime
-
-
-@dataclass(frozen=True)
-class CandidaturaDetalhada:
-    """Uma candidatura com os dados de exibição do candidato e do partido (seção 9.5).
-
-    `partido_id` não está na lista da seção 9.5, mas o contrato "Criar candidatura" devolve o
-    `id` do partido (D-066).
-    """
-
-    id: int
-    eleicao_id: int
-    cargo: Cargo
-    numero: str
-    candidato_id: int
-    nome_urna: str
-    data_nascimento: date
-    partido_id: int
-    partido_sigla: str
-    partido_numero: int
-
-
-@dataclass(frozen=True)
-class NovaCandidaturaDados:
-    """Tudo o que o Chefe informa para criar uma candidatura (RN-40)."""
-
-    candidato_id: int
-    partido_id: int
-    cargo: Cargo
-    numero: str
-
-
-@dataclass(frozen=True)
-class AlteracoesCandidatura:
-    """O que pode mudar numa candidatura: cargo, número e partido. `None` = não alterar."""
-
-    cargo: Cargo | None = None
-    numero: str | None = None
-    partido_id: int | None = None
-
-
-@dataclass(frozen=True)
 class Link:
     """Uma ação possível sobre a eleição (HATEOAS): nome, método HTTP e caminho."""
 
     rel: str
     metodo: str
     href: str
-
-
-@dataclass(frozen=True)
-class NovaEleicaoDados:
-    """Tudo o que o Chefe informa para agendar uma eleição (RN-11)."""
-
-    descricao: str
-    data: date
-    turno: int
-    horario_abertura: time
-    horario_encerramento: time
-
-
-@dataclass(frozen=True)
-class AlteracoesEleicao:
-    """O que pode mudar enquanto a eleição está AGENDADA (RN-14). `None` = não alterar."""
-
-    descricao: str | None = None
-    data: date | None = None
-    turno: int | None = None
-    horario_abertura: time | None = None
-    horario_encerramento: time | None = None
 
 
 def validar_agendamento(dados: NovaEleicaoDados, hoje: date) -> NovaEleicaoDados:

@@ -5,14 +5,14 @@ from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.models.enums import Cargo, ModoEscolha, TipoVoto
-from app.votacao.dominio import (
+from app.dto.votacao_dto import (
     CandidatoDaCedula,
     CedulaDoEleitor,
     ComprovanteVoto,
     Participacao,
     PreviaVoto,
 )
+from app.models.enums import Cargo, ModoEscolha, TipoVoto
 
 
 class LinkDaVotacao(BaseModel):

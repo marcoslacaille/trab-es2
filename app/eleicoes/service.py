@@ -16,14 +16,14 @@ from app.core.exceptions import (
     NaoEncontrado,
     nome_da_restricao,
 )
+from app.dto.candidatura_dto import (
+    AlteracoesCandidatura,
+    CandidaturaDetalhada,
+    NovaCandidaturaDados,
+)
+from app.dto.eleicao_dto import AlteracoesEleicao, EleicaoResumo, NovaEleicaoDados
 from app.eleicoes import repository
 from app.eleicoes.dominio import (
-    AlteracoesCandidatura,
-    AlteracoesEleicao,
-    CandidaturaDetalhada,
-    EleicaoResumo,
-    NovaCandidaturaDados,
-    NovaEleicaoDados,
     validar_abertura,
     validar_agendamento,
     validar_candidatura,

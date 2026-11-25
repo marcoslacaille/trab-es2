@@ -1,10 +1,10 @@
-"""Regras puras de candidatos e partidos: dados que o serviço devolve e recebe, e validações."""
+"""Regras puras de candidatos e partidos: validações, sem banco."""
 
 import re
-from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date
 
 from app.core.exceptions import DadosInvalidos
+from app.dto.partido_dto import NovoPartidoDados
 
 FORMATO_SIGLA = re.compile(r"^[A-Z0-9]{2,10}$")
 NOME_MAXIMO_DO_PARTIDO = 100
@@ -12,75 +12,6 @@ NUMERO_MINIMO_DO_PARTIDO = 10
 NUMERO_MAXIMO_DO_PARTIDO = 99
 NOME_DE_URNA_MINIMO = 3
 NOME_DE_URNA_MAXIMO = 30
-
-
-@dataclass(frozen=True)
-class CandidatoResumo:
-    """O mínimo que outros módulos precisam saber de um candidato (usado por `eleicoes`).
-
-    A data de nascimento serve ao desempate por idade da apuração (RN-77).
-    """
-
-    id: int
-    usuario_id: int
-    nome_urna: str
-    data_nascimento: date
-
-
-@dataclass(frozen=True)
-class CandidatoDetalhado:
-    """Dados do candidato juntos com nome e CPF da credencial. Nunca traz a senha."""
-
-    id: int
-    usuario_id: int
-    nome: str
-    nome_urna: str
-    cpf: str
-    data_nascimento: date
-    criado_em: datetime
-
-
-@dataclass(frozen=True)
-class NovoCandidatoDados:
-    """Tudo o que o Chefe informa para cadastrar um candidato (RN-31)."""
-
-    nome: str
-    nome_urna: str
-    cpf: str
-    data_nascimento: date
-    senha: str
-
-
-@dataclass(frozen=True)
-class AlteracoesCandidato:
-    """O que pode mudar depois do cadastro: nome, nome de urna, nascimento e senha (RN-31).
-
-    Campo `None` significa "não alterar". O CPF nunca muda (RN-33).
-    """
-
-    nome: str | None = None
-    nome_urna: str | None = None
-    data_nascimento: date | None = None
-    senha: str | None = None
-
-
-@dataclass(frozen=True)
-class PartidoResumo:
-    """Um partido como os outros módulos o enxergam (a candidatura guarda o `id`)."""
-
-    id: int
-    sigla: str
-    nome: str
-    numero: int
-
-
-@dataclass(frozen=True)
-class NovoPartidoDados:
-    """Tudo o que o Chefe informa para cadastrar um partido (RN-32)."""
-
-    sigla: str
-    nome: str
-    numero: int
 
 
 def validar_partido(dados: NovoPartidoDados) -> NovoPartidoDados:

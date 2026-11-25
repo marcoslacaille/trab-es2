@@ -11,18 +11,17 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import ConflitoDeEstado, NaoEncontrado, nome_da_restricao
 from app.core.paginacao import Pagina, Paginacao
-from app.eleitores import repository
-from app.eleitores.dominio import (
+from app.dto.eleitor_dto import (
     AlteracoesEleitor,
     EleitorDetalhado,
     EleitorResumo,
     NovoEleitorDados,
-    validar_idade_eleitor,
-    validar_titulo_eleitor,
 )
+from app.eleitores import repository
+from app.eleitores.dominio import validar_idade_eleitor, validar_titulo_eleitor
 
 # Um módulo só importa `service` de outro (seção 5). `UsuarioAutenticado` chega por aí porque
-# `identidade.service` já o importa de seu `dominio`.
+# `identidade.service` já o importa de `dto/usuario_dto`.
 from app.identidade import service as service_identidade
 from app.models.eleitor import Eleitor
 from app.models.enums import Perfil

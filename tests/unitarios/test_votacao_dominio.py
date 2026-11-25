@@ -7,7 +7,8 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from app.core.exceptions import AcessoNegado, ConflitoDeEstado, DadosInvalidos
-from app.eleicoes.dominio import CandidaturaDetalhada, EleicaoResumo
+from app.dto.candidatura_dto import CandidaturaDetalhada
+from app.dto.eleicao_dto import EleicaoResumo
 from app.models.enums import Cargo, ModoEscolha, StatusEleicao, TipoVoto
 from app.votacao.dominio import resolver_escolha, validar_eleitor_apto, validar_pode_votar
 

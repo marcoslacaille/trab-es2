@@ -10,13 +10,9 @@ from app.core.database import obter_sessao
 from app.core.openapi import respostas_de_erro
 from app.core.relogio import obter_agora
 from app.core.validadores import MAIOR_ID
+from app.dto.candidatura_dto import AlteracoesCandidatura, NovaCandidaturaDados
+from app.dto.eleicao_dto import AlteracoesEleicao, NovaEleicaoDados
 from app.eleicoes import service
-from app.eleicoes.dominio import (
-    AlteracoesCandidatura,
-    AlteracoesEleicao,
-    NovaCandidaturaDados,
-    NovaEleicaoDados,
-)
 from app.eleicoes.schemas import (
     AlteracaoCandidatura,
     AlteracaoEleicao,

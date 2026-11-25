@@ -11,21 +11,22 @@ from sqlalchemy.orm import Session
 
 from app.candidatos import repository
 from app.candidatos.dominio import (
-    AlteracoesCandidato,
-    CandidatoDetalhado,
-    CandidatoResumo,
-    NovoCandidatoDados,
-    NovoPartidoDados,
-    PartidoResumo,
     validar_nascimento_do_candidato,
     validar_nome_de_urna,
     validar_partido,
 )
 from app.core.exceptions import ConflitoDeEstado, NaoEncontrado, nome_da_restricao
 from app.core.paginacao import Pagina, Paginacao
+from app.dto.candidato_dto import (
+    AlteracoesCandidato,
+    CandidatoDetalhado,
+    CandidatoResumo,
+    NovoCandidatoDados,
+)
+from app.dto.partido_dto import NovoPartidoDados, PartidoResumo
 
 # Um módulo só importa `service` de outro (seção 5). `UsuarioAutenticado` chega por aí porque
-# `identidade.service` já o importa de seu `dominio` (mesmo caso de `eleitores`).
+# `identidade.service` já o importa de `dto/usuario_dto` (mesmo caso de `eleitores`).
 from app.identidade import service as service_identidade
 from app.models.candidato import Candidato
 from app.models.enums import Perfil

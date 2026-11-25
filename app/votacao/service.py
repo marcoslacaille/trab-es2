@@ -17,14 +17,10 @@ from app.core.exceptions import (
     NaoEncontrado,
     nome_da_restricao,
 )
-from app.eleicoes import service as eleicoes_service
-from app.eleicoes.dominio import EleicaoResumo
-from app.eleitores import service as eleitores_service
-from app.eleitores.dominio import EleitorResumo
-from app.identidade.dominio import UsuarioAutenticado
-from app.models.enums import DIGITOS_POR_CARGO, Cargo, TipoVoto
-from app.votacao import dominio, repository
-from app.votacao.dominio import (
+from app.dto.eleicao_dto import EleicaoResumo
+from app.dto.eleitor_dto import EleitorResumo
+from app.dto.usuario_dto import UsuarioAutenticado
+from app.dto.votacao_dto import (
     CandidatoDaCedula,
     CargoDaCedula,
     CargoParticipacao,
@@ -36,6 +32,10 @@ from app.votacao.dominio import (
     PedidoRegistro,
     PreviaVoto,
 )
+from app.eleicoes import service as eleicoes_service
+from app.eleitores import service as eleitores_service
+from app.models.enums import DIGITOS_POR_CARGO, Cargo, TipoVoto
+from app.votacao import dominio, repository
 
 PK_REGISTRO = "pk_registros_votacao"
 # FK que dispara quando o eleitor é excluído no meio da confirmação (D-145).

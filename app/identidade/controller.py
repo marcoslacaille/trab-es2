@@ -8,9 +8,9 @@ from sqlalchemy.orm import Session
 
 from app.core.database import obter_sessao
 from app.core.openapi import respostas_de_erro
+from app.dto.usuario_dto import UsuarioAutenticado
 from app.identidade import service
 from app.identidade.dependencias import obter_usuario_atual
-from app.identidade.dominio import UsuarioAutenticado
 from app.identidade.schemas import LoginResposta, UsuarioLogadoResposta, UsuarioResposta
 
 roteador = APIRouter(prefix="/auth", tags=["Autenticação"])

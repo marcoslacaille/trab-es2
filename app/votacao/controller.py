@@ -13,10 +13,10 @@ from app.core.database import obter_sessao
 from app.core.openapi import respostas_de_erro
 from app.core.relogio import obter_agora
 from app.core.validadores import MAIOR_ID
+from app.dto.votacao_dto import PedidoRegistro
 from app.identidade.dependencias import UsuarioAutenticado, exige_perfil
 from app.models.enums import Perfil
 from app.votacao import service
-from app.votacao.dominio import PedidoRegistro
 from app.votacao.schemas import (
     CedulaResposta,
     ComprovanteVotoResposta,

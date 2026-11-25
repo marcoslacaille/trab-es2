@@ -6,8 +6,8 @@ from sqlalchemy import text
 
 from app.core.database import SessionLocal
 from app.core.relogio import agora
+from app.dto.eleicao_dto import NovaEleicaoDados
 from app.eleicoes import service as service_eleicoes
-from app.eleicoes.dominio import NovaEleicaoDados
 from app.scripts.seed_demo import semear
 
 

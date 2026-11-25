@@ -12,8 +12,8 @@ from app.core import cedula as modulo_cedula
 from app.core.cedula import emitir_cedula, ler_cedula
 from app.core.exceptions import DadosInvalidos
 from app.core.security import criar_token_acesso
+from app.dto.votacao_dto import Escolha
 from app.models.enums import Cargo, Perfil, TipoVoto
-from app.votacao.dominio import Escolha
 
 AGORA = datetime(2026, 11, 25, 10, 0, tzinfo=ZoneInfo("America/Sao_Paulo"))
 NOMINAL = Escolha(TipoVoto.NOMINAL, candidatura_id=42, numero="13", nome_urna="Ana")

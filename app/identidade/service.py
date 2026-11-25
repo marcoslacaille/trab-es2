@@ -13,8 +13,9 @@ from app.core import security
 from app.core.exceptions import ConflitoDeEstado, DadosInvalidos, NaoAutenticado
 from app.core.paginacao import Pagina, Paginacao
 from app.core.validadores import cpf_valido, normalizar_cpf
+from app.dto.usuario_dto import ResultadoDoLogin, UsuarioAutenticado
 from app.identidade import repository
-from app.identidade.dominio import ResultadoDoLogin, UsuarioAutenticado, validar_senha
+from app.identidade.dominio import validar_senha
 from app.models.enums import Perfil
 from app.models.usuario import Usuario
 

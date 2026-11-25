@@ -6,7 +6,9 @@ from typing import Annotated
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints
 
 from app.core.validadores import MAIOR_ID, sem_caractere_nulo
-from app.eleicoes.dominio import CandidaturaDetalhada, EleicaoResumo, links_da_eleicao
+from app.dto.candidatura_dto import CandidaturaDetalhada
+from app.dto.eleicao_dto import EleicaoResumo
+from app.eleicoes.dominio import links_da_eleicao
 from app.models.enums import Cargo, StatusEleicao
 
 

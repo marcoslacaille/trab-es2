@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.apuracao.dominio import Apuracao, LinhaApuracao, ResultadoCargo
+from app.dto.apuracao_dto import Apuracao, LinhaApuracao, ResultadoCargo
 from app.models.enums import Cargo, SituacaoCargo, StatusEleicao
 
 _EXEMPLO = {

@@ -5,9 +5,8 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from app.core.exceptions import ConflitoDeEstado, DadosInvalidos
+from app.dto.eleicao_dto import EleicaoResumo, NovaEleicaoDados
 from app.eleicoes.dominio import (
-    EleicaoResumo,
-    NovaEleicaoDados,
     links_da_eleicao,
     validar_abertura,
     validar_agendamento,

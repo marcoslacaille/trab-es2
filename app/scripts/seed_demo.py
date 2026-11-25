@@ -10,14 +10,16 @@ from datetime import date, datetime, time
 from sqlalchemy.orm import Session
 
 from app.candidatos import service as service_candidatos
-from app.candidatos.dominio import NovoCandidatoDados, NovoPartidoDados
 from app.core.database import engine
 from app.core.exceptions import ConflitoDeEstado, ErroDeNegocio
 from app.core.relogio import agora
+from app.dto.candidato_dto import NovoCandidatoDados
+from app.dto.candidatura_dto import NovaCandidaturaDados
+from app.dto.eleicao_dto import NovaEleicaoDados
+from app.dto.eleitor_dto import NovoEleitorDados
+from app.dto.partido_dto import NovoPartidoDados
 from app.eleicoes import service as service_eleicoes
-from app.eleicoes.dominio import NovaCandidaturaDados, NovaEleicaoDados
 from app.eleitores import service as service_eleitores
-from app.eleitores.dominio import NovoEleitorDados
 from app.identidade import service as service_identidade
 from app.models.enums import Cargo, Perfil
 

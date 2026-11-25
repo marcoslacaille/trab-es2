@@ -10,12 +10,12 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.apuracao import dominio
-from app.apuracao.dominio import Apuracao, ComparecimentoEleicao, ResultadoCargo
 from app.core.exceptions import AcessoNegado, ConflitoDeEstado, DadosInvalidos
+from app.dto.apuracao_dto import Apuracao, ComparecimentoEleicao, ResultadoCargo
+from app.dto.eleicao_dto import EleicaoResumo
+from app.dto.usuario_dto import UsuarioAutenticado
 from app.eleicoes import service as eleicoes_service
-from app.eleicoes.dominio import EleicaoResumo
 from app.eleitores import service as eleitores_service
-from app.identidade.dominio import UsuarioAutenticado
 from app.models.enums import Cargo, Perfil, StatusEleicao
 from app.votacao import service as votacao_service
 

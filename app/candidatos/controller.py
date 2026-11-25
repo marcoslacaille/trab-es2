@@ -8,7 +8,6 @@ from pydantic import AfterValidator
 from sqlalchemy.orm import Session
 
 from app.candidatos import service
-from app.candidatos.dominio import AlteracoesCandidato, NovoCandidatoDados, NovoPartidoDados
 from app.candidatos.schemas import (
     AlteracaoCandidato,
     CandidatoResposta,
@@ -21,6 +20,8 @@ from app.core.openapi import respostas_de_erro
 from app.core.paginacao import Pagina, Paginacao, obter_paginacao
 from app.core.relogio import obter_agora
 from app.core.validadores import MAIOR_ID, sem_caractere_nulo
+from app.dto.candidato_dto import AlteracoesCandidato, NovoCandidatoDados
+from app.dto.partido_dto import NovoPartidoDados
 
 # `identidade.dependencias` é a única parte de `identidade` (além do serviço) que as rotas de
 # outros módulos podem importar (seção 5).
