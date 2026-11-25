@@ -1,4 +1,4 @@
-"""Controller da apuração: recebe o HTTP, chama o `service` e devolve o JSON de `schemas`."""
+"""Controller da apuração: recebe o HTTP e chama o `ApuracaoService`."""
 
 from datetime import datetime
 from typing import Annotated

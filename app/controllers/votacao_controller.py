@@ -1,7 +1,4 @@
-"""Controller da votação: recebe o HTTP, chama o `service` e devolve o JSON de `schemas`.
-
-Todas exigem o perfil ELEITOR (RN-50): Chefe e Candidato recebem 403 `PERFIL_NAO_AUTORIZADO`.
-"""
+"""Controller da votação: recebe o HTTP e chama o `VotacaoService`."""
 
 from datetime import datetime
 from typing import Annotated
@@ -23,6 +20,7 @@ from app.schemas.votacao_schema import (
     PreviaVotoResposta,
 )
 
+# Todas exigem o perfil ELEITOR (RN-50): Chefe e Candidato recebem 403 `PERFIL_NAO_AUTORIZADO`.
 roteador = APIRouter(prefix="/votacao/eleicoes/{eleicao_id}", tags=["Votação"])
 
 UsuarioEleitor = Annotated[UsuarioAutenticado, Depends(exige_perfil(Perfil.ELEITOR))]

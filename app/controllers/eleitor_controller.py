@@ -1,4 +1,4 @@
-"""Controller de eleitores: recebe o HTTP, chama o `service` e devolve o JSON de `schemas`."""
+"""Controller de eleitores: recebe o HTTP e chama o `EleitorService`."""
 
 from datetime import datetime
 from typing import Annotated

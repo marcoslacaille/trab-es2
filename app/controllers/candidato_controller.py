@@ -1,4 +1,4 @@
-"""Controller de candidatos e partidos: recebe o HTTP, chama o `service` e devolve o JSON."""
+"""Controller de candidatos: recebe o HTTP e chama o `CandidatoService`."""
 
 from datetime import datetime
 from typing import Annotated
@@ -10,18 +10,10 @@ from app.core.openapi import respostas_de_erro
 from app.core.paginacao import Pagina, Paginacao, obter_paginacao
 from app.core.relogio import obter_agora
 from app.core.validadores import MAIOR_ID, sem_caractere_nulo
-from app.dependencies import (
-    CandidatoServiceDep,
-    PartidoServiceDep,
-    UsuarioAutenticado,
-    exige_perfil,
-    obter_usuario_atual,
-)
+from app.dependencies import CandidatoServiceDep, UsuarioAutenticado, exige_perfil
 from app.dto.candidato_dto import AlteracoesCandidato, NovoCandidatoDados
-from app.dto.partido_dto import NovoPartidoDados
 from app.models.enums import Perfil
 from app.schemas.candidato_schema import AlteracaoCandidato, CandidatoResposta, NovoCandidato
-from app.schemas.partido_schema import NovoPartido, PartidoResposta
 
 roteador = APIRouter()
 
@@ -150,38 +142,3 @@ def alterar_candidato(
 def excluir_candidato(candidato_id: IdDoCandidato, service: CandidatoServiceDep) -> Response:
     service.excluir_candidato(candidato_id)
     return Response(status_code=204)
-
-
-@roteador.post(
-    "/partidos",
-    status_code=201,
-    response_model=PartidoResposta,
-    dependencies=somente_chefe,
-    tags=["Partidos"],
-    summary="Cadastra um partido",
-    description=(
-        "Só o Chefe da Seção cadastra partidos. A sigla é gravada em maiúsculas. Sigla, nome e "
-        "número são únicos: repetir qualquer um responde 409 `PARTIDO_DUPLICADO` (RN-30, RN-32)."
-    ),
-    responses=respostas_de_erro(401, 403, 409, 422),
-)
-def cadastrar_partido(
-    dados: NovoPartido,
-    service: PartidoServiceDep,
-    agora: Annotated[datetime, Depends(obter_agora)],
-) -> PartidoResposta:
-    partido = service.criar_partido(NovoPartidoDados(**dados.model_dump()), agora)
-    return PartidoResposta.model_validate(partido)
-
-
-@roteador.get(
-    "/partidos",
-    response_model=list[PartidoResposta],
-    dependencies=[Depends(obter_usuario_atual)],
-    tags=["Partidos"],
-    summary="Lista os partidos",
-    description="Qualquer usuário logado lista os partidos, ordenados por número (RN-30).",
-    responses=respostas_de_erro(401),
-)
-def listar_partidos(service: PartidoServiceDep) -> list[PartidoResposta]:
-    return [PartidoResposta.model_validate(partido) for partido in service.listar_partidos()]

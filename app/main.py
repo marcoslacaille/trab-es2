@@ -4,17 +4,20 @@ from fastapi import Depends, FastAPI
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.apuracao.controller import roteador as rotas_apuracao
-from app.candidatos.controller import roteador as rotas_candidatos
+from app.controllers import (
+    apuracao_controller,
+    auth_controller,
+    candidato_controller,
+    candidatura_controller,
+    eleicao_controller,
+    eleitor_controller,
+    partido_controller,
+    votacao_controller,
+)
 from app.core.database import obter_sessao
 from app.core.exceptions import registrar_tratadores
 from app.core.log_requisicoes import registrar_log_de_requisicoes
 from app.core.openapi import DESCRICAO_API, TAGS
-from app.eleicoes.controller import roteador as rotas_eleicoes
-from app.eleicoes.controller import roteador_candidaturas as rotas_candidaturas
-from app.eleitores.controller import roteador as rotas_eleitores
-from app.identidade.controller import roteador as rotas_identidade
-from app.votacao.controller import roteador as rotas_votacao
 
 app = FastAPI(
     title="API de Simulação de Eleição Eletrônica",
@@ -28,13 +31,14 @@ registrar_tratadores(app)
 registrar_log_de_requisicoes(app)
 
 PREFIXO = "/api/v1"
-app.include_router(rotas_identidade, prefix=PREFIXO)
-app.include_router(rotas_eleicoes, prefix=PREFIXO)
-app.include_router(rotas_candidaturas, prefix=PREFIXO)
-app.include_router(rotas_eleitores, prefix=PREFIXO)
-app.include_router(rotas_candidatos, prefix=PREFIXO)
-app.include_router(rotas_votacao, prefix=PREFIXO)
-app.include_router(rotas_apuracao, prefix=PREFIXO)
+app.include_router(auth_controller.roteador, prefix=PREFIXO)
+app.include_router(eleicao_controller.roteador, prefix=PREFIXO)
+app.include_router(candidatura_controller.roteador_candidaturas, prefix=PREFIXO)
+app.include_router(eleitor_controller.roteador, prefix=PREFIXO)
+app.include_router(candidato_controller.roteador, prefix=PREFIXO)
+app.include_router(partido_controller.roteador, prefix=PREFIXO)
+app.include_router(votacao_controller.roteador, prefix=PREFIXO)
+app.include_router(apuracao_controller.roteador, prefix=PREFIXO)
 
 
 @app.get("/health", tags=["Sistema"], summary="Verifica se a API e o banco estão no ar")

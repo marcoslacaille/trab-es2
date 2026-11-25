@@ -1,4 +1,4 @@
-"""Controller de identidade: login e consulta do usuário logado. Chama o `service`."""
+"""Controller de autenticação: recebe o HTTP e chama o `UsuarioService`."""
 
 from typing import Annotated
 
