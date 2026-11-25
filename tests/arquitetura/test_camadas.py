@@ -1,4 +1,4 @@
-"""TA-01: teste de arquitetura por camada, lendo o código de `app/` com `ast`.
+"""Teste de arquitetura por camada, lendo o código de `app/` com `ast`.
 
 Cada arquivo de `app/` é classificado pela pasta e pelo nome (`services/eleitor_service.py` é o
 service do assunto `eleitor`), e os imports dele são conferidos contra estas regras:
@@ -368,64 +368,35 @@ def _violacoes(regra: Regra, arquivos: list[Path]) -> list[str]:
     return [problema for arquivo in arquivos for problema in regra(arquivo)]
 
 
-def _nome(arquivo: Path) -> str:
-    return arquivo.stem
-
-
 # Direção das camadas: uma regra por linha da tabela ---------------------------------------------
 
-
-@pytest.mark.parametrize("arquivo", _arquivos("controllers"), ids=_nome)
-def test_controller_nao_importa_repository_model_nem_sqlalchemy(arquivo):
-    """O controller só traduz HTTP: recebe o service pronto e não toca no banco."""
-    assert _direcao(arquivo) == []
-
-
-@pytest.mark.parametrize("arquivo", _arquivos("services"), ids=_nome)
-def test_service_nao_importa_controller_schema_dependencies_nem_fastapi(arquivo):
-    """O service não sabe nada de HTTP: fala em DTOs e não conhece rota, JSON nem login."""
-    assert _direcao(arquivo) == []
-
-
-@pytest.mark.parametrize("arquivo", _arquivos("repositories"), ids=_nome)
-def test_repository_nao_importa_service_controller_schema_dependencies_nem_fastapi(arquivo):
-    """O repository só consulta o banco: não conhece as camadas que o usam nem HTTP."""
-    assert _direcao(arquivo) == []
-
-
-@pytest.mark.parametrize("arquivo", _arquivos("schemas"), ids=_nome)
-def test_schema_nao_importa_model_repository_service_controller_nem_sqlalchemy(arquivo):
-    """O schema é o JSON da API: conhece DTOs e enums, mas não as tabelas nem o banco."""
-    assert _direcao(arquivo) == []
+# Uma regra por camada de `PODE_IMPORTAR`, sobre todos os arquivos dela:
+# - controllers: só traduzem HTTP; recebem o service pronto e não tocam no banco;
+# - services: não sabem nada de HTTP; falam em DTOs e não conhecem rota, JSON nem login;
+# - repositories: só consultam o banco; não conhecem as camadas que os usam nem HTTP;
+# - schemas: são o JSON da API; conhecem DTOs e enums, mas não as tabelas nem o banco;
+# - dto: dado puro; só usa `models/enums.py` e outros DTOs;
+# - models: só usam `core/database.py`, `core/validadores.py` e os enums;
+# - core: a base de todas as camadas, não depende de nenhuma delas (os enums valem para todos,
+#   e o `dto` só para `core/cedula.py`).
+CAMADAS_COM_REGRA_DE_DIRECAO = [
+    "controllers",
+    "services",
+    "repositories",
+    "schemas",
+    "dto",
+    "models",
+    "core",
+]
 
 
-@pytest.mark.parametrize("arquivo", _arquivos("dto"), ids=_nome)
-def test_dto_nao_importa_outra_camada(arquivo):
-    """O DTO é dado puro: só usa `models/enums.py` e outros DTOs."""
-    assert _direcao(arquivo) == []
-
-
-@pytest.mark.parametrize("arquivo", _arquivos("models"), ids=_nome)
-def test_model_nao_importa_outra_camada_nem_fastapi(arquivo):
-    """Os models só usam `core/database.py`, `core/validadores.py` e os enums."""
-    assert _direcao(arquivo) == []
-
-
-@pytest.mark.parametrize("arquivo", _arquivos("core"), ids=_nome)
-def test_core_nao_importa_service_controller_repository_schema_nem_dependencies(arquivo):
-    """O `core/` é a base de todas as camadas: não depende de nenhuma delas.
-
-    Os enums valem para todos; o `dto` só para `core/cedula.py`.
-    """
-    assert _direcao(arquivo) == []
+@pytest.mark.parametrize("camada", CAMADAS_COM_REGRA_DE_DIRECAO)
+def test_camada_respeita_a_tabela_de_dependencias(camada):
+    """Nenhum arquivo da camada importa o que a tabela de dependências proíbe."""
+    assert _violacoes(_direcao, _arquivos(camada)) == []
 
 
 # Grafo entre os services ------------------------------------------------------------------------
-
-
-def test_service_so_importa_services_do_grafo():
-    """Um service só depende dos services que o `GRAFO` prevê para ele."""
-    assert _violacoes(_fora_do_grafo, _arquivos("services")) == []
 
 
 def _arestas_reais() -> dict[str, set[str]]:
@@ -465,8 +436,9 @@ def _achar_ciclo(grafo: dict[str, set[str]]) -> list[str] | None:
     return None
 
 
-def test_services_nao_formam_ciclo():
-    """Nem o grafo declarado nem os imports de verdade entre os assuntos formam um ciclo."""
+def test_services_so_dependem_do_grafo_e_sem_ciclo():
+    """Um service só depende dos services do `GRAFO`; nem ele nem os imports reais fazem ciclo."""
+    assert _violacoes(_fora_do_grafo, _arquivos("services")) == []
     assert _achar_ciclo(GRAFO) is None, "o GRAFO declarado tem ciclo"
     assert _achar_ciclo(_arestas_reais()) is None, "os imports reais formam um ciclo"
 
@@ -474,43 +446,44 @@ def test_services_nao_formam_ciclo():
 # Fronteira do assunto ---------------------------------------------------------------------------
 
 
-def test_service_usa_so_o_proprio_repository_e_os_models_do_proprio_assunto():
-    """Para os dados de outro assunto, o service pede ao service dele, nunca ao repository."""
-    assert _violacoes(_repository_ou_model_de_outro_assunto, _arquivos("services")) == []
+def test_nada_atravessa_a_fronteira_do_assunto():
+    """Para os dados de outro assunto, o service pede ao service dele, nunca ao repository.
 
-
-def test_dto_de_outro_assunto_so_nas_arestas_do_grafo():
-    """Services e DTOs só usam como tipo o DTO dos assuntos vizinhos no grafo.
-
-    A exceção é o `UsuarioAutenticado`, que chega a todo service como parâmetro.
+    Services e DTOs só usam como tipo o DTO dos assuntos vizinhos no grafo (a exceção é o
+    `UsuarioAutenticado`, que chega a todo service como parâmetro). Fora dos services, nada
+    atravessa a fronteira do assunto.
     """
-    arquivos = _arquivos("services") + _arquivos("dto")
-    assert _violacoes(_dto_de_outro_assunto_fora_do_grafo, arquivos) == []
+    services = _arquivos("services")
+    fora_dos_services = _arquivos("controllers") + _arquivos("repositories") + _arquivos("schemas")
 
+    violacoes = [
+        *_violacoes(_repository_ou_model_de_outro_assunto, services),
+        *_violacoes(_dto_de_outro_assunto_fora_do_grafo, services + _arquivos("dto")),
+        *_violacoes(_outro_assunto, fora_dos_services),
+    ]
 
-def test_controller_repository_e_schema_so_importam_o_proprio_assunto():
-    """Fora dos services, nada atravessa a fronteira do assunto."""
-    arquivos = _arquivos("controllers") + _arquivos("repositories") + _arquivos("schemas")
-    assert _violacoes(_outro_assunto, arquivos) == []
+    assert violacoes == []
 
 
 # Ocultação de informação ------------------------------------------------------------------------
 
 
-def test_so_usuario_service_e_dependencies_importam_core_security():
-    """Bcrypt e JWT ficam escondidos: só o login e a leitura do token os usam."""
-    assert _violacoes(_security_fora_do_lugar, _todos_os_arquivos()) == []
+def test_security_e_cedula_ficam_escondidas():
+    """Bcrypt e JWT só são usados pelo login e pela leitura do token; a cédula, só pela votação."""
+    arquivos = _todos_os_arquivos()
 
+    violacoes = [
+        *_violacoes(_security_fora_do_lugar, arquivos),
+        *_violacoes(_cedula_fora_do_lugar, arquivos),
+    ]
 
-def test_so_votacao_service_importa_core_cedula():
-    """A cédula assinada é detalhe da votação: nenhuma outra camada a emite nem a lê."""
-    assert _violacoes(_cedula_fora_do_lugar, _todos_os_arquivos()) == []
+    assert violacoes == []
 
 
 # Sem framework e sem import relativo ------------------------------------------------------------
 
 
-def test_dto_e_enums_nao_importam_fastapi_pydantic_nem_sqlalchemy():
+def test_dto_e_enums_nao_importam_framework():
     """DTO é dataclass simples, e os enums são usados por todas as camadas: nenhum conhece HTTP,
     JSON nem banco."""
     arquivos = [*_arquivos("dto"), RAIZ / "models" / "enums.py"]
@@ -525,11 +498,14 @@ def test_nenhum_import_relativo():
 # Sanidade ---------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("pasta", list(ARQUIVOS_ESPERADOS))
-def test_toda_camada_tem_os_arquivos_esperados(pasta):
+def test_toda_camada_tem_os_arquivos_esperados():
     """Sem os arquivos da camada, as regras dela passariam sem testar nada."""
-    existentes = {a.stem.removesuffix(SUFIXOS[pasta]) for a in _arquivos(pasta)}
-    assert sorted(ARQUIVOS_ESPERADOS[pasta] - existentes) == []
+    faltando = {}
+    for pasta, esperados in ARQUIVOS_ESPERADOS.items():
+        existentes = {a.stem.removesuffix(SUFIXOS[pasta]) for a in _arquivos(pasta)}
+        if esperados - existentes:
+            faltando[pasta] = sorted(esperados - existentes)
+    assert faltando == {}
 
 
 # Testes do próprio verificador ------------------------------------------------------------------
@@ -670,12 +646,25 @@ VIOLACOES = [
 ]
 
 
-@pytest.mark.parametrize(("regra", "caminho", "importado", "motivo"), VIOLACOES)
-def test_verificador_acusa_cada_tipo_de_violacao(tmp_path, regra, caminho, importado, motivo):
-    """Para cada tipo de violação, a regra certa acusa o import proibido e só ele."""
-    arquivo = _gravar(tmp_path, caminho, _codigo(importado))
+# Famílias de regras: o que cada arquivo importa (direção, frameworks e imports relativos), a
+# fronteira entre os assuntos e a ocultação de informação.
+FAMILIAS = {
+    "direcao": {"direcao", "framework", "relativo"},
+    "assunto": {"grafo", "repository_e_models", "dto", "assunto"},
+    "ocultacao": {"security", "cedula"},
+}
 
-    assert REGRAS[regra](arquivo, tmp_path) == [f"{caminho} importa {importado} ({motivo})"]
+
+@pytest.mark.parametrize("familia", list(FAMILIAS))
+def test_verificador_acusa_cada_tipo_de_violacao(tmp_path, familia):
+    """Para cada tipo de violação da família, a regra certa acusa o import proibido e só ele."""
+    exemplos = [v for v in VIOLACOES if v[0] in FAMILIAS[familia]]
+    assert {regra for regra, *_ in exemplos} == FAMILIAS[familia]  # nenhuma regra sem exemplo
+
+    for regra, caminho, importado, motivo in exemplos:
+        arquivo = _gravar(tmp_path, caminho, _codigo(importado))
+
+        assert REGRAS[regra](arquivo, tmp_path) == [f"{caminho} importa {importado} ({motivo})"]
 
 
 # O que cada camada pode importar: nenhuma regra acusa estes arquivos.
@@ -739,7 +728,7 @@ def test_verificador_aceita_o_que_a_tabela_permite(tmp_path):
     assert acusacoes == {}
 
 
-def test_verificador_acha_o_ciclo_e_aceita_o_grafo_sem_ciclo():
+def test_verificador_acha_o_ciclo():
     """`_achar_ciclo` devolve o caminho do ciclo, ou `None` quando não há."""
     assert _achar_ciclo({"usuario": {"eleitor"}, "eleitor": {"usuario"}}) == [
         "eleitor",
@@ -750,40 +739,36 @@ def test_verificador_acha_o_ciclo_e_aceita_o_grafo_sem_ciclo():
     assert _achar_ciclo({"a": {"b", "c"}, "b": {"c"}, "c": set()}) is None
 
 
-@pytest.mark.parametrize(
-    ("nome", "esperado"),
-    [
-        ("app.services.eleitor_service.EleitorService", Local("services", "eleitor", "eleitor")),
-        ("app.controllers.auth_controller.roteador", Local("controllers", "auth", "usuario")),
-        ("app.dto.candidatura_dto.NovaCandidaturaDados", Local("dto", "candidatura", "eleicao")),
-        (
-            "app.models.registro_votacao.RegistroVotacao",
-            Local("models", "registro_votacao", "votacao"),
-        ),
-        ("app.models.enums.Cargo", Local("enums")),
-        ("app.core.security.criar_token", Local("core", "security")),
-        ("app.dependencies.obter_usuario_logado", Local("dependencies")),
-        ("app.models", Local("raiz")),
-        ("app.scripts.seed_demo", Local("raiz")),
-        ("fastapi.APIRouter", None),
-    ],
-)
-def test_classificacao_de_cada_nome_importado(nome, esperado):
-    """Cada nome importado cai na camada e no assunto certos."""
-    assert _local(nome) == esperado
+CLASSIFICACAO = [
+    ("app.services.eleitor_service.EleitorService", Local("services", "eleitor", "eleitor")),
+    ("app.controllers.auth_controller.roteador", Local("controllers", "auth", "usuario")),
+    ("app.dto.candidatura_dto.NovaCandidaturaDados", Local("dto", "candidatura", "eleicao")),
+    (
+        "app.models.registro_votacao.RegistroVotacao",
+        Local("models", "registro_votacao", "votacao"),
+    ),
+    ("app.models.enums.Cargo", Local("enums")),
+    ("app.core.security.criar_token", Local("core", "security")),
+    ("app.dependencies.obter_usuario_logado", Local("dependencies")),
+    ("app.models", Local("raiz")),
+    ("app.scripts.seed_demo", Local("raiz")),
+    ("fastapi.APIRouter", None),
+]
+
+FORA_DO_MAPA = [
+    "app.services.foo_service",  # assunto que não existe
+    "app.services.eleitor",  # sem o sufixo da camada
+    "app.models.foo",  # entidade que não existe
+    "app.helpers.foo",  # pasta que não existe
+    "app.services.EleitorService",  # nome importado do pacote, não do arquivo
+]
 
 
-@pytest.mark.parametrize(
-    "nome",
-    [
-        "app.services.foo_service",  # assunto que não existe
-        "app.services.eleitor",  # sem o sufixo da camada
-        "app.models.foo",  # entidade que não existe
-        "app.helpers.foo",  # pasta que não existe
-        "app.services.EleitorService",  # nome importado do pacote, não do arquivo
-    ],
-)
-def test_classificacao_recusa_o_que_nao_esta_no_mapa(nome):
-    """Um arquivo fora do mapa precisa falhar alto, em vez de ficar sem verificação."""
-    with pytest.raises(ValueError, match="sem classificação"):
-        _local(nome)
+def test_classificacao_de_cada_nome_importado():
+    """Cada nome importado cai na camada e no assunto certos; o que está fora do mapa falha alto."""
+    for nome, esperado in CLASSIFICACAO:
+        assert _local(nome) == esperado, nome
+
+    for nome in FORA_DO_MAPA:
+        with pytest.raises(ValueError, match="sem classificação"):
+            _local(nome)

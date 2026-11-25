@@ -1,6 +1,5 @@
 """Fábricas de dados e helpers de login para os testes."""
 
-from datetime import datetime
 from itertools import count
 
 import pytest
@@ -41,13 +40,11 @@ def gerar_cpf(semente: int) -> str:
         semente += 1
 
 
-def criar_chefe(
-    cpf: str = CPF_CHEFE, senha: str = SENHA_CHEFE, agora_: datetime | None = None
-) -> int:
+def criar_chefe() -> int:
     """Cria o Chefe da Seção direto pelo serviço de identidade, com commit. Devolve o id."""
     with SessionLocal() as sessao:
         usuario_id = UsuarioService(sessao).criar_credencial(
-            cpf, "Chefe da Seção", senha, Perfil.CHEFE_SECAO, agora_ or agora()
+            CPF_CHEFE, "Chefe da Seção", SENHA_CHEFE, Perfil.CHEFE_SECAO, agora()
         )
         sessao.commit()
     return usuario_id
@@ -191,7 +188,7 @@ def eleicao_aberta_com_candidatos(cliente: TestClient, cabecalho_chefe: dict[str
     """Eleição de 25/11/2026 (08:00 às 17:00), com candidaturas, já ABERTA (relógio às 10:00).
 
     Presidente 10 e 20, Senador 101 e 202, todos por um mesmo partido. Devolve os ids:
-    `{"eleicao_id": 1, "partido_id": 1, "candidaturas": {"PRESIDENTE": {"10": 1, "20": 2},
+    `{"eleicao_id": 1, "candidaturas": {"PRESIDENTE": {"10": 1, "20": 2},
     "SENADOR": {"101": 3, "202": 4}}}`.
     """
     eleicao = nova_eleicao(cliente, cabecalho_chefe)
@@ -214,7 +211,7 @@ def eleicao_aberta_com_candidatos(cliente: TestClient, cabecalho_chefe: dict[str
         candidaturas.setdefault(cargo, {})[numero] = resposta.json()["id"]
     abertura = cliente.post(f"/api/v1/eleicoes/{eleicao_id}/abertura", headers=cabecalho_chefe)
     assert abertura.status_code == 200, abertura.text
-    return {"eleicao_id": eleicao_id, "partido_id": partido_id, "candidaturas": candidaturas}
+    return {"eleicao_id": eleicao_id, "candidaturas": candidaturas}
 
 
 def votar(

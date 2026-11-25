@@ -31,4 +31,4 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: ruff check .
       - run: ruff format --check .
-      - run: pytest --cov=app --cov-report=term-missing
+      - run: pytest --cov=app --cov-report=term-missing --cov-fail-under=96

@@ -33,7 +33,7 @@ def test_semear_cria_o_cenario_e_repetir_nao_altera_nada(capsys):
     assert {t: _contar(t) for t in totais} == totais
 
 
-def test_d147_falha_no_meio_nao_grava_nada_e_permite_repetir(capsys):
+def test_falha_no_meio_nao_grava_nada_e_permite_repetir(capsys):
     """Se uma regra barra o cenário no meio, nada fica gravado e dá para repetir depois."""
     with SessionLocal() as sessao:  # já existe uma eleição de 1º turno hoje: o seed vai esbarrar
         EleicaoService(sessao).criar_eleicao(

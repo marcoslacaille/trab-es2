@@ -108,7 +108,7 @@ def cliente_de_erros():
     return TestClient(criar_app_de_teste(), raise_server_exceptions=False)
 
 
-def test_erro_de_negocio_responde_409_no_formato_padrao(cliente_de_erros):
+def test_erro_de_negocio_usa_o_formato_padrao_e_o_status_da_classe(cliente_de_erros):
     """ErroDeNegocio vira o status da classe e o corpo {"erro": {...}}."""
     resposta = cliente_de_erros.get("/erro-com-detalhes")
 
@@ -121,45 +121,37 @@ def test_erro_de_negocio_responde_409_no_formato_padrao(cliente_de_erros):
         }
     }
 
-
-@pytest.mark.parametrize(
-    ("tipo", "status"),
-    [
-        ("nao-autenticado", 401),
-        ("acesso-negado", 403),
-        ("nao-encontrado", 404),
-        ("conflito", 409),
-        ("dados-invalidos", 422),
-    ],
-)
-def test_cada_erro_de_negocio_usa_o_status_da_sua_classe(cliente_de_erros, tipo, status):
-    """401, 403, 404, 409 e 422 saem das subclasses, com detalhes vazios por padrão."""
-    resposta = cliente_de_erros.get(f"/erros/{tipo}")
-
-    assert resposta.status_code == status
-    assert resposta.json() == {
-        "erro": {"codigo": "CODIGO_DO_TESTE", "mensagem": "Mensagem do erro.", "detalhes": {}}
+    # 401, 403, 404, 409 e 422 saem das subclasses, com detalhes vazios por padrão.
+    status_por_tipo = {
+        "nao-autenticado": 401,
+        "acesso-negado": 403,
+        "nao-encontrado": 404,
+        "conflito": 409,
+        "dados-invalidos": 422,
     }
+    for tipo, status in status_por_tipo.items():
+        resposta = cliente_de_erros.get(f"/erros/{tipo}")
+
+        assert resposta.status_code == status, tipo
+        assert resposta.json() == {
+            "erro": {"codigo": "CODIGO_DO_TESTE", "mensagem": "Mensagem do erro.", "detalhes": {}}
+        }
 
 
-def test_nao_autenticado_envia_o_cabecalho_www_authenticate(cliente_de_erros):
-    """RN-06: o 401 diz ao cliente que o esquema de autenticação é Bearer."""
-    resposta = cliente_de_erros.get("/erros/nao-autenticado")
+def test_so_o_401_envia_o_cabecalho_www_authenticate(cliente_de_erros):
+    """RN-06: o 401 diz que o esquema é Bearer; os outros erros de negócio não têm o cabeçalho."""
+    nao_autenticado = cliente_de_erros.get("/erros/nao-autenticado")
 
-    assert resposta.status_code == 401
-    assert resposta.headers["WWW-Authenticate"] == "Bearer"
+    assert nao_autenticado.status_code == 401
+    assert nao_autenticado.headers["WWW-Authenticate"] == "Bearer"
+    for tipo in ("acesso-negado", "nao-encontrado", "conflito", "dados-invalidos"):
+        resposta = cliente_de_erros.get(f"/erros/{tipo}")
 
-
-@pytest.mark.parametrize("tipo", ["acesso-negado", "nao-encontrado", "conflito", "dados-invalidos"])
-def test_somente_o_401_envia_o_cabecalho_www_authenticate(cliente_de_erros, tipo):
-    """RN-06: os outros erros de negócio não levam o cabeçalho de autenticação."""
-    resposta = cliente_de_erros.get(f"/erros/{tipo}")
-
-    assert "WWW-Authenticate" not in resposta.headers
+        assert "WWW-Authenticate" not in resposta.headers, tipo
 
 
-def test_cpf_invalido_no_corpo_responde_422_com_o_campo_e_a_mensagem(cliente_de_erros):
-    """O 422 lista os campos com problema; o prefixo 'Value error' do Pydantic sai."""
+def test_validacao_lista_os_campos_com_problema(cliente_de_erros):
+    """O 422 lista os campos com problema, sem o prefixo 'Value error', 'body' nem 'query'."""
     resposta = cliente_de_erros.post("/validacao", json={"cpf": "123", "idade": 20})
 
     assert resposta.status_code == 422
@@ -171,30 +163,23 @@ def test_cpf_invalido_no_corpo_responde_422_com_o_campo_e_a_mensagem(cliente_de_
         }
     }
 
-
-def test_validacao_lista_todos_os_campos_com_problema(cliente_de_erros):
-    """Campo faltando, tipo errado e campo extra aparecem juntos, sem o prefixo 'body'."""
-    resposta = cliente_de_erros.post("/validacao", json={"idade": "abc", "perfil": "CHEFE_SECAO"})
-
-    campos = resposta.json()["erro"]["detalhes"]["campos"]
-    assert resposta.status_code == 422
-    assert resposta.json()["erro"]["codigo"] == "DADOS_INVALIDOS"
+    # Campo faltando, tipo errado e campo extra aparecem juntos.
+    varios = cliente_de_erros.post("/validacao", json={"idade": "abc", "perfil": "CHEFE_SECAO"})
+    campos = varios.json()["erro"]["detalhes"]["campos"]
+    assert varios.status_code == 422
+    assert varios.json()["erro"]["codigo"] == "DADOS_INVALIDOS"
     assert {item["campo"] for item in campos} == {"cpf", "idade", "perfil"}
     assert all(item["mensagem"] for item in campos)
 
-
-def test_validacao_de_parametro_da_consulta_nao_leva_o_prefixo_query(cliente_de_erros):
-    """O nome do campo é o do parâmetro ('pagina'), sem dizer de onde ele veio."""
-    resposta = cliente_de_erros.get("/consulta", params={"pagina": 0})
-
-    campos = resposta.json()["erro"]["detalhes"]["campos"]
-    assert resposta.status_code == 422
-    assert [item["campo"] for item in campos] == ["pagina"]
+    # O parâmetro de consulta tem o nome do parâmetro ('pagina'), sem dizer de onde veio.
+    consulta = cliente_de_erros.get("/consulta", params={"pagina": 0})
+    assert consulta.status_code == 422
+    assert [item["campo"] for item in consulta.json()["erro"]["detalhes"]["campos"]] == ["pagina"]
 
 
-@pytest.mark.parametrize(
-    ("restricao", "codigo"),
-    [
+def test_integridade_e_traduzida_pelo_nome_da_restricao(cliente_de_erros):
+    """Cada restrição do banco vira um 409 com o código da tabela de tradução."""
+    traducao = [
         ("uq_usuarios_cpf", "CPF_JA_CADASTRADO"),
         ("uq_eleitores_titulo_eleitor", "TITULO_JA_CADASTRADO"),
         ("uq_partidos_sigla", "PARTIDO_DUPLICADO"),
@@ -207,37 +192,26 @@ def test_validacao_de_parametro_da_consulta_nao_leva_o_prefixo_query(cliente_de_
         ("pk_registros_votacao", "VOTO_JA_REGISTRADO"),
         ("fk_registros_votacao_eleitor_id_eleitores", "EXCLUSAO_BLOQUEADA"),
         ("fk_candidaturas_candidato_id_candidatos", "EXCLUSAO_BLOQUEADA"),
-    ],
-)
-def test_integridade_e_traduzida_pelo_nome_da_restricao(cliente_de_erros, restricao, codigo):
-    """Cada restrição do banco vira um 409 com o código da tabela de tradução."""
-    resposta = cliente_de_erros.get(f"/integridade/{restricao}")
+        # Restrição que não está na tabela, e erro do driver sem o nome da restrição.
+        ("uq_restricao_que_nao_existe", "CONFLITO_DE_DADOS"),
+    ]
 
-    assert resposta.status_code == 409
-    assert resposta.json()["erro"]["codigo"] == codigo
-    assert resposta.json()["erro"]["detalhes"] == {}
+    for restricao, codigo in traducao:
+        resposta = cliente_de_erros.get(f"/integridade/{restricao}")
 
+        assert resposta.status_code == 409, restricao
+        assert resposta.json()["erro"]["codigo"] == codigo, restricao
+        assert resposta.json()["erro"]["detalhes"] == {}, restricao
 
-def test_integridade_de_restricao_desconhecida_vira_conflito_de_dados(cliente_de_erros):
-    """Restrição que não está na tabela cai no código genérico CONFLITO_DE_DADOS."""
-    resposta = cliente_de_erros.get("/integridade/uq_restricao_que_nao_existe")
-
-    assert resposta.status_code == 409
-    assert resposta.json()["erro"]["codigo"] == "CONFLITO_DE_DADOS"
+    sem_nome = cliente_de_erros.get("/integridade-sem-nome")
+    assert sem_nome.status_code == 409
+    assert sem_nome.json()["erro"]["codigo"] == "CONFLITO_DE_DADOS"
 
 
-def test_integridade_sem_nome_de_restricao_vira_conflito_de_dados(cliente_de_erros):
-    """Se o driver não informa a restrição, o código também é CONFLITO_DE_DADOS."""
-    resposta = cliente_de_erros.get("/integridade-sem-nome")
-
-    assert resposta.status_code == 409
-    assert resposta.json()["erro"]["codigo"] == "CONFLITO_DE_DADOS"
-
-
-def test_excecao_inesperada_responde_500_sem_vazar_a_mensagem_original(
+def test_excecao_inesperada_responde_500_sem_vazar_a_mensagem(
     cliente_de_erros, caplog, monkeypatch
 ):
-    """Proteção 'Erros sem vazamento': a resposta é genérica e o detalhe fica só no log."""
+    """Erros sem vazamento: a resposta é genérica e o detalhe fica só no log."""
     # O migrations/env.py chama logging.config.fileConfig (fixture banco_migrado), que desliga
     # os loggers já criados. Só o teste religa o logger; o app real nunca chama fileConfig.
     monkeypatch.setattr(registro, "disabled", False)
@@ -258,12 +232,12 @@ def test_excecao_inesperada_responde_500_sem_vazar_a_mensagem_original(
     assert "segredo123" in caplog.text
 
 
-def test_rota_inexistente_responde_404_no_formato_padrao(cliente):
-    """O 404 do framework também usa {"erro": {...}}, e não {"detail": ...}."""
-    resposta = cliente.get("/rota-que-nao-existe")
+def test_erros_do_framework_usam_o_formato_padrao(cliente, cliente_de_erros):
+    """O 404, o 405 e os outros erros do framework também usam {"erro": {...}}."""
+    nao_encontrada = cliente.get("/rota-que-nao-existe")
 
-    assert resposta.status_code == 404
-    assert resposta.json() == {
+    assert nao_encontrada.status_code == 404
+    assert nao_encontrada.json() == {
         "erro": {
             "codigo": "ROTA_NAO_ENCONTRADA",
             "mensagem": "Rota não encontrada.",
@@ -271,27 +245,20 @@ def test_rota_inexistente_responde_404_no_formato_padrao(cliente):
         }
     }
 
-
-def test_metodo_nao_permitido_responde_405_no_formato_padrao(cliente):
-    """O 405 do framework usa o formato padrão e mantém o cabeçalho Allow."""
-    resposta = cliente.delete("/health")
-
-    assert resposta.status_code == 405
-    assert resposta.json() == {
+    nao_permitido = cliente.delete("/health")
+    assert nao_permitido.status_code == 405
+    assert nao_permitido.json() == {
         "erro": {
             "codigo": "METODO_NAO_PERMITIDO",
             "mensagem": "Método não permitido para esta rota.",
             "detalhes": {},
         }
     }
-    assert "GET" in resposta.headers["Allow"]
+    assert "GET" in nao_permitido.headers["Allow"]
 
-
-def test_outro_erro_http_do_framework_vira_erro_http(cliente_de_erros):
-    """Qualquer outro status do framework vira ERRO_HTTP, sem repassar o texto."""
-    resposta = cliente_de_erros.get("/status-http/400")
-
-    assert resposta.status_code == 400
-    assert resposta.json() == {
+    # Qualquer outro status do framework vira ERRO_HTTP, sem repassar o texto.
+    outro = cliente_de_erros.get("/status-http/400")
+    assert outro.status_code == 400
+    assert outro.json() == {
         "erro": {"codigo": "ERRO_HTTP", "mensagem": "Erro na requisição.", "detalhes": {}}
     }

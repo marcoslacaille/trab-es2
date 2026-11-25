@@ -1,4 +1,4 @@
-"""TI-55 a TI-62: apuração parcial e resultado final pela API (RN-70 a RN-79)."""
+"""Apuração parcial e resultado final pela API (RN-70 a RN-79)."""
 
 from tests.auxiliares import (
     SENHA_CANDIDATO,
@@ -66,8 +66,20 @@ def _votos(cargo: dict) -> dict[str, int]:
     return {c["numero"]: c["votos"] for c in cargo["candidatos"]}
 
 
-def test_ti55_parcial_muda_a_cada_voto_confirmado(cliente, cabecalho_chefe):
-    """TI-55 / RN-74: a parcial é recalculada a cada consulta (0 → 1 → 2 votos)."""
+def _novo_candidato_logado(cliente, cabecalho_chefe) -> dict[str, str]:
+    resposta = novo_candidato(cliente, cabecalho_chefe)
+    assert resposta.status_code == 201, resposta.text
+    return login(cliente, resposta.json()["cpf"], SENHA_CANDIDATO)
+
+
+def _candidato_da_candidatura(cliente, cabecalho_chefe, eleicao_id: int, numero: str) -> int:
+    resposta = cliente.get(f"/api/v1/eleicoes/{eleicao_id}/candidaturas", headers=cabecalho_chefe)
+    assert resposta.status_code == 200, resposta.text
+    return next(c["candidato"]["id"] for c in resposta.json() if c["numero"] == numero)
+
+
+def test_parcial_muda_a_cada_voto_confirmado(cliente, cabecalho_chefe):
+    """RN-74: a parcial é recalculada a cada consulta (0 → 1 → 2 votos)."""
     eleicao = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)["eleicao_id"]
     eleitor_1 = _novo_eleitor_com_login(cliente, cabecalho_chefe)
     eleitor_2 = _novo_eleitor_com_login(cliente, cabecalho_chefe)
@@ -84,8 +96,8 @@ def test_ti55_parcial_muda_a_cada_voto_confirmado(cliente, cabecalho_chefe):
     assert total() == 2
 
 
-def test_ti56_parcial_com_eleicao_agendada_ou_encerrada_da_409(cliente, cabecalho_chefe):
-    """TI-56 / RN-70: parcial só com eleição ABERTA."""
+def test_apuracao_fora_do_status_certo_responde_409(cliente, cabecalho_chefe):
+    """RN-70: parcial só com eleição ABERTA e resultado final só com ENCERRADA."""
     agendada = nova_eleicao(cliente, cabecalho_chefe, data="2026-12-25").json()["id"]
     resposta = cliente.get(f"{BASE}/{agendada}/parcial", headers=cabecalho_chefe)
     assert resposta.status_code == 409
@@ -93,6 +105,12 @@ def test_ti56_parcial_com_eleicao_agendada_ou_encerrada_da_409(cliente, cabecalh
     assert resposta.json()["erro"]["detalhes"]["status"] == "AGENDADA"
 
     aberta = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)["eleicao_id"]
+    resposta = cliente.get(f"{BASE}/{aberta}/resultado", headers=cabecalho_chefe)
+    assert resposta.status_code == 409
+    assert _codigo(resposta) == "APURACAO_INDISPONIVEL"
+    assert resposta.json()["erro"]["detalhes"]["status"] == "ABERTA"
+    assert cliente.get(f"{BASE}/999/resultado", headers=cabecalho_chefe).status_code == 404
+
     _encerrar(cliente, cabecalho_chefe, aberta)
     resposta = cliente.get(f"{BASE}/{aberta}/parcial", headers=cabecalho_chefe)
     assert resposta.status_code == 409
@@ -102,8 +120,8 @@ def test_ti56_parcial_com_eleicao_agendada_ou_encerrada_da_409(cliente, cabecalh
     assert detalhes["resultado"] == f"/api/v1/apuracao/eleicoes/{aberta}/resultado"
 
 
-def test_ti57_candidato_ve_so_o_seu_cargo(cliente, cabecalho_chefe):
-    """TI-57 / RN-72: só o próprio cargo; outro cargo ou sem candidatura → 403."""
+def test_candidato_ve_so_o_cargo_da_sua_candidatura(cliente, cabecalho_chefe):
+    """RN-72: só o próprio cargo; outro cargo ou sem candidatura → 403."""
     eleicao, candidatos = _montar_eleicao(
         cliente,
         cabecalho_chefe,
@@ -127,8 +145,8 @@ def test_ti57_candidato_ve_so_o_seu_cargo(cliente, cabecalho_chefe):
     assert _codigo(barrado) == "SEM_CANDIDATURA_NA_ELEICAO"
 
 
-def test_ti58_eleitor_e_chefe_veem_todos_os_cargos(cliente, cabecalho_chefe):
-    """TI-58 / RN-71: Eleitor e Chefe veem a parcial de todos os cargos."""
+def test_eleitor_e_chefe_veem_todos_os_cargos(cliente, cabecalho_chefe):
+    """RN-71: Eleitor e Chefe veem a parcial de todos os cargos."""
     eleicao = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)["eleicao_id"]
     eleitor = _novo_eleitor_com_login(cliente, cabecalho_chefe)
 
@@ -153,25 +171,24 @@ def test_ti58_eleitor_e_chefe_veem_todos_os_cargos(cliente, cabecalho_chefe):
     assert cliente.get(f"{BASE}/{eleicao}/parcial").status_code == 401
 
 
-def test_ti59_resultado_com_eleicao_aberta_da_409(cliente, cabecalho_chefe):
-    """TI-59 / RN-70: resultado final só com eleição ENCERRADA."""
+def test_resultado_final_traz_votos_percentuais_e_o_mais_votado(cliente, cabecalho_chefe, relogio):
+    """RN-73 a 76 e 79: votos, percentuais, brancos, nulos, mais votado e comparecimento.
+
+    Há 5 eleitores aptos (cadastrados antes da abertura) e 4 votantes. Um 6º eleitor é
+    cadastrado depois da abertura, com o relógio já adiantado: ele não entra nos aptos (RN-53),
+    e a conta continua 5 aptos, 4 votantes e 1 abstenção.
+    """
+    eleitores = [_novo_eleitor_com_login(cliente, cabecalho_chefe) for _ in range(5)]
     eleicao = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)["eleicao_id"]
-    resposta = cliente.get(f"{BASE}/{eleicao}/resultado", headers=cabecalho_chefe)
-
-    assert resposta.status_code == 409
-    assert _codigo(resposta) == "APURACAO_INDISPONIVEL"
-    assert resposta.json()["erro"]["detalhes"]["status"] == "ABERTA"
-    assert cliente.get(f"{BASE}/999/resultado", headers=cabecalho_chefe).status_code == 404
-
-
-def test_ti60_resultado_final_com_votos_percentuais_e_mais_votado(cliente, cabecalho_chefe):
-    """TI-60 / RN-73 a 76: votos, percentuais, brancos, nulos e mais votado por cargo."""
-    eleicao = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)["eleicao_id"]
-    eleitores = [_novo_eleitor_com_login(cliente, cabecalho_chefe) for _ in range(4)]
+    relogio.avancar(minutes=1)
+    _novo_eleitor_com_login(cliente, cabecalho_chefe)  # cadastrado depois da abertura
     for eleitor, numero in zip(eleitores[:3], ["10", "10", "20"], strict=True):
         assert votar(cliente, eleitor, eleicao, "PRESIDENTE", numero).status_code == 201
     assert votar(cliente, eleitores[3], eleicao, "PRESIDENTE", branco=True).status_code == 201
     assert votar(cliente, eleitores[0], eleicao, "SENADOR", "999").status_code == 201  # nulo
+    comparecimento = {"eleitores_aptos": 5, "votantes": 4, "abstencao": 1}
+    parcial = cliente.get(f"{BASE}/{eleicao}/parcial", headers=cabecalho_chefe).json()
+    assert parcial["comparecimento"] == comparecimento
     _encerrar(cliente, cabecalho_chefe, eleicao)
 
     for cabecalho in (cabecalho_chefe, eleitores[0]):
@@ -180,6 +197,7 @@ def test_ti60_resultado_final_com_votos_percentuais_e_mais_votado(cliente, cabec
         corpo = resposta.json()
         assert corpo["tipo"] == "FINAL"
         assert corpo["status_eleicao"] == "ENCERRADA"
+        assert corpo["comparecimento"] == comparecimento
 
         presidente = _cargo(corpo, "PRESIDENTE")
         assert (presidente["total_votos"], presidente["votos_validos"]) == (4, 3)
@@ -193,6 +211,7 @@ def test_ti60_resultado_final_com_votos_percentuais_e_mais_votado(cliente, cabec
         assert linhas == [("10", 2, "66.67"), ("20", 1, "33.33")]
 
         senador = _cargo(corpo, "SENADOR")
+        assert senador["total_votos"] == 1
         assert senador["nulos"] == 1 and senador["votos_validos"] == 0
         assert senador["situacao"] == "SEM_VOTOS_VALIDOS"
         assert senador["mais_votado"] is None
@@ -202,68 +221,12 @@ def test_ti60_resultado_final_com_votos_percentuais_e_mais_votado(cliente, cabec
     assert cliente.get(f"{BASE}/{eleicao}/resultado", headers=candidato).status_code == 200
 
 
-def test_ti61_empate_no_resultado_e_decidido_pelo_mais_idoso(cliente, cabecalho_chefe):
-    """TI-61 / RN-77: mesmo número de votos → vence o mais idoso (DESEMPATE_POR_IDADE)."""
-    eleicao, _ = _montar_eleicao(
-        cliente,
-        cabecalho_chefe,
-        [("PRESIDENTE", "10", "1980-06-01"), ("PRESIDENTE", "20", "1955-02-10")],
-    )
-    eleitores = [_novo_eleitor_com_login(cliente, cabecalho_chefe) for _ in range(2)]
-    assert votar(cliente, eleitores[0], eleicao, "PRESIDENTE", "10").status_code == 201
-    assert votar(cliente, eleitores[1], eleicao, "PRESIDENTE", "20").status_code == 201
-    _encerrar(cliente, cabecalho_chefe, eleicao)
+def test_desempate_usa_a_data_de_nascimento_gravada_na_abertura(cliente, cabecalho_chefe):
+    """RN-75 e RN-77: o empate vai para o mais idoso, com os dados gravados na abertura.
 
-    corpo = cliente.get(f"{BASE}/{eleicao}/resultado", headers=cabecalho_chefe).json()
-    presidente = _cargo(corpo, "PRESIDENTE")
-    assert presidente["situacao"] == "DEFINIDO"
-    assert presidente["criterio"] == "DESEMPATE_POR_IDADE"
-    assert presidente["mais_votado"]["numero"] == "20"
-    assert _votos(presidente) == {"10": 1, "20": 1}
-
-
-def test_ti62_comparecimento_aptos_votantes_e_abstencao(cliente, cabecalho_chefe, relogio):
-    """TI-62 / RN-79: aptos (cadastrados antes da abertura), votantes e abstenção.
-
-    O 4º eleitor é cadastrado depois da abertura, com o relógio já adiantado: ele não entra
-    nos aptos (RN-53), e a conta continua 3 aptos, 2 votantes e 1 abstenção.
-    """
-    eleitores = [_novo_eleitor_com_login(cliente, cabecalho_chefe) for _ in range(3)]
-    eleicao = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)["eleicao_id"]
-    relogio.avancar(minutes=1)
-    _novo_eleitor_com_login(cliente, cabecalho_chefe)  # cadastrado depois da abertura
-    assert votar(cliente, eleitores[0], eleicao, "PRESIDENTE", "10").status_code == 201
-    assert votar(cliente, eleitores[0], eleicao, "SENADOR", "101").status_code == 201
-    assert votar(cliente, eleitores[1], eleicao, "PRESIDENTE", branco=True).status_code == 201
-
-    parcial = cliente.get(f"{BASE}/{eleicao}/parcial", headers=cabecalho_chefe).json()
-    assert parcial["comparecimento"] == {"eleitores_aptos": 3, "votantes": 2, "abstencao": 1}
-
-    _encerrar(cliente, cabecalho_chefe, eleicao)
-    final = cliente.get(f"{BASE}/{eleicao}/resultado", headers=cabecalho_chefe).json()
-    assert final["comparecimento"] == {"eleitores_aptos": 3, "votantes": 2, "abstencao": 1}
-    assert _cargo(final, "PRESIDENTE")["total_votos"] == 2
-    assert _cargo(final, "SENADOR")["total_votos"] == 1
-
-
-def _novo_candidato_logado(cliente, cabecalho_chefe) -> dict[str, str]:
-    resposta = novo_candidato(cliente, cabecalho_chefe)
-    assert resposta.status_code == 201, resposta.text
-    return login(cliente, resposta.json()["cpf"], SENHA_CANDIDATO)
-
-
-def _candidato_da_candidatura(cliente, cabecalho_chefe, eleicao_id: int, numero: str) -> int:
-    resposta = cliente.get(f"/api/v1/eleicoes/{eleicao_id}/candidaturas", headers=cabecalho_chefe)
-    assert resposta.status_code == 200, resposta.text
-    return next(c["candidato"]["id"] for c in resposta.json() if c["numero"] == numero)
-
-
-def test_desempate_do_resultado_nao_muda_se_o_nascimento_for_editado_depois(
-    cliente, cabecalho_chefe
-):
-    """RN-77: o desempate por idade usa a data de nascimento gravada na abertura.
-
-    Sem o retrato, deixar o candidato 20 "mais velho" depois do fim trocava o mais votado.
+    Depois da abertura, editar a data de nascimento ou o nome de urna do candidato não muda a
+    apuração: sem isso, deixar o candidato 20 "mais velho" depois do fim trocava o mais votado.
+    A edição continua valendo para o candidato e para as eleições ainda AGENDADAS.
     """
     eleicao, _ = _montar_eleicao(
         cliente,
@@ -274,45 +237,21 @@ def test_desempate_do_resultado_nao_muda_se_o_nascimento_for_editado_depois(
     eleitor_2 = _novo_eleitor_com_login(cliente, cabecalho_chefe)
     assert votar(cliente, eleitor_1, eleicao, "PRESIDENTE", "10").status_code == 201
     assert votar(cliente, eleitor_2, eleicao, "PRESIDENTE", "20").status_code == 201
-    _encerrar(cliente, cabecalho_chefe, eleicao)
+    candidato_10 = _candidato_da_candidatura(cliente, cabecalho_chefe, eleicao, "10")
     candidato_20 = _candidato_da_candidatura(cliente, cabecalho_chefe, eleicao, "20")
+    nome_da_abertura = cliente.get(f"/api/v1/candidatos/{candidato_10}", headers=cabecalho_chefe)
+    nome_da_abertura = nome_da_abertura.json()["nome_urna"]
 
+    agendada = nova_eleicao(cliente, cabecalho_chefe, data="2026-11-26").json()["id"]
+    nova = nova_candidatura(cliente, cabecalho_chefe, agendada, candidato_id=candidato_10)
+    assert nova.status_code == 201, nova.text
     edicao = cliente.patch(
-        f"/api/v1/candidatos/{candidato_20}",
-        json={"data_nascimento": "1940-01-01"},
+        f"/api/v1/candidatos/{candidato_10}",
+        json={"nome_urna": "Nome Novo"},
         headers=cabecalho_chefe,
     )
-
     assert edicao.status_code == 200, edicao.text
-    presidente = _cargo(
-        cliente.get(f"{BASE}/{eleicao}/resultado", headers=cabecalho_chefe).json(), "PRESIDENTE"
-    )
-    assert presidente["criterio"] == "DESEMPATE_POR_IDADE"
-    assert presidente["mais_votado"]["numero"] == "10"
-
-
-def test_nome_de_urna_editado_depois_da_abertura_so_vale_para_eleicao_agendada(
-    cliente, cabecalho_chefe
-):
-    """RN-75: cédula, parcial e resultado mostram o nome de urna da abertura.
-
-    A edição continua valendo para o candidato e para as eleições ainda AGENDADAS.
-    """
-    eleicao, _ = _montar_eleicao(cliente, cabecalho_chefe, [("PRESIDENTE", "10", "1950-01-01")])
-    candidato = _candidato_da_candidatura(cliente, cabecalho_chefe, eleicao, "10")
-    nome_da_abertura = cliente.get(f"/api/v1/candidatos/{candidato}", headers=cabecalho_chefe)
-    nome_da_abertura = nome_da_abertura.json()["nome_urna"]
-    agendada = nova_eleicao(cliente, cabecalho_chefe, data="2026-11-26").json()["id"]
-    nova = nova_candidatura(cliente, cabecalho_chefe, agendada, candidato_id=candidato)
-    assert nova.status_code == 201, nova.text
-    eleitor = _novo_eleitor_com_login(cliente, cabecalho_chefe)
-
-    edicao = cliente.patch(
-        f"/api/v1/candidatos/{candidato}", json={"nome_urna": "Nome Novo"}, headers=cabecalho_chefe
-    )
-
-    assert edicao.status_code == 200, edicao.text
-    cedula = cliente.get(f"/api/v1/votacao/eleicoes/{eleicao}/cedula", headers=eleitor).json()
+    cedula = cliente.get(f"/api/v1/votacao/eleicoes/{eleicao}/cedula", headers=eleitor_1).json()
     assert cedula["cargos"][0]["candidatos"][0]["nome_urna"] == nome_da_abertura
     parcial = cliente.get(f"{BASE}/{eleicao}/parcial", headers=cabecalho_chefe).json()
     assert _cargo(parcial, "PRESIDENTE")["candidatos"][0]["nome_urna"] == nome_da_abertura
@@ -320,7 +259,23 @@ def test_nome_de_urna_editado_depois_da_abertura_so_vale_para_eleicao_agendada(
         f"/api/v1/eleicoes/{agendada}/candidaturas", headers=cabecalho_chefe
     ).json()
     assert da_agendada[0]["candidato"]["nome_urna"] == "Nome Novo"
+
     _encerrar(cliente, cabecalho_chefe, eleicao)
-    final = cliente.get(f"{BASE}/{eleicao}/resultado", headers=cabecalho_chefe).json()
-    assert _cargo(final, "PRESIDENTE")["mais_votado"] is None
-    assert _cargo(final, "PRESIDENTE")["candidatos"][0]["nome_urna"] == nome_da_abertura
+    corpo = cliente.get(f"{BASE}/{eleicao}/resultado", headers=cabecalho_chefe).json()
+    presidente = _cargo(corpo, "PRESIDENTE")
+    assert presidente["situacao"] == "DEFINIDO"
+    assert presidente["criterio"] == "DESEMPATE_POR_IDADE"
+    assert presidente["mais_votado"]["numero"] == "10"
+    assert _votos(presidente) == {"10": 1, "20": 1}
+    assert presidente["candidatos"][0]["nome_urna"] == nome_da_abertura
+
+    edicao = cliente.patch(
+        f"/api/v1/candidatos/{candidato_20}",
+        json={"data_nascimento": "1940-01-01"},
+        headers=cabecalho_chefe,
+    )
+    assert edicao.status_code == 200, edicao.text
+    depois = cliente.get(f"{BASE}/{eleicao}/resultado", headers=cabecalho_chefe).json()
+    presidente = _cargo(depois, "PRESIDENTE")
+    assert presidente["criterio"] == "DESEMPATE_POR_IDADE"
+    assert presidente["mais_votado"]["numero"] == "10"

@@ -1,4 +1,4 @@
-"""TI-74: o roteiro da demonstração, de ponta a ponta."""
+"""O roteiro da demonstração, de ponta a ponta."""
 
 from tests.auxiliares import (
     SENHA_CANDIDATO,
@@ -135,8 +135,8 @@ def _codigo(resposta) -> str:
     return resposta.json()["erro"]["codigo"]
 
 
-def test_ti74_parte1_perfis_e_cadastros_do_chefe(cliente, cabecalho_chefe):
-    """TI-74 (parte 1, itens 1 a 10): cadastros, validações, 2º turno e abertura da eleição."""
+def test_roteiro_cadastros_e_abertura_da_eleicao(cliente, cabecalho_chefe):
+    """Parte 1 do roteiro (itens 1 a 10): cadastros, validações, 2º turno e abertura da eleição."""
     chefe = cabecalho_chefe
     _cadastrar_eleitores(cliente, chefe)
     eleicao_id = _montar_eleicao(cliente, chefe)
@@ -193,8 +193,8 @@ def test_ti74_parte1_perfis_e_cadastros_do_chefe(cliente, cabecalho_chefe):
     assert (congelada.status_code, _codigo(congelada)) == (409, "ELEICAO_NAO_EDITAVEL")
 
 
-def test_ti74_partes2_a_4_votacao_acompanhamento_e_resultado(cliente, cabecalho_chefe, relogio):
-    """TI-74 (partes 2 a 4, itens 11 a 27): votação, parcial, encerramento e resultado."""
+def test_roteiro_votacao_apuracao_e_resultado(cliente, cabecalho_chefe, relogio):
+    """Partes 2 a 4 do roteiro (itens 11 a 27): votação, parcial, encerramento e resultado."""
     chefe = cabecalho_chefe
     eleitores = _cadastrar_eleitores(cliente, chefe)
     eleicao_id = _montar_eleicao(cliente, chefe)

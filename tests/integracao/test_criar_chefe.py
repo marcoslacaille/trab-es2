@@ -5,7 +5,9 @@ from sqlalchemy import text
 
 from app.core.config import obter_configuracao
 from app.core.database import SessionLocal
+from app.core.exceptions import ConflitoDeEstado
 from app.scripts.criar_chefe import criar_chefe
+from app.services.usuario_service import UsuarioService
 from tests.auxiliares import CPF_CHEFE
 
 
@@ -32,8 +34,8 @@ def _quantos_chefes() -> int:
         ).scalar_one()
 
 
-def test_cria_o_chefe(configurar, capsys):
-    """RN-04: com CPF e senha válidos, cria o Chefe e não imprime a senha."""
+def test_cria_o_chefe_e_repetir_nao_altera_nada(configurar, capsys):
+    """RN-04: com CPF e senha válidos, cria o Chefe sem imprimir a senha; repetir não muda nada."""
     configurar(CHEFE_CPF=CPF_CHEFE, CHEFE_SENHA="Chefe@2026")
 
     resultado = criar_chefe()
@@ -42,20 +44,17 @@ def test_cria_o_chefe(configurar, capsys):
     saida = capsys.readouterr().out
     assert "Chefe da Seção criado" in saida and "Chefe@2026" not in saida
 
-
-def test_e_idempotente(configurar, capsys):
-    """RN-04: rodar de novo com o mesmo CPF não cria outro nem altera nada."""
-    configurar(CHEFE_CPF=CPF_CHEFE, CHEFE_SENHA="Chefe@2026")
-    criar_chefe()
-
     resultado = criar_chefe()
 
     assert resultado == 0 and _quantos_chefes() == 1
     assert "nada foi alterado" in capsys.readouterr().out
 
 
-def test_exige_cpf_e_senha(configurar, capsys):
-    """Sem `CHEFE_CPF` ou `CHEFE_SENHA`, avisa e falha (código 1) sem criar ninguém."""
+def test_entrada_incompleta_ou_invalida_falha_sem_criar_ninguem(configurar, capsys, monkeypatch):
+    """RN-05 e RN-07: sem CPF e senha, ou com valores inválidos, falha (código 1) sem criar.
+
+    Só `CPF_JA_CADASTRADO` é tratado como "já existe"; qualquer outro conflito sobe.
+    """
     configurar()
 
     resultado = criar_chefe()
@@ -63,24 +62,14 @@ def test_exige_cpf_e_senha(configurar, capsys):
     assert resultado == 1 and _quantos_chefes() == 0
     assert "Defina CHEFE_CPF e CHEFE_SENHA" in capsys.readouterr().out
 
+    for cpf, senha in [("11111111111", "Chefe@2026"), (CPF_CHEFE, "fraca")]:
+        configurar(CHEFE_CPF=cpf, CHEFE_SENHA=senha)
 
-@pytest.mark.parametrize(("cpf", "senha"), [("11111111111", "Chefe@2026"), (CPF_CHEFE, "fraca")])
-def test_recusa_cpf_ou_senha_invalidos(configurar, capsys, cpf, senha):
-    """RN-05 e RN-07: CPF ou senha inválidos falham (código 1), sem criar e sem mostrar a senha."""
-    configurar(CHEFE_CPF=cpf, CHEFE_SENHA=senha)
+        resultado = criar_chefe()
 
-    resultado = criar_chefe()
-
-    assert resultado == 1 and _quantos_chefes() == 0
-    saida = capsys.readouterr().out
-    assert "Não foi possível criar" in saida and senha not in saida
-
-
-def test_repassa_conflito_que_nao_e_de_cpf(configurar, monkeypatch):
-    """Só `CPF_JA_CADASTRADO` é tratado como "já existe"; qualquer outro conflito sobe."""
-    from app.core.exceptions import ConflitoDeEstado
-    from app.scripts import criar_chefe as script
-    from app.services.usuario_service import UsuarioService
+        assert resultado == 1 and _quantos_chefes() == 0, (cpf, senha)
+        saida = capsys.readouterr().out
+        assert "Não foi possível criar" in saida and senha not in saida
 
     def conflito(*argumentos, **nomeados):
         raise ConflitoDeEstado("outro", codigo="OUTRO_CONFLITO")
@@ -89,7 +78,7 @@ def test_repassa_conflito_que_nao_e_de_cpf(configurar, monkeypatch):
     monkeypatch.setattr(UsuarioService, "criar_credencial", conflito)
 
     with pytest.raises(ConflitoDeEstado):
-        script.criar_chefe()
+        criar_chefe()
 
 
 def test_executado_como_script_sai_com_o_codigo_da_funcao(configurar):

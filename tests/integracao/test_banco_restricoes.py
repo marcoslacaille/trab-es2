@@ -1,4 +1,4 @@
-"""TI-63 a TI-68: restrições e trigger do banco, provocados com SQL direto.
+"""Restrições e trigger do banco, provocados com SQL direto.
 
 Aqui não passa pela API nem pelo serviço: o objetivo é provar que, mesmo com um bug na
 aplicação (ou um `UPDATE` manual), o banco recusa o dado errado. Cada teste confere o nome da
@@ -130,35 +130,29 @@ def nome_da_restricao(erro: IntegrityError) -> str:
     return erro.value.orig.diag.constraint_name
 
 
-def test_ti63_update_direto_em_votos_e_barrado_pelo_trigger(sessao):
-    """TI-63 / RN-59: `UPDATE` direto em `votos` dispara o trigger de imutabilidade."""
-    eleicao_id = inserir_eleicao(sessao, "2026-11-25")
-    inserir_voto(sessao, eleicao_id, "PRESIDENTE", "BRANCO", None)
-    sessao.commit()
-
-    with pytest.raises(DBAPIError) as erro:
-        sessao.execute(text("UPDATE votos SET tipo = 'NULO'"))
-    assert MENSAGEM_DO_TRIGGER in str(erro.value.orig)
-    sessao.rollback()
-
-    assert sessao.execute(text("SELECT tipo FROM votos")).scalar() == "BRANCO"
-
-
-def test_ti63_update_direto_em_registros_votacao_e_barrado_pelo_trigger(sessao):
-    """TI-63 / RN-59: o `UPDATE` em `registros_votacao` também é barrado."""
+def test_update_direto_em_votos_ou_registros_e_barrado_pelo_trigger(sessao):
+    """RN-59: `UPDATE` direto em `votos` e em `registros_votacao` dispara o trigger."""
     eleicao_id = inserir_eleicao(sessao, "2026-11-25")
     eleitor_id = inserir_eleitor(sessao)
+    inserir_voto(sessao, eleicao_id, "PRESIDENTE", "BRANCO", None)
     inserir_registro(sessao, eleitor_id, eleicao_id, "PRESIDENTE")
     sessao.commit()
 
-    with pytest.raises(DBAPIError) as erro:
-        sessao.execute(text("UPDATE registros_votacao SET cargo = 'SENADOR'"))
-    assert MENSAGEM_DO_TRIGGER in str(erro.value.orig)
-    sessao.rollback()
+    for atualizacao in (
+        "UPDATE votos SET tipo = 'NULO'",
+        "UPDATE registros_votacao SET cargo = 'SENADOR'",
+    ):
+        with pytest.raises(DBAPIError) as erro:
+            sessao.execute(text(atualizacao))  # texto fixo do teste, não do usuário
+        assert MENSAGEM_DO_TRIGGER in str(erro.value.orig), atualizacao
+        sessao.rollback()
+
+    assert sessao.execute(text("SELECT tipo FROM votos")).scalar() == "BRANCO"
+    assert sessao.execute(text("SELECT cargo FROM registros_votacao")).scalar() == "PRESIDENTE"
 
 
-def test_ti64_delete_direto_em_votos_e_registros_e_barrado_pelo_trigger(sessao):
-    """TI-64 / RN-59: `DELETE` direto em `votos` e em `registros_votacao` dispara o trigger."""
+def test_delete_direto_em_votos_ou_registros_e_barrado_pelo_trigger(sessao):
+    """RN-59: `DELETE` direto em `votos` e em `registros_votacao` dispara o trigger."""
     eleicao_id = inserir_eleicao(sessao, "2026-11-25")
     eleitor_id = inserir_eleitor(sessao)
     inserir_voto(sessao, eleicao_id, "PRESIDENTE", "BRANCO", None)
@@ -175,8 +169,8 @@ def test_ti64_delete_direto_em_votos_e_registros_e_barrado_pelo_trigger(sessao):
     assert sessao.execute(text("SELECT count(*) FROM registros_votacao")).scalar() == 1
 
 
-def test_ti65_registro_duplicado_viola_a_chave_primaria(sessao):
-    """TI-65 / RN-54: o mesmo eleitor, eleição e cargo duas vezes viola `pk_registros_votacao`."""
+def test_registro_duplicado_viola_a_chave_primaria(sessao):
+    """RN-54: o mesmo eleitor, eleição e cargo duas vezes viola `pk_registros_votacao`."""
     eleicao_id = inserir_eleicao(sessao, "2026-11-25")
     eleitor_id = inserir_eleitor(sessao)
     inserir_registro(sessao, eleitor_id, eleicao_id, "PRESIDENTE")
@@ -192,8 +186,8 @@ def test_ti65_registro_duplicado_viola_a_chave_primaria(sessao):
     sessao.commit()
 
 
-def test_ti65_excluir_eleitor_que_votou_viola_a_fk_do_registro(sessao):
-    """TI-65: o nome real da FK é o que `excluir_eleitor` espera (EXCLUSAO_BLOQUEADA)."""
+def test_excluir_eleitor_que_votou_viola_a_fk_do_registro(sessao):
+    """RN-24: o nome real da FK é o que `excluir_eleitor` espera (EXCLUSAO_BLOQUEADA)."""
     eleicao_id = inserir_eleicao(sessao, "2026-11-25")
     eleitor_id = inserir_eleitor(sessao)
     inserir_registro(sessao, eleitor_id, eleicao_id, "PRESIDENTE")
@@ -205,8 +199,8 @@ def test_ti65_excluir_eleitor_que_votou_viola_a_fk_do_registro(sessao):
     sessao.rollback()
 
 
-def test_ti66_duas_eleicoes_abertas_violam_o_indice_parcial(sessao):
-    """TI-66 / RN-16: a segunda eleição ABERTA viola `uq_eleicoes_uma_aberta`."""
+def test_duas_eleicoes_abertas_violam_o_indice_parcial(sessao):
+    """RN-16: a segunda eleição ABERTA viola `uq_eleicoes_uma_aberta`."""
     inserir_eleicao(sessao, "2026-11-25", aberta=True)
     sessao.commit()
 
@@ -220,10 +214,15 @@ def test_ti66_duas_eleicoes_abertas_violam_o_indice_parcial(sessao):
     sessao.commit()
 
 
-def test_ti67_voto_nominal_sem_candidatura_viola_o_check(sessao):
-    """TI-67 / RN-60: NOMINAL exige candidatura, e BRANCO ou NULO não podem ter."""
+def test_voto_nominal_sem_candidatura_viola_o_check(sessao):
+    """RN-58 e RN-60: a forma do voto (CHECK) e a FK composta que o liga ao cargo certo.
+
+    NOMINAL exige candidatura, e BRANCO ou NULO não podem ter. A FK composta
+    (id, eleicao_id, cargo) impede apontar para a candidatura de outro cargo ou de outra eleição.
+    """
     eleicao_id = inserir_eleicao(sessao, "2026-11-25")
-    candidatura_id = inserir_candidatura(sessao, eleicao_id, "PRESIDENTE", "13", 1)
+    outra_eleicao_id = inserir_eleicao(sessao, "2026-11-26")
+    presidente_id = inserir_candidatura(sessao, eleicao_id, "PRESIDENTE", "13", 1)
     sessao.commit()
 
     with pytest.raises(IntegrityError) as erro:
@@ -232,17 +231,9 @@ def test_ti67_voto_nominal_sem_candidatura_viola_o_check(sessao):
     sessao.rollback()
 
     with pytest.raises(IntegrityError) as erro:
-        inserir_voto(sessao, eleicao_id, "PRESIDENTE", "BRANCO", candidatura_id)
+        inserir_voto(sessao, eleicao_id, "PRESIDENTE", "BRANCO", presidente_id)
     assert nome_da_restricao(erro) == "ck_votos_nominal_tem_candidatura"
     sessao.rollback()
-
-
-def test_ti67_voto_para_senador_apontando_candidatura_a_presidente_viola_a_fk_composta(sessao):
-    """TI-67 / RN-60: a FK composta (id, eleicao_id, cargo) liga o voto ao cargo certo."""
-    eleicao_id = inserir_eleicao(sessao, "2026-11-25")
-    outra_eleicao_id = inserir_eleicao(sessao, "2026-11-26")
-    presidente_id = inserir_candidatura(sessao, eleicao_id, "PRESIDENTE", "13", 1)
-    sessao.commit()
 
     with pytest.raises(IntegrityError) as erro:
         inserir_voto(sessao, eleicao_id, "SENADOR", "NOMINAL", presidente_id)
@@ -261,8 +252,8 @@ def test_ti67_voto_para_senador_apontando_candidatura_a_presidente_viola_a_fk_co
     sessao.commit()
 
 
-def test_ti68_numero_com_digitos_errados_viola_o_check(sessao):
-    """TI-68 / RN-42: número que não é de 2 dígitos para Presidente (ou 3 para Senador)."""
+def test_numero_com_digitos_errados_viola_o_check(sessao):
+    """RN-42: número que não é de 2 dígitos para Presidente (ou 3 para Senador)."""
     eleicao_id = inserir_eleicao(sessao, "2026-11-25")
     sessao.commit()
     casos = [("PRESIDENTE", "1"), ("PRESIDENTE", "013"), ("PRESIDENTE", "01"), ("SENADOR", "13")]

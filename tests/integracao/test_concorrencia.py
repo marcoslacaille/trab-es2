@@ -1,43 +1,50 @@
-"""TI-73: concorrência no voto (RN-54) e entre voto e encerramento (RN-18)."""
+"""Concorrência no voto (RN-54), entre voto e encerramento (RN-18) e na apuração (RN-74, RN-79)."""
 
 import threading
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-import pytest
 from sqlalchemy import text
-from sqlalchemy.exc import IntegrityError
 
 from app.core import cedula
 from app.core.database import SessionLocal
-from app.core.exceptions import ConflitoDeEstado, NaoEncontrado
-from app.dto.eleitor_dto import EleitorResumo
+from app.core.exceptions import ConflitoDeEstado
 from app.dto.usuario_dto import UsuarioAutenticado
 from app.dto.votacao_dto import Escolha
 from app.models.enums import Cargo, Perfil, TipoVoto
 from app.repositories.eleicao_repository import EleicaoRepository
-from app.repositories.votacao_repository import VotacaoRepository
 from app.services.apuracao_service import ApuracaoService
 from app.services.eleicao_service import EleicaoService
-from app.services.eleitor_service import EleitorService
 from app.services.votacao_service import VotacaoService
 from tests.auxiliares import SENHA_ELEITOR, eleicao_aberta_com_candidatos, login, novo_eleitor
 
+ESPERA_DE_BLOQUEIO = 1.0  # segundos: tempo para provar que a outra thread continua bloqueada
 
-def test_ti73_duas_confirmacoes_simultaneas_geram_um_voto(cliente, cabecalho_chefe, relogio):
-    """TI-73 / RN-54: duas threads confirmam a mesma cédula; um sucesso, um VOTO_JA_REGISTRADO."""
-    eleicao_id = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)["eleicao_id"]
+
+def _eleitor_com_cedula(cliente, cabecalho_chefe, eleicao_id, agora):
+    """Cadastra um eleitor e emite uma cédula BRANCO de PRESIDENTE. Devolve (usuario, token)."""
     eleitor = novo_eleitor(cliente, cabecalho_chefe).json()
     cabecalho = login(cliente, eleitor["cpf"], SENHA_ELEITOR)
     usuario_id = cliente.get("/api/v1/auth/me", headers=cabecalho).json()["id"]
     usuario = UsuarioAutenticado(
         id=usuario_id, nome=eleitor["nome"], cpf=eleitor["cpf"], perfil=Perfil.ELEITOR
     )
-
-    agora = datetime(2026, 11, 25, 10, 30, tzinfo=ZoneInfo("America/Sao_Paulo"))
     token, _ = cedula.emitir_cedula(
         usuario_id, eleicao_id, Cargo.PRESIDENTE, Escolha(TipoVoto.BRANCO, None), agora
     )
+    return usuario, token
+
+
+def _contar(tabela: str) -> int:
+    with SessionLocal() as sessao:
+        return sessao.execute(text(f"SELECT COUNT(*) FROM {tabela}")).scalar_one()
+
+
+def test_duas_confirmacoes_simultaneas_geram_um_voto(cliente, cabecalho_chefe, relogio):
+    """RN-54: duas threads confirmam a mesma cédula; um sucesso, um VOTO_JA_REGISTRADO."""
+    eleicao_id = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)["eleicao_id"]
+    agora = datetime(2026, 11, 25, 10, 30, tzinfo=ZoneInfo("America/Sao_Paulo"))
+    usuario, token = _eleitor_com_cedula(cliente, cabecalho_chefe, eleicao_id, agora)
 
     barreira = threading.Barrier(2)
     resultados: list[object] = []
@@ -63,32 +70,16 @@ def test_ti73_duas_confirmacoes_simultaneas_geram_um_voto(cliente, cabecalho_che
     assert len(resultados) == 2, resultados
     assert len(sucessos) == 1, resultados
     assert len(conflitos) == 1 and conflitos[0].codigo == "VOTO_JA_REGISTRADO", resultados
-    with SessionLocal() as sessao:
-        assert sessao.execute(text("SELECT COUNT(*) FROM votos")).scalar_one() == 1
-        assert sessao.execute(text("SELECT COUNT(*) FROM registros_votacao")).scalar_one() == 1
+    assert _contar("votos") == 1
+    assert _contar("registros_votacao") == 1
 
 
-ESPERA_DE_BLOQUEIO = 1.0  # segundos: tempo para provar que a outra thread continua bloqueada
-
-
-def _eleitor_com_cedula(cliente, cabecalho_chefe, eleicao_id, agora):
-    """Cadastra um eleitor e emite uma cédula BRANCO de PRESIDENTE. Devolve (usuario, token)."""
-    eleitor = novo_eleitor(cliente, cabecalho_chefe).json()
-    cabecalho = login(cliente, eleitor["cpf"], SENHA_ELEITOR)
-    usuario_id = cliente.get("/api/v1/auth/me", headers=cabecalho).json()["id"]
-    usuario = UsuarioAutenticado(
-        id=usuario_id, nome=eleitor["nome"], cpf=eleitor["cpf"], perfil=Perfil.ELEITOR
-    )
-    token, _ = cedula.emitir_cedula(
-        usuario_id, eleicao_id, Cargo.PRESIDENTE, Escolha(TipoVoto.BRANCO, None), agora
-    )
-    return usuario, token
-
-
-def test_d095_encerramento_espera_a_confirmacao_em_andamento(cliente, cabecalho_chefe, relogio):
-    """RN-18: com uma confirmação segurando a trava, o encerramento só termina depois."""
+def test_encerramento_espera_a_confirmacao_em_andamento(cliente, cabecalho_chefe, relogio):
+    """RN-18: a trava da eleição ordena o voto e o encerramento, nas duas direções."""
     eleicao_id = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)["eleicao_id"]
     agora = relogio()
+
+    # 1) Com uma confirmação segurando a trava, o encerramento só termina depois dela.
     terminou = threading.Event()
     resultados: list[object] = []
 
@@ -115,16 +106,17 @@ def test_d095_encerramento_espera_a_confirmacao_em_andamento(cliente, cabecalho_
     with SessionLocal() as sessao:
         assert EleicaoService(sessao).obter_eleicao(eleicao_id).status == "ENCERRADA"
 
-
-def test_d095_confirmacao_espera_o_encerramento_e_depois_e_recusada(
-    cliente, cabecalho_chefe, relogio
-):
-    """RN-18: voto que chega durante o encerramento espera e é recusado (não entra)."""
-    eleicao_id = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)["eleicao_id"]
-    agora = relogio()
+    # 2) Voto que chega durante o encerramento espera e é recusado (não entra). Só há uma eleição
+    # no teste, então o cenário volta a ABERTA direto no banco; nenhuma regra é contornada.
+    with SessionLocal() as sessao:
+        sessao.execute(
+            text("UPDATE eleicoes SET status = 'ABERTA', encerrada_em = NULL WHERE id = :id"),
+            {"id": eleicao_id},
+        )
+        sessao.commit()
     usuario, token = _eleitor_com_cedula(cliente, cabecalho_chefe, eleicao_id, agora)
     terminou = threading.Event()
-    resultados: list[object] = []
+    resultados = []
 
     def confirmar() -> None:
         with SessionLocal() as sessao:
@@ -152,51 +144,11 @@ def test_d095_confirmacao_espera_o_encerramento_e_depois_e_recusada(
 
     assert len(resultados) == 1 and isinstance(resultados[0], ConflitoDeEstado), resultados
     assert resultados[0].codigo == "ELEICAO_NAO_ABERTA"
-    with SessionLocal() as sessao:
-        assert sessao.execute(text("SELECT COUNT(*) FROM votos")).scalar_one() == 0
-        assert sessao.execute(text("SELECT COUNT(*) FROM registros_votacao")).scalar_one() == 0
+    assert _contar("votos") == 0
+    assert _contar("registros_votacao") == 0
 
 
-def test_confirmacao_repassa_erro_de_integridade_desconhecido(
-    cliente, cabecalho_chefe, relogio, monkeypatch
-):
-    """RN-54: só a violação da chave de `registros_votacao` vira VOTO_JA_REGISTRADO; outra sobe."""
-    eleicao_id = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)["eleicao_id"]
-    agora = relogio()
-    usuario, token = _eleitor_com_cedula(cliente, cabecalho_chefe, eleicao_id, agora)
-
-    def falhar(self, *argumentos, **nomeados):
-        raise IntegrityError("INSERT ...", {}, Exception("violação desconhecida"))
-
-    monkeypatch.setattr(VotacaoRepository, "inserir_voto", falhar)
-
-    with SessionLocal() as sessao, pytest.raises(IntegrityError):
-        VotacaoService(sessao).confirmar_voto(usuario, eleicao_id, token, agora)
-    with SessionLocal() as sessao:
-        assert sessao.execute(text("SELECT COUNT(*) FROM registros_votacao")).scalar_one() == 0
-
-
-def test_d145_eleitor_excluido_durante_a_confirmacao_da_404(
-    cliente, cabecalho_chefe, relogio, monkeypatch
-):
-    """RN-54: eleitor excluído no meio da confirmação → 404, sem gravar nada."""
-    eleicao_id = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)["eleicao_id"]
-    agora = relogio()
-    usuario, token = _eleitor_com_cedula(cliente, cabecalho_chefe, eleicao_id, agora)
-    # Simula a corrida: o eleitor foi lido, mas a linha já não existe quando o registro é gravado.
-    sumido = EleitorResumo(id=999_999, usuario_id=usuario.id, criado_em=agora)
-    monkeypatch.setattr(EleitorService, "obter_eleitor_do_usuario", lambda self, usuario_id: sumido)
-
-    with SessionLocal() as sessao, pytest.raises(NaoEncontrado) as erro:
-        VotacaoService(sessao).confirmar_voto(usuario, eleicao_id, token, agora)
-
-    assert erro.value.codigo == "ELEITOR_NAO_ENCONTRADO"
-    with SessionLocal() as sessao:
-        assert sessao.execute(text("SELECT COUNT(*) FROM votos")).scalar_one() == 0
-        assert sessao.execute(text("SELECT COUNT(*) FROM registros_votacao")).scalar_one() == 0
-
-
-def test_d146_apuracao_le_votos_e_votantes_no_mesmo_instante(
+def test_apuracao_le_votos_e_votantes_no_mesmo_instante(
     cliente, cabecalho_chefe, relogio, monkeypatch
 ):
     """RN-74, RN-79: um voto confirmado no meio da apuração não aparece pela metade."""

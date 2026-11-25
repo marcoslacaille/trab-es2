@@ -1,8 +1,9 @@
-"""TI-08 / RN-03, RN-06: matriz de permissões de todas as rotas protegidas."""
+"""Matriz de permissões de todas as rotas protegidas (RN-03, RN-06)."""
 
-import pytest
+import re
 
 from app.models.enums import Perfil
+from tests.arquitetura.test_rotas_protegidas import LISTA_BRANCA, rotas_da_api
 
 PREFIXO = "/api/v1"
 C, E, K = Perfil.CHEFE_SECAO, Perfil.ELEITOR, Perfil.CANDIDATO
@@ -48,35 +49,55 @@ ROTAS = [
 ROTAS_RESTRITAS = [(m, c, p) for m, c, p in ROTAS if p != TODOS]
 
 
+def _normalizar(caminho: str) -> str:
+    """Troca ids de exemplo (`/eleicoes/1`) e parâmetros (`/eleicoes/{eleicao_id}`) por `{}`."""
+    return re.sub(r"/(\d+|\{[^}]+\})", "/{}", caminho)
+
+
 def _chamar(cliente, metodo, caminho, cabecalho=None):
     # Corpo vazio basta: a permissão é conferida antes da validação do corpo.
     return cliente.request(metodo, PREFIXO + caminho, headers=cabecalho or {}, json={})
 
 
-def test_ti08_tabela_cobre_as_32_rotas_protegidas():
-    """TI-08: a tabela do teste tem as 32 rotas protegidas (33 menos o login)."""
-    assert len(ROTAS) == 32
-    assert len(set((m, c) for m, c, _ in ROTAS)) == 32
+def test_a_tabela_cobre_todas_as_rotas_protegidas():
+    """A tabela do teste tem exatamente as rotas protegidas do app (33 menos o login)."""
+    da_tabela = {(metodo, _normalizar(PREFIXO + caminho)) for metodo, caminho, _ in ROTAS}
+    do_app = {
+        (metodo, _normalizar(rota.path))
+        for rota in rotas_da_api()
+        if rota.path not in LISTA_BRANCA
+        for metodo in rota.metodos
+    }
+
+    assert len(da_tabela) == len(ROTAS) == 32
+    assert da_tabela == do_app
 
 
-@pytest.mark.parametrize(("metodo", "caminho", "permitidos"), ROTAS)
-def test_ti08_sem_token_responde_401(cliente, metodo, caminho, permitidos):
-    """TI-08 / RN-06: toda rota protegida sem token responde 401 `NAO_AUTENTICADO`."""
-    resposta = _chamar(cliente, metodo, caminho)
+def test_sem_token_toda_rota_protegida_responde_401(cliente):
+    """RN-06: toda rota protegida sem token responde 401 `NAO_AUTENTICADO`."""
+    falhas = []
+    for metodo, caminho, _ in ROTAS:
+        resposta = _chamar(cliente, metodo, caminho)
 
-    assert resposta.status_code == 401
-    assert resposta.json()["erro"]["codigo"] == "NAO_AUTENTICADO"
+        if resposta.status_code != 401 or resposta.json()["erro"]["codigo"] != "NAO_AUTENTICADO":
+            falhas.append(f"{metodo} {caminho}: {resposta.status_code} {resposta.text}")
+
+    assert falhas == []
 
 
-@pytest.mark.parametrize(("metodo", "caminho", "permitidos"), ROTAS_RESTRITAS)
-def test_ti08_perfil_nao_permitido_responde_403(
-    cliente, cabecalho_chefe, cabecalho_eleitor, cabecalho_candidato, metodo, caminho, permitidos
+def test_perfil_fora_da_lista_responde_403(
+    cliente, cabecalho_chefe, cabecalho_eleitor, cabecalho_candidato
 ):
-    """TI-08 / RN-03: cada perfil fora da lista da rota recebe 403 `PERFIL_NAO_AUTORIZADO`."""
+    """RN-03: cada perfil fora da lista da rota recebe 403 `PERFIL_NAO_AUTORIZADO`."""
     cabecalhos = {C: cabecalho_chefe, E: cabecalho_eleitor, K: cabecalho_candidato}
 
-    for perfil in TODOS - permitidos:
-        resposta = _chamar(cliente, metodo, caminho, cabecalhos[perfil])
+    falhas = []
+    for metodo, caminho, permitidos in ROTAS_RESTRITAS:
+        for perfil in TODOS - permitidos:
+            resposta = _chamar(cliente, metodo, caminho, cabecalhos[perfil])
 
-        assert resposta.status_code == 403, f"{perfil}: {resposta.text}"
-        assert resposta.json()["erro"]["codigo"] == "PERFIL_NAO_AUTORIZADO"
+            codigo = resposta.json()["erro"]["codigo"]
+            if resposta.status_code != 403 or codigo != "PERFIL_NAO_AUTORIZADO":
+                falhas.append(f"{metodo} {caminho} como {perfil}: {resposta.status_code}")
+
+    assert falhas == []

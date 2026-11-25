@@ -1,4 +1,4 @@
-"""TA-02 / RN-06: toda rota fora da lista branca depende de `obter_usuario_atual`."""
+"""RN-06: toda rota fora da lista branca depende de `obter_usuario_atual`."""
 
 from dataclasses import dataclass
 
@@ -41,8 +41,8 @@ def rotas_da_api() -> list[RotaDaApi]:
     return rotas
 
 
-def test_ta02_toda_rota_fora_da_lista_branca_exige_usuario_atual():
-    """TA-02 / RN-06: a árvore de dependências de cada rota protegida tem `obter_usuario_atual`."""
+def test_toda_rota_fora_da_lista_branca_exige_usuario_atual():
+    """RN-06: a árvore de dependências de cada rota protegida tem `obter_usuario_atual`."""
     sem_protecao = [
         f"{sorted(rota.metodos)} {rota.path}"
         for rota in rotas_da_api()
@@ -52,16 +52,10 @@ def test_ta02_toda_rota_fora_da_lista_branca_exige_usuario_atual():
     assert sem_protecao == []
 
 
-def test_ta02_lista_branca_so_tem_rotas_que_existem():
-    """TA-02: a lista branca não guarda caminho que já não existe (evita exceção esquecida)."""
-    caminhos = {rota.path for rota in rotas_da_api()}
-
-    assert caminhos >= LISTA_BRANCA
-
-
-def test_ta02_app_tem_33_rotas_de_negocio_mais_health():
-    """TA-02: 33 rotas sob `/api/v1` mais `/health`; nenhuma rota some sem aviso."""
+def test_app_tem_as_rotas_esperadas():
+    """33 rotas sob `/api/v1` mais `/health`; a lista branca só tem rotas que existem."""
     caminhos = [rota.path for rota in rotas_da_api()]
 
     assert len([c for c in caminhos if c.startswith("/api/v1")]) == 33
     assert "/health" in caminhos
+    assert set(caminhos) >= LISTA_BRANCA  # nenhuma exceção esquecida de uma rota que sumiu
