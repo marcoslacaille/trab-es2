@@ -4,14 +4,16 @@ from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query
-from sqlalchemy.orm import Session
 
-from app.apuracao import service
-from app.core.database import obter_sessao
 from app.core.openapi import respostas_de_erro
 from app.core.relogio import obter_agora
 from app.core.validadores import MAIOR_ID
-from app.dependencies import UsuarioAutenticado, exige_perfil, obter_usuario_atual
+from app.dependencies import (
+    ApuracaoServiceDep,
+    UsuarioAutenticado,
+    exige_perfil,
+    obter_usuario_atual,
+)
 from app.models.enums import Cargo, Perfil
 from app.schemas.apuracao_schema import ApuracaoResposta
 
@@ -21,7 +23,6 @@ IdDaEleicao = Annotated[int, Path(gt=0, le=MAIOR_ID, description="Identificador 
 CargoPedido = Annotated[
     Cargo | None, Query(description="Limita a apuração a um cargo. Sem ele, todos os disputados.")
 ]
-Sessao = Annotated[Session, Depends(obter_sessao)]
 Agora = Annotated[datetime, Depends(obter_agora)]
 UsuarioDaParcial = Annotated[
     UsuarioAutenticado,
@@ -44,13 +45,11 @@ UsuarioLogado = Annotated[UsuarioAutenticado, Depends(obter_usuario_atual)]
 def apuracao_parcial(
     eleicao_id: IdDaEleicao,
     usuario: UsuarioDaParcial,
-    sessao: Sessao,
+    service: ApuracaoServiceDep,
     agora: Agora,
     cargo: CargoPedido = None,
 ) -> ApuracaoResposta:
-    return ApuracaoResposta.de_apuracao(
-        service.apuracao_parcial(sessao, usuario, eleicao_id, cargo, agora)
-    )
+    return ApuracaoResposta.de_apuracao(service.apuracao_parcial(usuario, eleicao_id, cargo, agora))
 
 
 @roteador.get(
@@ -66,10 +65,8 @@ def apuracao_parcial(
 def resultado_final(
     eleicao_id: IdDaEleicao,
     usuario: UsuarioLogado,
-    sessao: Sessao,
+    service: ApuracaoServiceDep,
     agora: Agora,
     cargo: CargoPedido = None,
 ) -> ApuracaoResposta:
-    return ApuracaoResposta.de_apuracao(
-        service.resultado_final(sessao, usuario, eleicao_id, cargo, agora)
-    )
+    return ApuracaoResposta.de_apuracao(service.resultado_final(usuario, eleicao_id, cargo, agora))

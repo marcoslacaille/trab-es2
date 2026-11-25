@@ -3,11 +3,11 @@
 from datetime import date
 from decimal import Decimal
 
-from app.apuracao.dominio import apurar_cargo, definir_mais_votado, percentual
 from app.dto.apuracao_dto import LinhaApuracao
 from app.dto.candidatura_dto import CandidaturaDetalhada
 from app.dto.votacao_dto import ContagemVoto
 from app.models.enums import Cargo, SituacaoCargo, TipoVoto
+from app.services.apuracao_service import apurar_cargo, definir_mais_votado, percentual
 
 
 def uma_candidatura(id: int, numero: str, nascimento: date = date(1970, 1, 1)):

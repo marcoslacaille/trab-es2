@@ -10,7 +10,11 @@ from app.core.exceptions import AcessoNegado, ConflitoDeEstado, DadosInvalidos
 from app.dto.candidatura_dto import CandidaturaDetalhada
 from app.dto.eleicao_dto import EleicaoResumo
 from app.models.enums import Cargo, ModoEscolha, StatusEleicao, TipoVoto
-from app.votacao.dominio import resolver_escolha, validar_eleitor_apto, validar_pode_votar
+from app.services.votacao_service import (
+    resolver_escolha,
+    validar_eleitor_apto,
+    validar_pode_votar,
+)
 
 FUSO = ZoneInfo("America/Sao_Paulo")
 HOJE = date(2026, 11, 25)

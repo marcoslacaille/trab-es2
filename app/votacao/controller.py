@@ -7,13 +7,11 @@ from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Response
-from sqlalchemy.orm import Session
 
-from app.core.database import obter_sessao
 from app.core.openapi import respostas_de_erro
 from app.core.relogio import obter_agora
 from app.core.validadores import MAIOR_ID
-from app.dependencies import UsuarioAutenticado, exige_perfil
+from app.dependencies import UsuarioAutenticado, VotacaoServiceDep, exige_perfil
 from app.dto.votacao_dto import PedidoRegistro
 from app.models.enums import Perfil
 from app.schemas.votacao_schema import (
@@ -24,13 +22,11 @@ from app.schemas.votacao_schema import (
     PedidoRegistroVoto,
     PreviaVotoResposta,
 )
-from app.votacao import service
 
 roteador = APIRouter(prefix="/votacao/eleicoes/{eleicao_id}", tags=["Votação"])
 
 UsuarioEleitor = Annotated[UsuarioAutenticado, Depends(exige_perfil(Perfil.ELEITOR))]
 IdDaEleicao = Annotated[int, Path(gt=0, le=MAIOR_ID, description="Identificador da eleição.")]
-Sessao = Annotated[Session, Depends(obter_sessao)]
 Agora = Annotated[datetime, Depends(obter_agora)]
 
 
@@ -45,9 +41,9 @@ Agora = Annotated[datetime, Depends(obter_agora)]
     responses=respostas_de_erro(401, 403, 404, 409, 422),
 )
 def obter_cedula(
-    eleicao_id: IdDaEleicao, usuario: UsuarioEleitor, sessao: Sessao, agora: Agora
+    eleicao_id: IdDaEleicao, usuario: UsuarioEleitor, service: VotacaoServiceDep, agora: Agora
 ) -> CedulaResposta:
-    return CedulaResposta.de_cedula(service.obter_cedula(sessao, usuario, eleicao_id, agora))
+    return CedulaResposta.de_cedula(service.obter_cedula(usuario, eleicao_id, agora))
 
 
 @roteador.post(
@@ -66,16 +62,14 @@ def registrar_voto(
     eleicao_id: IdDaEleicao,
     dados: PedidoRegistroVoto,
     usuario: UsuarioEleitor,
-    sessao: Sessao,
+    service: VotacaoServiceDep,
     agora: Agora,
     resposta: Response,
 ) -> PreviaVotoResposta:
     # A prévia mostra a escolha e traz a cédula: nenhum cache pode guardá-la (RN-60, D-144).
     resposta.headers["Cache-Control"] = "no-store"
     pedido = PedidoRegistro(cargo=dados.cargo, modo=dados.modo, numero=dados.numero)
-    return PreviaVotoResposta.de_previa(
-        service.registrar_voto(sessao, usuario, eleicao_id, pedido, agora)
-    )
+    return PreviaVotoResposta.de_previa(service.registrar_voto(usuario, eleicao_id, pedido, agora))
 
 
 @roteador.post(
@@ -94,10 +88,10 @@ def confirmar_voto(
     eleicao_id: IdDaEleicao,
     dados: PedidoConfirmacaoVoto,
     usuario: UsuarioEleitor,
-    sessao: Sessao,
+    service: VotacaoServiceDep,
     agora: Agora,
 ) -> ComprovanteVotoResposta:
-    comprovante = service.confirmar_voto(sessao, usuario, eleicao_id, dados.token_cedula, agora)
+    comprovante = service.confirmar_voto(usuario, eleicao_id, dados.token_cedula, agora)
     return ComprovanteVotoResposta.de_comprovante(comprovante)
 
 
@@ -109,8 +103,6 @@ def confirmar_voto(
     responses=respostas_de_erro(401, 403, 404, 422),
 )
 def obter_participacao(
-    eleicao_id: IdDaEleicao, usuario: UsuarioEleitor, sessao: Sessao
+    eleicao_id: IdDaEleicao, usuario: UsuarioEleitor, service: VotacaoServiceDep
 ) -> ParticipacaoResposta:
-    return ParticipacaoResposta.de_participacao(
-        service.obter_participacao(sessao, usuario, eleicao_id)
-    )
+    return ParticipacaoResposta.de_participacao(service.obter_participacao(usuario, eleicao_id))

@@ -8,7 +8,6 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
-from app.apuracao import service as service_apuracao
 from app.core import cedula
 from app.core.database import SessionLocal
 from app.core.exceptions import ConflitoDeEstado, NaoEncontrado
@@ -18,9 +17,10 @@ from app.dto.votacao_dto import Escolha
 from app.models.enums import Cargo, Perfil, TipoVoto
 from app.repositories.eleicao_repository import EleicaoRepository
 from app.repositories.votacao_repository import VotacaoRepository
+from app.services.apuracao_service import ApuracaoService
 from app.services.eleicao_service import EleicaoService
 from app.services.eleitor_service import EleitorService
-from app.votacao import service
+from app.services.votacao_service import VotacaoService
 from tests.auxiliares import SENHA_ELEITOR, eleicao_aberta_com_candidatos, login, novo_eleitor
 
 
@@ -46,7 +46,9 @@ def test_ti73_duas_confirmacoes_simultaneas_geram_um_voto(cliente, cabecalho_che
         with SessionLocal() as sessao:
             barreira.wait(timeout=10)
             try:
-                resultados.append(service.confirmar_voto(sessao, usuario, eleicao_id, token, agora))
+                resultados.append(
+                    VotacaoService(sessao).confirmar_voto(usuario, eleicao_id, token, agora)
+                )
             except Exception as erro:  # noqa: BLE001  (o teste confere o tipo logo abaixo)
                 resultados.append(erro)
 
@@ -127,7 +129,9 @@ def test_d095_confirmacao_espera_o_encerramento_e_depois_e_recusada(
     def confirmar() -> None:
         with SessionLocal() as sessao:
             try:
-                resultados.append(service.confirmar_voto(sessao, usuario, eleicao_id, token, agora))
+                resultados.append(
+                    VotacaoService(sessao).confirmar_voto(usuario, eleicao_id, token, agora)
+                )
             except Exception as erro:  # noqa: BLE001
                 resultados.append(erro)
         terminou.set()
@@ -167,7 +171,7 @@ def test_confirmacao_repassa_erro_de_integridade_desconhecido(
     monkeypatch.setattr(VotacaoRepository, "inserir_voto", falhar)
 
     with SessionLocal() as sessao, pytest.raises(IntegrityError):
-        service.confirmar_voto(sessao, usuario, eleicao_id, token, agora)
+        VotacaoService(sessao).confirmar_voto(usuario, eleicao_id, token, agora)
     with SessionLocal() as sessao:
         assert sessao.execute(text("SELECT COUNT(*) FROM registros_votacao")).scalar_one() == 0
 
@@ -184,7 +188,7 @@ def test_d145_eleitor_excluido_durante_a_confirmacao_da_404(
     monkeypatch.setattr(EleitorService, "obter_eleitor_do_usuario", lambda self, usuario_id: sumido)
 
     with SessionLocal() as sessao, pytest.raises(NaoEncontrado) as erro:
-        service.confirmar_voto(sessao, usuario, eleicao_id, token, agora)
+        VotacaoService(sessao).confirmar_voto(usuario, eleicao_id, token, agora)
 
     assert erro.value.codigo == "ELEITOR_NAO_ENCONTRADO"
     with SessionLocal() as sessao:
@@ -199,20 +203,20 @@ def test_d146_apuracao_le_votos_e_votantes_no_mesmo_instante(
     eleicao_id = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)["eleicao_id"]
     agora = relogio()
     eleitor, token = _eleitor_com_cedula(cliente, cabecalho_chefe, eleicao_id, agora)
-    contar_votos_original = service.contar_votos
+    contar_votos_original = VotacaoService.contar_votos
 
-    def contar_e_deixar_um_voto_entrar(sessao, eleicao):
-        contagens = contar_votos_original(sessao, eleicao)
+    def contar_e_deixar_um_voto_entrar(self, eleicao):
+        contagens = contar_votos_original(self, eleicao)
         with SessionLocal() as outra:  # outra requisição confirma um voto bem agora
-            service.confirmar_voto(outra, eleitor, eleicao_id, token, agora)
+            VotacaoService(outra).confirmar_voto(eleitor, eleicao_id, token, agora)
         return contagens
 
-    monkeypatch.setattr(service, "contar_votos", contar_e_deixar_um_voto_entrar)
+    monkeypatch.setattr(VotacaoService, "contar_votos", contar_e_deixar_um_voto_entrar)
     with SessionLocal() as sessao:
-        durante = service_apuracao.apuracao_parcial(sessao, eleitor, eleicao_id, None, agora)
+        durante = ApuracaoService(sessao).apuracao_parcial(eleitor, eleicao_id, None, agora)
     monkeypatch.undo()
     with SessionLocal() as sessao:
-        depois = service_apuracao.apuracao_parcial(sessao, eleitor, eleicao_id, None, agora)
+        depois = ApuracaoService(sessao).apuracao_parcial(eleitor, eleicao_id, None, agora)
 
     assert durante.comparecimento.votantes == 0  # mesmo instante da contagem: ainda sem votos
     assert sum(cargo.total_votos for cargo in durante.cargos) == 0

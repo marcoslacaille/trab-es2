@@ -11,11 +11,13 @@ from app.core.database import obter_sessao
 from app.core.exceptions import AcessoNegado, NaoAutenticado
 from app.dto.usuario_dto import UsuarioAutenticado
 from app.models.enums import Perfil
+from app.services.apuracao_service import ApuracaoService
 from app.services.candidato_service import CandidatoService
 from app.services.eleicao_service import EleicaoService
 from app.services.eleitor_service import EleitorService
 from app.services.partido_service import PartidoService
 from app.services.usuario_service import UsuarioService
+from app.services.votacao_service import VotacaoService
 
 # auto_error=False: nós mesmos respondemos 401 no formato padrão de erro da API.
 esquema_oauth2 = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
@@ -56,6 +58,20 @@ def obter_eleicao_service(sessao: Sessao) -> EleicaoService:
 
 
 EleicaoServiceDep = Annotated[EleicaoService, Depends(obter_eleicao_service)]
+
+
+def obter_votacao_service(sessao: Sessao) -> VotacaoService:
+    return VotacaoService(sessao)
+
+
+VotacaoServiceDep = Annotated[VotacaoService, Depends(obter_votacao_service)]
+
+
+def obter_apuracao_service(sessao: Sessao) -> ApuracaoService:
+    return ApuracaoService(sessao)
+
+
+ApuracaoServiceDep = Annotated[ApuracaoService, Depends(obter_apuracao_service)]
 
 
 def obter_usuario_atual(
