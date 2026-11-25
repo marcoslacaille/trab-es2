@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "API de Simulação de Eleição Eletrônica — roteiro da demonstração",
-    "description": "Roteiro da apresentação (docs/DEMO.md), na ordem. Importe também docs/ambiente-postman.json, escolha esse ambiente e rode as requisições em sequência (ou o Collection Runner). Pré-requisito: banco limpo, migrações e `python -m app.scripts.seed_demo`. Os scripts de pós-resposta guardam os tokens no ambiente.",
+    "description": "Roteiro da apresentação (README, seção Demonstração), na ordem. Importe também docs/ambiente-postman.json, escolha esse ambiente e rode as requisições em sequência (ou o Collection Runner). Pré-requisito: banco limpo, migrações e `python -m app.scripts.seed_demo`. Os scripts de pós-resposta guardam os tokens no ambiente.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -56,54 +56,7 @@
           }
         },
         {
-          "name": "02. Listar eleitores",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/eleitores?pagina=1&tamanho=5",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "eleitores"
-              ],
-              "query": [
-                {
-                  "key": "pagina",
-                  "value": "1"
-                },
-                {
-                  "key": "tamanho",
-                  "value": "5"
-                }
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_chefe}}",
-                  "type": "string"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "03. Cadastrar eleitor (Igor)",
+          "name": "02. Cadastrar eleitor (Igor)",
           "event": [
             {
               "listen": "test",
@@ -149,7 +102,7 @@
           }
         },
         {
-          "name": "04. Eleitor com CPF inválido",
+          "name": "03. Eleitor com CPF inválido",
           "event": [
             {
               "listen": "test",
@@ -195,53 +148,7 @@
           }
         },
         {
-          "name": "04. Eleitor menor de 16 anos",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 422\", function () { pm.response.to.have.status(422); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/eleitores",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "eleitores"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_chefe}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nome\": \"Eleitor Menor\",\n  \"cpf\": \"529.982.247-25\",\n  \"titulo_eleitor\": \"100000000009\",\n  \"data_nascimento\": \"2015-01-01\",\n  \"senha\": \"Eleitor@123\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "05. Cadastrar candidato (Renata)",
+          "name": "04. Cadastrar candidato (Renata)",
           "event": [
             {
               "listen": "test",
@@ -288,7 +195,7 @@
           }
         },
         {
-          "name": "06. Criar eleição do 2º turno",
+          "name": "05. Criar eleição do 2º turno",
           "event": [
             {
               "listen": "prerequest",
@@ -304,8 +211,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
-                  "pm.environment.set(\"eleicao2_id\", pm.response.json().id);"
+                  "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });"
                 ]
               }
             }
@@ -344,55 +250,7 @@
           }
         },
         {
-          "name": "07. Candidatura de Senador no 2º turno",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 409\", function () { pm.response.to.have.status(409); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/eleicoes/{{eleicao2_id}}/candidaturas",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "eleicoes",
-                "{{eleicao2_id}}",
-                "candidaturas"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_chefe}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"candidato_id\": \"{{candidato_renata_id}}\",\n  \"partido_id\": 1,\n  \"cargo\": \"SENADOR\",\n  \"numero\": \"404\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "08. Consultar a eleição do seed",
+          "name": "06. Consultar a eleição do seed",
           "event": [
             {
               "listen": "test",
@@ -430,7 +288,7 @@
           }
         },
         {
-          "name": "09. Abrir a eleição",
+          "name": "07. Abrir a eleição",
           "event": [
             {
               "listen": "test",
@@ -469,7 +327,7 @@
           }
         },
         {
-          "name": "10. Candidatura depois da abertura",
+          "name": "08. Candidatura depois da abertura",
           "event": [
             {
               "listen": "test",
@@ -522,7 +380,7 @@
       "name": "Parte 2: votação (Eleitor) e regras de negócio",
       "item": [
         {
-          "name": "11. Login de Ana",
+          "name": "09. Login de Ana",
           "event": [
             {
               "listen": "test",
@@ -569,7 +427,7 @@
           }
         },
         {
-          "name": "12. Consultar a cédula",
+          "name": "10. Consultar a cédula",
           "event": [
             {
               "listen": "test",
@@ -609,7 +467,7 @@
           }
         },
         {
-          "name": "13. Registrar voto: Presidente 10",
+          "name": "11. Registrar voto: Presidente 10",
           "event": [
             {
               "listen": "test",
@@ -660,7 +518,7 @@
           }
         },
         {
-          "name": "14. Confirmar o voto",
+          "name": "12. Confirmar o voto",
           "event": [
             {
               "listen": "test",
@@ -710,7 +568,7 @@
           }
         },
         {
-          "name": "15. Confirmar de novo (mesmo token)",
+          "name": "13. Confirmar de novo (mesmo token)",
           "event": [
             {
               "listen": "test",
@@ -760,209 +618,7 @@
           }
         },
         {
-          "name": "16. Registrar voto em branco: Senador",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.environment.set(\"token_cedula\", pm.response.json().token_cedula);"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/votacao/eleicoes/{{eleicao_id}}/votos/registro",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "votacao",
-                "eleicoes",
-                "{{eleicao_id}}",
-                "votos",
-                "registro"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_eleitor}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"cargo\": \"SENADOR\",\n  \"modo\": \"BRANCO\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "16. Confirmar o voto em branco",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/votacao/eleicoes/{{eleicao_id}}/votos/confirmacao",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "votacao",
-                "eleicoes",
-                "{{eleicao_id}}",
-                "votos",
-                "confirmacao"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_eleitor}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"token_cedula\": \"{{token_cedula}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "17. Registrar número inexistente: Governador 99",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.environment.set(\"token_cedula\", pm.response.json().token_cedula);"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/votacao/eleicoes/{{eleicao_id}}/votos/registro",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "votacao",
-                "eleicoes",
-                "{{eleicao_id}}",
-                "votos",
-                "registro"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_eleitor}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"cargo\": \"GOVERNADOR\",\n  \"modo\": \"NUMERO\",\n  \"numero\": \"99\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "17. Confirmar o voto nulo",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/votacao/eleicoes/{{eleicao_id}}/votos/confirmacao",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "votacao",
-                "eleicoes",
-                "{{eleicao_id}}",
-                "votos",
-                "confirmacao"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_eleitor}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"token_cedula\": \"{{token_cedula}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "18. Login de Bruno",
+          "name": "14. Login de Bruno",
           "event": [
             {
               "listen": "test",
@@ -1009,7 +665,7 @@
           }
         },
         {
-          "name": "18. Bruno registra Presidente 20",
+          "name": "15. Bruno registra Presidente 20",
           "event": [
             {
               "listen": "test",
@@ -1060,7 +716,7 @@
           }
         },
         {
-          "name": "18. Bruno confirma",
+          "name": "16. Bruno confirma",
           "event": [
             {
               "listen": "test",
@@ -1110,155 +766,7 @@
           }
         },
         {
-          "name": "18. Login de Camila",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.environment.set(\"token_eleitor\", pm.response.json().access_token);"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/auth/login",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "login"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "username",
-                  "value": "945.807.302-24",
-                  "type": "text"
-                },
-                {
-                  "key": "password",
-                  "value": "Eleitor@123",
-                  "type": "text"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "18. Camila registra Presidente 10",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.environment.set(\"token_cedula\", pm.response.json().token_cedula);"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/votacao/eleicoes/{{eleicao_id}}/votos/registro",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "votacao",
-                "eleicoes",
-                "{{eleicao_id}}",
-                "votos",
-                "registro"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_eleitor}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"cargo\": \"PRESIDENTE\",\n  \"modo\": \"NUMERO\",\n  \"numero\": \"10\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "18. Camila confirma",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/votacao/eleicoes/{{eleicao_id}}/votos/confirmacao",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "votacao",
-                "eleicoes",
-                "{{eleicao_id}}",
-                "votos",
-                "confirmacao"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_eleitor}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"token_cedula\": \"{{token_cedula}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "19. Chefe tenta registrar voto",
+          "name": "17. Chefe tenta registrar voto",
           "event": [
             {
               "listen": "test",
@@ -1304,139 +812,6 @@
                   "language": "json"
                 }
               }
-            }
-          }
-        },
-        {
-          "name": "20. Chefe cadastra Gustavo (depois da abertura)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/eleitores",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "eleitores"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_chefe}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nome\": \"Gustavo Pereira\",\n  \"cpf\": \"217.533.772-34\",\n  \"titulo_eleitor\": \"100000000007\",\n  \"data_nascimento\": \"1995-05-05\",\n  \"senha\": \"Eleitor@123\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "20. Login de Gustavo",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.environment.set(\"token_eleitor\", pm.response.json().access_token);"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/auth/login",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "login"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "username",
-                  "value": "217.533.772-34",
-                  "type": "text"
-                },
-                {
-                  "key": "password",
-                  "value": "Eleitor@123",
-                  "type": "text"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "20. Gustavo tenta abrir a cédula",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 403\", function () { pm.response.to.have.status(403); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/votacao/eleicoes/{{eleicao_id}}/cedula",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "votacao",
-                "eleicoes",
-                "{{eleicao_id}}",
-                "cedula"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_eleitor}}",
-                  "type": "string"
-                }
-              ]
             }
           }
         }
@@ -1446,94 +821,7 @@
       "name": "Parte 3: acompanhamento da votação",
       "item": [
         {
-          "name": "21. Login de Ana",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.environment.set(\"token_eleitor\", pm.response.json().access_token);"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/auth/login",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "login"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "username",
-                  "value": "011.524.493-03",
-                  "type": "text"
-                },
-                {
-                  "key": "password",
-                  "value": "Eleitor@123",
-                  "type": "text"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "21. Apuração parcial (Eleitor)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/apuracao/eleicoes/{{eleicao_id}}/parcial",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "apuracao",
-                "eleicoes",
-                "{{eleicao_id}}",
-                "parcial"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_eleitor}}",
-                  "type": "string"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "22. Login de Carlos Lima",
+          "name": "18. Login de Carlos Lima",
           "event": [
             {
               "listen": "test",
@@ -1580,7 +868,7 @@
           }
         },
         {
-          "name": "22. Apuração parcial (Candidato)",
+          "name": "19. Apuração parcial (Candidato)",
           "event": [
             {
               "listen": "test",
@@ -1620,7 +908,7 @@
           }
         },
         {
-          "name": "23. Candidato pede outro cargo",
+          "name": "20. Candidato pede outro cargo",
           "event": [
             {
               "listen": "test",
@@ -1664,46 +952,6 @@
               ]
             }
           }
-        },
-        {
-          "name": "24. Resultado com a eleição aberta",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 409\", function () { pm.response.to.have.status(409); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/apuracao/eleicoes/{{eleicao_id}}/resultado",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "apuracao",
-                "eleicoes",
-                "{{eleicao_id}}",
-                "resultado"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_chefe}}",
-                  "type": "string"
-                }
-              ]
-            }
-          }
         }
       ]
     },
@@ -1711,7 +959,7 @@
       "name": "Parte 4: encerramento e resultado final",
       "item": [
         {
-          "name": "25. Encerrar a eleição",
+          "name": "21. Encerrar a eleição",
           "event": [
             {
               "listen": "test",
@@ -1750,54 +998,7 @@
           }
         },
         {
-          "name": "26. Login de Diego",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.environment.set(\"token_eleitor\", pm.response.json().access_token);"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/auth/login",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "auth",
-                "login"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "username",
-                  "value": "917.400.297-04",
-                  "type": "text"
-                },
-                {
-                  "key": "password",
-                  "value": "Eleitor@123",
-                  "type": "text"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "26. Diego tenta registrar voto",
+          "name": "22. Bruno tenta registrar voto depois do encerramento",
           "event": [
             {
               "listen": "test",
@@ -1847,7 +1048,7 @@
           }
         },
         {
-          "name": "27. Resultado final",
+          "name": "23. Resultado final",
           "event": [
             {
               "listen": "test",

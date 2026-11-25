@@ -31,6 +31,13 @@ TAGS = [
     {"name": "Apuração", "description": "Acompanhamento parcial e resultado final."},
 ]
 
+# Parâmetros do Swagger UI do `/docs`; o `docs/index.html` publicado usa os mesmos três.
+PARAMETROS_SWAGGER_UI = {
+    "persistAuthorization": True,  # o token do Authorize sobrevive a recarregar a página
+    "displayRequestDuration": True,  # mostra quanto cada chamada demorou
+    "filter": True,  # caixa de busca por rota ou tag
+}
+
 _DESCRICOES = {
     401: "Não autenticado ou token inválido",
     403: "Perfil sem permissão para esta operação",

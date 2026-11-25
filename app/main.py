@@ -17,13 +17,14 @@ from app.controllers import (
 from app.core.database import obter_sessao
 from app.core.exceptions import registrar_tratadores
 from app.core.log_requisicoes import registrar_log_de_requisicoes
-from app.core.openapi import DESCRICAO_API, TAGS
+from app.core.openapi import DESCRICAO_API, PARAMETROS_SWAGGER_UI, TAGS
 
 app = FastAPI(
     title="API de Simulação de Eleição Eletrônica",
     version="1.0.0",
     description=DESCRICAO_API,
     openapi_tags=TAGS,
+    swagger_ui_parameters=PARAMETROS_SWAGGER_UI,
     # operationId legível no Swagger (ex.: "abrir"); os nomes das funções de rota são únicos.
     generate_unique_id_function=lambda rota: rota.name,
 )
