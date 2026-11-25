@@ -8,9 +8,10 @@ def _codigo(resposta) -> str:
 
 
 def test_criar_partido_grava_a_sigla_em_maiusculas(cliente, cabecalho_chefe):
-    """RN-32: a sigla digitada em minúsculas é gravada em maiúsculas."""
+    """RN-32: a sigla digitada em minúsculas é gravada em maiúsculas, e o nome sem os espaços
+    das pontas."""
     resposta = novo_partido(
-        cliente, cabecalho_chefe, sigla="pino", nome="Partido da Inovação", numero=10
+        cliente, cabecalho_chefe, sigla="pino", nome="  Partido da Inovação  ", numero=10
     )
 
     assert resposta.status_code == 201

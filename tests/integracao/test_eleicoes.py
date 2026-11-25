@@ -147,7 +147,7 @@ def test_ciclo_de_vida_abrir_encerrar_e_nao_reabrir(cliente, cabecalho_chefe, re
     assert corpo["status"] == "ABERTA"
     assert instante(corpo["aberta_em"]) == datetime(2026, 11, 25, 10, 0, tzinfo=FUSO)
     assert corpo["encerrada_em"] is None
-    assert rels(corpo) == ["self", "encerrar", "apuracao-parcial"]
+    assert rels(corpo) == ["self", "candidaturas", "encerrar", "apuracao-parcial"]
 
     relogio.avancar(hours=9)  # 19:00, depois do horário previsto
     encerrada = cliente.post(f"{ELEICOES}/1/encerramento", headers=cabecalho_chefe)
@@ -159,7 +159,7 @@ def test_ciclo_de_vida_abrir_encerrar_e_nao_reabrir(cliente, cabecalho_chefe, re
     assert corpo["status"] == "ENCERRADA"
     assert instante(corpo["aberta_em"]) == datetime(2026, 11, 25, 10, 0, tzinfo=FUSO)
     assert instante(corpo["encerrada_em"]) == datetime(2026, 11, 25, 19, 0, tzinfo=FUSO)
-    assert rels(corpo) == ["self", "resultado"]
+    assert rels(corpo) == ["self", "candidaturas", "resultado"]
     for resposta in (reabrir, encerrar_de_novo):
         assert resposta.status_code == 409
         assert resposta.json()["erro"]["codigo"] == "TRANSICAO_INVALIDA"
@@ -257,7 +257,7 @@ def test_qualquer_perfil_consulta_a_eleicao_e_recebe_os_proprios_links(
     assert [e["id"] for e in todas] == [1, 2]
     assert [e["id"] for e in agendadas] == [1]
     assert [e["id"] for e in encerradas] == [2]
-    assert rels(encerradas[0]) == ["self", "resultado"]
+    assert rels(encerradas[0]) == ["self", "candidaturas", "resultado"]  # visão do Chefe
     assert abertas == []
     assert invalida.status_code == 422
     assert invalida.json()["erro"]["codigo"] == "DADOS_INVALIDOS"

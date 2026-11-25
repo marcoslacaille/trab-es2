@@ -90,9 +90,9 @@ class Link:
 def links_da_eleicao(eleicao: EleicaoResumo, perfil: Perfil) -> list[Link]:
     """RN-19 (HATEOAS): as ações que o perfil pode fazer na eleição, dado o status dela.
 
-    `self` sempre aparece. O resto depende do perfil e do status: o Chefe edita, gerencia
-    candidaturas e abre a AGENDADA, e encerra a ABERTA; Eleitor e Candidato veem a apuração
-    parcial da ABERTA (o Eleitor também a cédula); todos veem o resultado da ENCERRADA.
+    `self` sempre aparece. O resto depende do perfil e do status: o Chefe vê as candidaturas
+    em qualquer status, edita, cria candidaturas e abre a AGENDADA e encerra a ABERTA; todos
+    veem a apuração parcial da ABERTA (o Eleitor também a cédula) e o resultado da ENCERRADA.
     """
     base = f"{PREFIXO_DA_API}/eleicoes/{eleicao.id}"
     apuracao = f"{PREFIXO_DA_API}/apuracao/eleicoes/{eleicao.id}"
@@ -107,6 +107,7 @@ def links_da_eleicao(eleicao: EleicaoResumo, perfil: Perfil) -> list[Link]:
         ]
     if eleicao.status == StatusEleicao.ABERTA:
         if perfil == Perfil.CHEFE_SECAO:
+            links.append(Link("candidaturas", "GET", f"{base}/candidaturas"))
             links.append(Link("encerrar", "POST", f"{base}/encerramento"))
         if perfil == Perfil.ELEITOR:
             cedula = f"{PREFIXO_DA_API}/votacao/eleicoes/{eleicao.id}/cedula"
@@ -114,6 +115,8 @@ def links_da_eleicao(eleicao: EleicaoResumo, perfil: Perfil) -> list[Link]:
         if perfil in (Perfil.CHEFE_SECAO, Perfil.ELEITOR, Perfil.CANDIDATO):
             links.append(Link("apuracao-parcial", "GET", f"{apuracao}/parcial"))
     if eleicao.status == StatusEleicao.ENCERRADA:
+        if perfil == Perfil.CHEFE_SECAO:
+            links.append(Link("candidaturas", "GET", f"{base}/candidaturas"))
         links.append(Link("resultado", "GET", f"{apuracao}/resultado"))
     return links
 

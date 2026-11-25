@@ -3103,6 +3103,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Erro interno inesperado (o detalhe vai só para o log)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErroResposta"
+                }
+              }
+            }
           }
         }
       }
@@ -4660,7 +4670,7 @@
             "maxLength": 100,
             "minLength": 1,
             "title": "Nome",
-            "description": "Nome do partido.",
+            "description": "Nome do partido (os espaços das pontas são tirados).",
             "examples": [
               "Partido da Inovação"
             ]
