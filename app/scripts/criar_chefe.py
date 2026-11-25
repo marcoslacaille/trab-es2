@@ -10,8 +10,8 @@ from app.core.config import obter_configuracao
 from app.core.database import SessionLocal
 from app.core.exceptions import ConflitoDeEstado, DadosInvalidos
 from app.core.relogio import agora
-from app.identidade import service
 from app.models.enums import Perfil
+from app.services.usuario_service import UsuarioService
 
 
 def criar_chefe() -> int:
@@ -27,8 +27,7 @@ def criar_chefe() -> int:
 
     with SessionLocal() as sessao:
         try:
-            service.criar_credencial(
-                sessao,
+            UsuarioService(sessao).criar_credencial(
                 cpf=configuracao.chefe_cpf,
                 nome=configuracao.chefe_nome,
                 senha=configuracao.chefe_senha,

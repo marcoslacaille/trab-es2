@@ -10,13 +10,10 @@ from app.core.database import obter_sessao
 from app.core.openapi import respostas_de_erro
 from app.core.relogio import obter_agora
 from app.core.validadores import MAIOR_ID
+from app.dependencies import UsuarioAutenticado, exige_perfil, obter_usuario_atual
 from app.dto.candidatura_dto import AlteracoesCandidatura, NovaCandidaturaDados
 from app.dto.eleicao_dto import AlteracoesEleicao, NovaEleicaoDados
 from app.eleicoes import service
-
-# `identidade.dependencias` é a única parte de `identidade` (além do serviço) que as rotas de
-# outros módulos podem importar (seção 5).
-from app.identidade.dependencias import UsuarioAutenticado, exige_perfil, obter_usuario_atual
 from app.models.enums import Cargo, Perfil, StatusEleicao
 from app.schemas.candidatura_schema import (
     AlteracaoCandidatura,

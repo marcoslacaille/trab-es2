@@ -11,7 +11,7 @@ from app.core.database import obter_sessao
 from app.core.openapi import respostas_de_erro
 from app.core.relogio import obter_agora
 from app.core.validadores import MAIOR_ID
-from app.identidade.dependencias import UsuarioAutenticado, exige_perfil, obter_usuario_atual
+from app.dependencies import UsuarioAutenticado, exige_perfil, obter_usuario_atual
 from app.models.enums import Cargo, Perfil
 from app.schemas.apuracao_schema import ApuracaoResposta
 

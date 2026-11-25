@@ -8,8 +8,8 @@ from app.core import cedula, security
 from app.core.config import obter_configuracao
 from app.core.exceptions import DadosInvalidos, NaoAutenticado
 from app.dto.votacao_dto import Escolha
-from app.identidade.dominio import validar_senha
 from app.models.enums import Cargo, Perfil, TipoVoto
+from app.services.usuario_service import validar_senha
 
 
 @pytest.mark.parametrize(

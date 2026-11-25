@@ -12,12 +12,9 @@ from app.core.openapi import respostas_de_erro
 from app.core.paginacao import Pagina, Paginacao, obter_paginacao
 from app.core.relogio import obter_agora
 from app.core.validadores import MAIOR_ID, sem_caractere_nulo
+from app.dependencies import UsuarioAutenticado, exige_perfil
 from app.dto.eleitor_dto import AlteracoesEleitor, NovoEleitorDados
 from app.eleitores import service
-
-# `Perfil` e `UsuarioAutenticado` vêm de `dependencias`, a única parte de `identidade` (além do
-# serviço) que as rotas de outros módulos podem importar (seção 5).
-from app.identidade.dependencias import UsuarioAutenticado, exige_perfil
 from app.models.enums import Perfil
 from app.schemas.eleitor_schema import AlteracaoEleitor, EleitorResposta, NovoEleitor
 

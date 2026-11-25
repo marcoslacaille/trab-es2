@@ -1,5 +1,5 @@
 from app.core.database import SessionLocal
-from app.identidade import service
+from app.services.usuario_service import UsuarioService
 from tests.auxiliares import CPF_CHEFE, SENHA_CHEFE, criar_chefe, gerar_cpf
 
 
@@ -111,7 +111,7 @@ def test_usuario_excluido_perde_o_acesso_mesmo_com_token_valido(cliente):
     cabecalho = {"Authorization": f"Bearer {token}"}
     assert cliente.get("/api/v1/auth/me", headers=cabecalho).status_code == 200
     with SessionLocal() as sessao:
-        service.remover_credencial(sessao, usuario_id)
+        UsuarioService(sessao).remover_credencial(usuario_id)
         sessao.commit()
 
     resposta = cliente.get("/api/v1/auth/me", headers=cabecalho)

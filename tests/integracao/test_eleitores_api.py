@@ -2,8 +2,8 @@ from datetime import datetime
 
 from app.core.database import SessionLocal
 from app.core.relogio import agora
-from app.identidade import service
 from app.models.enums import Perfil
+from app.services.usuario_service import UsuarioService
 from tests.auxiliares import (
     SENHA_ELEITOR,
     eleicao_aberta_com_candidatos,
@@ -27,8 +27,8 @@ def _com_pontuacao(cpf: str) -> str:
 def _criar_candidato(cpf: str) -> None:
     """Cria uma credencial de candidato direto pelo serviço (o módulo de candidatos é posterior)."""
     with SessionLocal() as sessao:
-        service.criar_credencial(
-            sessao, cpf, "Candidato de Teste", "Candidato@123", Perfil.CANDIDATO, agora()
+        UsuarioService(sessao).criar_credencial(
+            cpf, "Candidato de Teste", "Candidato@123", Perfil.CANDIDATO, agora()
         )
         sessao.commit()
 

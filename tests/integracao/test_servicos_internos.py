@@ -9,11 +9,11 @@ from app.core.exceptions import DadosInvalidos, NaoEncontrado
 from app.core.relogio import agora
 from app.eleicoes import service as service_eleicoes
 from app.eleitores import service as service_eleitores
-from app.identidade import service as service_identidade
 from app.models.enums import Cargo, Perfil
 from app.repositories.candidato_repository import CandidatoRepository
 from app.repositories.eleitor_repository import EleitorRepository
 from app.schemas.eleicao_schema import links_da_eleicao
+from app.services.usuario_service import UsuarioService
 from tests.auxiliares import (
     SENHA_CANDIDATO,
     SENHA_ELEITOR,
@@ -40,15 +40,15 @@ def test_atualizar_credencial_troca_nome_e_senha():
     usuario_id = criar_chefe()
 
     with SessionLocal() as sessao:
-        service_identidade.atualizar_credencial(
-            sessao, usuario_id, agora(), nome="  Novo Nome  ", senha="NovaSenha@456"
+        UsuarioService(sessao).atualizar_credencial(
+            usuario_id, agora(), nome="  Novo Nome  ", senha="NovaSenha@456"
         )
         sessao.commit()
 
     with SessionLocal() as sessao:
-        usuario = service_identidade.obter_usuario(sessao, usuario_id)
+        usuario = UsuarioService(sessao).obter_usuario(usuario_id)
         assert usuario is not None and usuario.nome == "Novo Nome"
-        assert service_identidade.autenticar(sessao, usuario.cpf, "NovaSenha@456")
+        assert UsuarioService(sessao).autenticar(usuario.cpf, "NovaSenha@456")
 
 
 def test_atualizar_credencial_recusa_nome_curto_e_senha_fraca():
@@ -57,9 +57,9 @@ def test_atualizar_credencial_recusa_nome_curto_e_senha_fraca():
 
     with SessionLocal() as sessao:
         with pytest.raises(DadosInvalidos) as nome_curto:
-            service_identidade.atualizar_credencial(sessao, usuario_id, agora(), nome=" ab ")
+            UsuarioService(sessao).atualizar_credencial(usuario_id, agora(), nome=" ab ")
         with pytest.raises(DadosInvalidos) as senha_fraca:
-            service_identidade.atualizar_credencial(sessao, usuario_id, agora(), senha="fraca")
+            UsuarioService(sessao).atualizar_credencial(usuario_id, agora(), senha="fraca")
 
     assert nome_curto.value.codigo == "DADOS_INVALIDOS"
     assert senha_fraca.value.codigo == "SENHA_INVALIDA"
@@ -69,9 +69,9 @@ def test_credencial_inexistente_e_inconsistencia_interna():
     """Atualizar ou remover credencial que não existe é erro de programação (`LookupError`)."""
     with SessionLocal() as sessao:
         with pytest.raises(LookupError):
-            service_identidade.atualizar_credencial(sessao, 999, agora(), nome="Fulano")
+            UsuarioService(sessao).atualizar_credencial(999, agora(), nome="Fulano")
         with pytest.raises(LookupError):
-            service_identidade.remover_credencial(sessao, 999)
+            UsuarioService(sessao).remover_credencial(999)
 
 
 def test_obter_usuarios_com_lista_vazia_e_ids_inexistentes():
@@ -79,8 +79,8 @@ def test_obter_usuarios_com_lista_vazia_e_ids_inexistentes():
     usuario_id = criar_chefe()
 
     with SessionLocal() as sessao:
-        assert service_identidade.obter_usuarios(sessao, []) == {}
-        achados = service_identidade.obter_usuarios(sessao, [usuario_id, 999])
+        assert UsuarioService(sessao).obter_usuarios([]) == {}
+        achados = UsuarioService(sessao).obter_usuarios([usuario_id, 999])
 
     assert list(achados) == [usuario_id]
 
@@ -129,7 +129,7 @@ def test_obter_candidato_logado_sem_candidato_responde_404():
 def test_candidato_sem_credencial_e_inconsistencia_interna(cliente, cabecalho_chefe, monkeypatch):
     """Candidato cuja credencial sumiu é inconsistência (`LookupError`, vira 500)."""
     criado = novo_candidato(cliente, cabecalho_chefe).json()
-    monkeypatch.setattr(service_identidade, "obter_usuarios", lambda sessao, ids: {})
+    monkeypatch.setattr(UsuarioService, "obter_usuarios", lambda self, ids: {})
 
     with SessionLocal() as sessao, pytest.raises(LookupError):
         service_candidatos.obter_candidato(sessao, criado["id"])
@@ -168,7 +168,7 @@ def test_obter_eleitor_do_usuario_sem_eleitor_devolve_none():
 def test_eleitor_sem_credencial_e_inconsistencia_interna(cliente, cabecalho_chefe, monkeypatch):
     """Eleitor cuja credencial sumiu é inconsistência (`LookupError`, vira 500)."""
     criado = novo_eleitor(cliente, cabecalho_chefe).json()
-    monkeypatch.setattr(service_identidade, "obter_usuarios", lambda sessao, ids: {})
+    monkeypatch.setattr(UsuarioService, "obter_usuarios", lambda self, ids: {})
 
     with SessionLocal() as sessao, pytest.raises(LookupError):
         service_eleitores.obter_eleitor(sessao, criado["id"])
@@ -239,8 +239,8 @@ def test_votacao_com_perfil_eleitor_sem_cadastro_responde_404(cliente, cabecalho
     ids = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)
     eleicao = ids["eleicao_id"]
     with SessionLocal() as sessao:
-        service_identidade.criar_credencial(
-            sessao, "01152449303", "Sem Cadastro", SENHA_ELEITOR, Perfil.ELEITOR, agora()
+        UsuarioService(sessao).criar_credencial(
+            "01152449303", "Sem Cadastro", SENHA_ELEITOR, Perfil.ELEITOR, agora()
         )
         sessao.commit()
     cabecalho = login(cliente, "01152449303", SENHA_ELEITOR)
@@ -273,13 +273,13 @@ def test_atualizar_credencial_so_com_nome_mantem_a_senha():
     usuario_id = criar_chefe()
 
     with SessionLocal() as sessao:
-        service_identidade.atualizar_credencial(sessao, usuario_id, agora(), nome="Outro Nome")
+        UsuarioService(sessao).atualizar_credencial(usuario_id, agora(), nome="Outro Nome")
         sessao.commit()
 
     with SessionLocal() as sessao:
-        usuario = service_identidade.obter_usuario(sessao, usuario_id)
+        usuario = UsuarioService(sessao).obter_usuario(usuario_id)
         assert usuario is not None and usuario.nome == "Outro Nome"
-        assert service_identidade.autenticar(sessao, usuario.cpf, "Chefe@2026")
+        assert UsuarioService(sessao).autenticar(usuario.cpf, "Chefe@2026")
 
 
 def test_alterar_candidato_so_com_nome_urna_nao_mexe_na_credencial(cliente, cabecalho_chefe):

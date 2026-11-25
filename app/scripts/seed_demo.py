@@ -20,8 +20,8 @@ from app.dto.eleitor_dto import NovoEleitorDados
 from app.dto.partido_dto import NovoPartidoDados
 from app.eleicoes import service as service_eleicoes
 from app.eleitores import service as service_eleitores
-from app.identidade import service as service_identidade
 from app.models.enums import Cargo, Perfil
+from app.services.usuario_service import UsuarioService
 
 CHEFE_CPF = "291.417.776-38"
 CHEFE_NOME = "Chefe da Seção"
@@ -241,8 +241,8 @@ def _criar_cenario(sessao: Session, momento: datetime) -> int:
 def _criar_chefe_se_preciso(sessao, momento) -> None:
     """Cria o Chefe da Seção da demonstração, a menos que o CPF já exista."""
     try:
-        service_identidade.criar_credencial(
-            sessao, CHEFE_CPF, CHEFE_NOME, CHEFE_SENHA, Perfil.CHEFE_SECAO, momento
+        UsuarioService(sessao).criar_credencial(
+            CHEFE_CPF, CHEFE_NOME, CHEFE_SENHA, Perfil.CHEFE_SECAO, momento
         )
     except ConflitoDeEstado as erro:
         if erro.codigo != "CPF_JA_CADASTRADO":

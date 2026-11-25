@@ -8,8 +8,8 @@ from fastapi.testclient import TestClient
 
 from app.core.database import SessionLocal
 from app.core.relogio import agora
-from app.identidade import service
 from app.models.enums import Perfil
+from app.services.usuario_service import UsuarioService
 
 CPF_CHEFE = "29141777638"
 SENHA_CHEFE = "Chefe@2026"
@@ -46,8 +46,8 @@ def criar_chefe(
 ) -> int:
     """Cria o Chefe da Seção direto pelo serviço de identidade, com commit. Devolve o id."""
     with SessionLocal() as sessao:
-        usuario_id = service.criar_credencial(
-            sessao, cpf, "Chefe da Seção", senha, Perfil.CHEFE_SECAO, agora_ or agora()
+        usuario_id = UsuarioService(sessao).criar_credencial(
+            cpf, "Chefe da Seção", senha, Perfil.CHEFE_SECAO, agora_ or agora()
         )
         sessao.commit()
     return usuario_id

@@ -17,20 +17,18 @@ from app.dto.eleitor_dto import (
     EleitorResumo,
     NovoEleitorDados,
 )
+from app.dto.usuario_dto import UsuarioAutenticado
 from app.eleitores.dominio import validar_idade_eleitor, validar_titulo_eleitor
-
-# Um módulo só importa `service` de outro (seção 5). `UsuarioAutenticado` chega por aí porque
-# `identidade.service` já o importa de `dto/usuario_dto`.
-from app.identidade import service as service_identidade
 from app.models.eleitor import Eleitor
 from app.models.enums import Perfil
 from app.repositories.eleitor_repository import EleitorRepository
+from app.services.usuario_service import UsuarioService
 
 # Restrição que impede apagar quem já votou (a tabela nasce na migração 0005).
 FK_ELEITOR_JA_VOTOU = "fk_registros_votacao_eleitor_id_eleitores"
 
 
-def _detalhar(eleitor: Eleitor, usuario: service_identidade.UsuarioAutenticado) -> EleitorDetalhado:
+def _detalhar(eleitor: Eleitor, usuario: UsuarioAutenticado) -> EleitorDetalhado:
     """Junta os dados do eleitor com nome e CPF da credencial. O ORM não sai do módulo."""
     return EleitorDetalhado(
         id=eleitor.id,
@@ -53,7 +51,7 @@ def _obter_modelo(sessao: Session, eleitor_id: int) -> Eleitor:
 
 def _com_credencial(sessao: Session, eleitor: Eleitor) -> EleitorDetalhado:
     """Completa o eleitor com a credencial. Credencial ausente é inconsistência interna (500)."""
-    usuarios = service_identidade.obter_usuarios(sessao, [eleitor.usuario_id])
+    usuarios = UsuarioService(sessao).obter_usuarios([eleitor.usuario_id])
     usuario = usuarios.get(eleitor.usuario_id)
     if usuario is None:
         raise LookupError(f"O eleitor {eleitor.id} não tem credencial.")
@@ -77,8 +75,8 @@ def cadastrar_eleitor(
             "Já existe um eleitor com este título de eleitor.", codigo="TITULO_JA_CADASTRADO"
         )
 
-    usuario_id = service_identidade.criar_credencial(
-        sessao, dados.cpf, dados.nome, dados.senha, Perfil.ELEITOR, agora
+    usuario_id = UsuarioService(sessao).criar_credencial(
+        dados.cpf, dados.nome, dados.senha, Perfil.ELEITOR, agora
     )
     eleitor = Eleitor(
         usuario_id=usuario_id,
@@ -99,7 +97,7 @@ def listar_eleitores(
     A paginação e o filtro de nome ficam com `identidade.listar_usuarios`; aqui só se buscam,
     numa única consulta, os eleitores desses usuários.
     """
-    usuarios = service_identidade.listar_usuarios(sessao, Perfil.ELEITOR, nome, paginacao)
+    usuarios = UsuarioService(sessao).listar_usuarios(Perfil.ELEITOR, nome, paginacao)
     eleitores = EleitorRepository(sessao).buscar_por_usuarios_ids([u.id for u in usuarios.itens])
     por_usuario = {eleitor.usuario_id: eleitor for eleitor in eleitores}
     return Pagina[EleitorDetalhado](
@@ -128,8 +126,8 @@ def atualizar_eleitor(
         validar_idade_eleitor(alteracoes.data_nascimento, agora.date())
         eleitor.data_nascimento = alteracoes.data_nascimento
     if alteracoes.nome is not None or alteracoes.senha is not None:
-        service_identidade.atualizar_credencial(
-            sessao, eleitor.usuario_id, agora, nome=alteracoes.nome, senha=alteracoes.senha
+        UsuarioService(sessao).atualizar_credencial(
+            eleitor.usuario_id, agora, nome=alteracoes.nome, senha=alteracoes.senha
         )
     sessao.commit()
     return _com_credencial(sessao, eleitor)
@@ -152,7 +150,7 @@ def excluir_eleitor(sessao: Session, eleitor_id: int) -> None:
         raise ConflitoDeEstado(
             "O eleitor já votou e não pode ser excluído.", codigo="EXCLUSAO_BLOQUEADA"
         ) from erro
-    service_identidade.remover_credencial(sessao, usuario_id)
+    UsuarioService(sessao).remover_credencial(usuario_id)
     sessao.commit()
 
 

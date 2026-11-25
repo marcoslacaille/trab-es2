@@ -23,23 +23,19 @@ from app.dto.candidato_dto import (
     NovoCandidatoDados,
 )
 from app.dto.partido_dto import NovoPartidoDados, PartidoResumo
-
-# Um módulo só importa `service` de outro (seção 5). `UsuarioAutenticado` chega por aí porque
-# `identidade.service` já o importa de `dto/usuario_dto` (mesmo caso de `eleitores`).
-from app.identidade import service as service_identidade
+from app.dto.usuario_dto import UsuarioAutenticado
 from app.models.candidato import Candidato
 from app.models.enums import Perfil
 from app.models.partido import Partido
 from app.repositories.candidato_repository import CandidatoRepository
 from app.repositories.partido_repository import PartidoRepository
+from app.services.usuario_service import UsuarioService
 
 # Restrição que impede apagar quem tem candidatura (a tabela nasce na migração 0004).
 FK_CANDIDATO_COM_CANDIDATURA = "fk_candidaturas_candidato_id_candidatos"
 
 
-def _detalhar(
-    candidato: Candidato, usuario: service_identidade.UsuarioAutenticado
-) -> CandidatoDetalhado:
+def _detalhar(candidato: Candidato, usuario: UsuarioAutenticado) -> CandidatoDetalhado:
     """Junta os dados do candidato com nome e CPF da credencial. O ORM não sai do módulo."""
     return CandidatoDetalhado(
         id=candidato.id,
@@ -79,7 +75,7 @@ def _obter_modelo(sessao: Session, candidato_id: int) -> Candidato:
 
 def _com_credencial(sessao: Session, candidato: Candidato) -> CandidatoDetalhado:
     """Completa o candidato com a credencial. Credencial ausente é inconsistência (500)."""
-    usuarios = service_identidade.obter_usuarios(sessao, [candidato.usuario_id])
+    usuarios = UsuarioService(sessao).obter_usuarios([candidato.usuario_id])
     usuario = usuarios.get(candidato.usuario_id)
     if usuario is None:
         raise LookupError(f"O candidato {candidato.id} não tem credencial.")
@@ -98,8 +94,8 @@ def cadastrar_candidato(
     nome_urna = validar_nome_de_urna(dados.nome_urna)
     validar_nascimento_do_candidato(dados.data_nascimento, agora.date())
 
-    usuario_id = service_identidade.criar_credencial(
-        sessao, dados.cpf, dados.nome, dados.senha, Perfil.CANDIDATO, agora
+    usuario_id = UsuarioService(sessao).criar_credencial(
+        dados.cpf, dados.nome, dados.senha, Perfil.CANDIDATO, agora
     )
     candidato = Candidato(
         usuario_id=usuario_id,
@@ -120,7 +116,7 @@ def listar_candidatos(
     A paginação e o filtro de nome ficam com `identidade.listar_usuarios`; aqui só se buscam,
     numa única consulta, os candidatos desses usuários.
     """
-    usuarios = service_identidade.listar_usuarios(sessao, Perfil.CANDIDATO, nome, paginacao)
+    usuarios = UsuarioService(sessao).listar_usuarios(Perfil.CANDIDATO, nome, paginacao)
     candidatos = CandidatoRepository(sessao).buscar_candidatos_por_usuarios_ids(
         [u.id for u in usuarios.itens]
     )
@@ -153,8 +149,8 @@ def atualizar_candidato(
         validar_nascimento_do_candidato(alteracoes.data_nascimento, agora.date())
         candidato.data_nascimento = alteracoes.data_nascimento
     if alteracoes.nome is not None or alteracoes.senha is not None:
-        service_identidade.atualizar_credencial(
-            sessao, candidato.usuario_id, agora, nome=alteracoes.nome, senha=alteracoes.senha
+        UsuarioService(sessao).atualizar_credencial(
+            candidato.usuario_id, agora, nome=alteracoes.nome, senha=alteracoes.senha
         )
     sessao.commit()
     return _com_credencial(sessao, candidato)
@@ -178,7 +174,7 @@ def excluir_candidato(sessao: Session, candidato_id: int) -> None:
             "O candidato tem candidaturas. Remova as candidaturas antes.",
             codigo="EXCLUSAO_BLOQUEADA",
         ) from erro
-    service_identidade.remover_credencial(sessao, usuario_id)
+    UsuarioService(sessao).remover_credencial(usuario_id)
     sessao.commit()
 
 

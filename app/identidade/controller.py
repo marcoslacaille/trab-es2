@@ -4,13 +4,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
 
-from app.core.database import obter_sessao
 from app.core.openapi import respostas_de_erro
+from app.dependencies import UsuarioServiceDep, obter_usuario_atual
 from app.dto.usuario_dto import UsuarioAutenticado
-from app.identidade import service
-from app.identidade.dependencias import obter_usuario_atual
 from app.schemas.usuario_schema import LoginResposta, UsuarioLogadoResposta, UsuarioResposta
 
 roteador = APIRouter(prefix="/auth", tags=["Autenticação"])
@@ -29,9 +26,9 @@ roteador = APIRouter(prefix="/auth", tags=["Autenticação"])
 )
 def login(
     formulario: Annotated[OAuth2PasswordRequestForm, Depends()],
-    sessao: Annotated[Session, Depends(obter_sessao)],
+    service: UsuarioServiceDep,
 ) -> LoginResposta:
-    resultado = service.autenticar(sessao, formulario.username, formulario.password)
+    resultado = service.autenticar(formulario.username, formulario.password)
     return LoginResposta(
         access_token=resultado.access_token,
         expira_em=resultado.expira_em,

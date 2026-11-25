@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from fastapi.dependencies.models import Dependant
 from fastapi.routing import APIRoute, _IncludedRouter
 
-from app.identidade.dependencias import obter_usuario_atual
+from app.dependencies import obter_usuario_atual
 from app.main import app
 
 # Rotas públicas: saúde, login e a documentação (que o FastAPI registra como rotas simples).
