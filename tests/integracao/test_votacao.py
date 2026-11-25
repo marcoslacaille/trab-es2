@@ -7,6 +7,7 @@ from tests.auxiliares import (
     SENHA_ELEITOR,
     eleicao_aberta_com_candidatos,
     login,
+    nova_candidatura,
     nova_eleicao,
     novo_eleitor,
     votar,
@@ -80,7 +81,8 @@ def test_cedula_lista_so_os_cargos_disputados_na_ordem_da_urna(
 def test_registrar_voto_devolve_a_previa_e_nao_grava_nada(
     cliente, cabecalho_chefe, cabecalho_eleitor
 ):
-    """RN-56: prévia NOMINAL com candidato e token; nada é gravado; vale a última confirmada."""
+    """RN-56: prévia NOMINAL com candidato e token, sem gravar nada; quem muda de ideia confirma
+    a nova cédula, e a anterior passa a dar 409."""
     aberta = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)
     eleicao = aberta["eleicao_id"]
 
@@ -272,3 +274,42 @@ def test_eleitor_cadastrado_depois_da_abertura_nao_e_apto(cliente, cabecalho_che
 
     assert cedula.status_code == 403 and _codigo(cedula) == "ELEITOR_NAO_APTO"
     assert registro.status_code == 403 and _codigo(registro) == "ELEITOR_NAO_APTO"
+
+
+def test_cedula_vencida_e_recusada_na_confirmacao(
+    cliente, cabecalho_chefe, cabecalho_eleitor, relogio
+):
+    """RN-57: confirmada mais de 5 minutos depois do registro, a cédula dá 422 `CEDULA_EXPIRADA`."""
+    eleicao = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)["eleicao_id"]
+    token = _registrar(
+        cliente, cabecalho_eleitor, eleicao, cargo="PRESIDENTE", modo="NUMERO", numero="10"
+    ).json()["token_cedula"]
+
+    relogio.avancar(minutes=5, seconds=1)
+    vencida = _confirmar(cliente, cabecalho_eleitor, eleicao, token)
+
+    assert vencida.status_code == 422 and _codigo(vencida) == "CEDULA_EXPIRADA"
+    assert _contar("votos") == 0
+
+
+def test_mesmo_eleitor_vota_no_mesmo_cargo_em_cada_turno(
+    cliente, cabecalho_chefe, cabecalho_eleitor
+):
+    """RN-54: o voto único é por eleição; no 2º turno o eleitor vota de novo no cargo, uma vez."""
+    primeiro = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)["eleicao_id"]
+    assert votar(cliente, cabecalho_eleitor, primeiro, "PRESIDENTE", "10").status_code == 201
+    encerra = cliente.post(f"/api/v1/eleicoes/{primeiro}/encerramento", headers=cabecalho_chefe)
+    assert encerra.status_code == 200
+
+    segundo = nova_eleicao(cliente, cabecalho_chefe, turno=2).json()["id"]
+    for numero in ("10", "20"):
+        assert nova_candidatura(cliente, cabecalho_chefe, segundo, numero=numero).status_code == 201
+    abre = cliente.post(f"/api/v1/eleicoes/{segundo}/abertura", headers=cabecalho_chefe)
+    assert abre.status_code == 200, abre.text
+
+    no_segundo_turno = votar(cliente, cabecalho_eleitor, segundo, "PRESIDENTE", "20")
+    de_novo = votar(cliente, cabecalho_eleitor, segundo, "PRESIDENTE", "10")
+
+    assert no_segundo_turno.status_code == 201
+    assert de_novo.status_code == 409 and _codigo(de_novo) == "VOTO_JA_REGISTRADO"
+    assert _contar("registros_votacao") == 2

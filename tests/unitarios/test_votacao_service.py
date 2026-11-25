@@ -9,7 +9,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 
 from app.core.cedula import emitir_cedula, ler_cedula
-from app.core.exceptions import AcessoNegado, ConflitoDeEstado, DadosInvalidos
+from app.core.exceptions import AcessoNegado, ConflitoDeEstado, DadosInvalidos, NaoEncontrado
 from app.dto.candidatura_dto import CandidaturaDetalhada
 from app.dto.eleicao_dto import EleicaoResumo
 from app.dto.eleitor_dto import EleitorResumo
@@ -20,6 +20,7 @@ from app.repositories.votacao_repository import VotacaoRepository
 from app.services.eleicao_service import EleicaoService
 from app.services.eleitor_service import EleitorService
 from app.services.votacao_service import (
+    FK_ELEITOR_DO_REGISTRO,
     VotacaoService,
     resolver_escolha,
     validar_eleitor_apto,
@@ -280,3 +281,38 @@ def test_confirmar_voto_repetido_responde_409_e_desfaz_a_transacao():
     service.sessao.rollback.assert_called_once_with()
     service.repository.inserir_voto.assert_not_called()
     service.sessao.commit.assert_not_called()
+
+
+def test_confirmar_voto_com_o_eleitor_excluido_no_meio_responde_404():
+    """Eleitor excluído entre a leitura e a gravação: a FK recusa, há rollback e vira 404."""
+    service = um_service()
+    service.repository.inserir_registro.side_effect = um_erro_de_integridade(FK_ELEITOR_DO_REGISTRO)
+
+    with pytest.raises(NaoEncontrado) as erro:
+        service.confirmar_voto(um_usuario(), 7, uma_cedula(), AGORA)
+
+    assert erro.value.codigo == "ELEITOR_NAO_ENCONTRADO"
+    service.sessao.rollback.assert_called_once_with()
+    service.sessao.commit.assert_not_called()
+
+
+def test_confirmar_voto_repassa_outra_violacao_sem_traduzir():
+    """Restrição que o service não conhece sobe como veio, depois do rollback."""
+    service = um_service()
+    service.repository.inserir_voto.side_effect = um_erro_de_integridade("ck_votos_outra_regra")
+
+    with pytest.raises(IntegrityError):
+        service.confirmar_voto(um_usuario(), 7, uma_cedula(), AGORA)
+
+    service.sessao.rollback.assert_called_once_with()
+    service.sessao.commit.assert_not_called()
+
+
+def test_voto_recusado_em_outro_dia_mesmo_com_a_eleicao_aberta():
+    """RN-52: no dia seguinte, às 10:00, a eleição que o Chefe não encerrou recusa o voto."""
+    amanha = datetime.combine(HOJE + timedelta(days=1), time(10, 0), tzinfo=FUSO)
+
+    with pytest.raises(ConflitoDeEstado) as erro:
+        validar_pode_votar(uma_eleicao(), amanha)
+
+    assert erro.value.codigo == "JANELA_ENCERRADA"

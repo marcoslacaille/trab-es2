@@ -1,10 +1,12 @@
 """Testes do `EleicaoService`: as regras da eleição e da candidatura e a orquestração, sem banco."""
 
 from datetime import date, datetime, time
+from types import SimpleNamespace
 from unittest.mock import Mock
 from zoneinfo import ZoneInfo
 
 import pytest
+from sqlalchemy.exc import IntegrityError
 
 from app.core.exceptions import ConflitoDeEstado, DadosInvalidos
 from app.dto.candidato_dto import CandidatoResumo
@@ -16,6 +18,7 @@ from app.models.enums import Cargo, StatusEleicao
 from app.repositories.eleicao_repository import EleicaoRepository
 from app.services.candidato_service import CandidatoService
 from app.services.eleicao_service import (
+    FK_CANDIDATO_DA_CANDIDATURA,
     EleicaoService,
     validar_abertura,
     validar_agendamento,
@@ -326,4 +329,34 @@ def test_candidatura_com_a_eleicao_fora_de_agendada_responde_409():
     assert erro.codigo == "ELEICAO_NAO_EDITAVEL"
     assert erro.detalhes == {"status": "ABERTA"}
     service.repository.inserir_candidatura.assert_not_called()
+    service.sessao.commit.assert_not_called()
+
+
+def um_erro_de_integridade(restricao: str | None) -> IntegrityError:
+    """Um `IntegrityError` como o do PostgreSQL: o nome da restrição vem em `orig.diag`."""
+    original = Exception("violação")
+    original.diag = SimpleNamespace(constraint_name=restricao)
+    return IntegrityError("INSERT ...", {}, original)
+
+
+def test_candidatura_traduz_so_a_fk_do_candidato():
+    """RN-46: candidato excluído entre a conferência e a gravação dá 422; outra violação sobe."""
+    service = um_service()
+    service.repository.obter_com_trava_exclusiva.return_value = uma_eleicao_gravada()
+    service.repository.contar_candidaturas_no_cargo.return_value = 0
+    service.repository.existe_numero_no_cargo.return_value = False
+    service.repository.existe_candidatura_do_candidato.return_value = False
+    dados = NovaCandidaturaDados(candidato_id=3, partido_id=1, cargo=Cargo.PRESIDENTE, numero="13")
+
+    service.repository.inserir_candidatura.side_effect = um_erro_de_integridade(
+        FK_CANDIDATO_DA_CANDIDATURA
+    )
+    erro = erro_de(service.criar_candidatura, 7, dados, AGORA)
+    assert (erro.codigo, erro.detalhes) == ("REFERENCIA_INEXISTENTE", {"campo": "candidato_id"})
+
+    service.repository.inserir_candidatura.side_effect = um_erro_de_integridade("ck_outra_regra")
+    with pytest.raises(IntegrityError):
+        service.criar_candidatura(7, dados, AGORA)
+
+    assert service.sessao.rollback.call_count == 2
     service.sessao.commit.assert_not_called()
