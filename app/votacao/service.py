@@ -32,9 +32,9 @@ from app.dto.votacao_dto import (
     PedidoRegistro,
     PreviaVoto,
 )
-from app.eleicoes import service as eleicoes_service
 from app.models.enums import DIGITOS_POR_CARGO, Cargo, TipoVoto
 from app.repositories.votacao_repository import VotacaoRepository
+from app.services.eleicao_service import EleicaoService
 from app.services.eleitor_service import EleitorService
 from app.votacao import dominio
 
@@ -65,7 +65,7 @@ def _eleitor_apto_a_votar(
     RN-51, RN-52 e RN-53. Devolve o eleitor e a eleição.
     """
     eleitor = _eleitor_do(sessao, usuario)
-    eleicao = eleicoes_service.obter_eleicao(sessao, eleicao_id)
+    eleicao = EleicaoService(sessao).obter_eleicao(eleicao_id)
     dominio.validar_pode_votar(eleicao, agora)
     dominio.validar_eleitor_apto(eleitor.criado_em, eleicao.aberta_em)
     return eleitor, eleicao
@@ -80,7 +80,7 @@ def obter_cedula(
     Não grava nada.
     """
     eleitor, _ = _eleitor_apto_a_votar(sessao, usuario, eleicao_id, agora)
-    candidaturas = eleicoes_service.listar_candidaturas(sessao, eleicao_id)
+    candidaturas = EleicaoService(sessao).listar_candidaturas(eleicao_id)
     votados = VotacaoRepository(sessao).cargos_votados(eleitor.id, eleicao_id)
 
     cargos = []
@@ -119,7 +119,7 @@ def registrar_voto(
     if VotacaoRepository(sessao).ja_votou(eleitor.id, eleicao_id, pedido.cargo):
         raise ConflitoDeEstado("Você já votou para este cargo.", codigo="VOTO_JA_REGISTRADO")
 
-    candidaturas = eleicoes_service.listar_candidaturas(sessao, eleicao_id, pedido.cargo)
+    candidaturas = EleicaoService(sessao).listar_candidaturas(eleicao_id, pedido.cargo)
     if not candidaturas:
         raise DadosInvalidos(
             "Este cargo não é disputado nesta eleição.",
@@ -167,7 +167,7 @@ def confirmar_voto(
         )
 
     eleitor = _eleitor_do(sessao, usuario)
-    eleicao = eleicoes_service.obter_eleicao_para_votacao(sessao, eleicao_id)
+    eleicao = EleicaoService(sessao).obter_eleicao_para_votacao(eleicao_id)
     dominio.validar_pode_votar(eleicao, agora)
     dominio.validar_eleitor_apto(eleitor.criado_em, eleicao.aberta_em)
 
@@ -200,7 +200,7 @@ def obter_participacao(
     Vale em qualquer status da eleição. 404 se a eleição ou o eleitor não existirem.
     """
     eleitor = _eleitor_do(sessao, usuario)
-    candidaturas = eleicoes_service.listar_candidaturas(sessao, eleicao_id)
+    candidaturas = EleicaoService(sessao).listar_candidaturas(eleicao_id)
     votados = VotacaoRepository(sessao).cargos_votados(eleitor.id, eleicao_id)
     disputados = {c.cargo for c in candidaturas}
     return Participacao(

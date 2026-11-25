@@ -15,10 +15,10 @@ from app.core.exceptions import ConflitoDeEstado, NaoEncontrado
 from app.dto.eleitor_dto import EleitorResumo
 from app.dto.usuario_dto import UsuarioAutenticado
 from app.dto.votacao_dto import Escolha
-from app.eleicoes import service as service_eleicoes
 from app.models.enums import Cargo, Perfil, TipoVoto
 from app.repositories.eleicao_repository import EleicaoRepository
 from app.repositories.votacao_repository import VotacaoRepository
+from app.services.eleicao_service import EleicaoService
 from app.services.eleitor_service import EleitorService
 from app.votacao import service
 from tests.auxiliares import SENHA_ELEITOR, eleicao_aberta_com_candidatos, login, novo_eleitor
@@ -93,13 +93,13 @@ def test_d095_encerramento_espera_a_confirmacao_em_andamento(cliente, cabecalho_
     def encerrar() -> None:
         with SessionLocal() as sessao:
             try:
-                resultados.append(service_eleicoes.encerrar_eleicao(sessao, eleicao_id, agora))
+                resultados.append(EleicaoService(sessao).encerrar_eleicao(eleicao_id, agora))
             except Exception as erro:  # noqa: BLE001
                 resultados.append(erro)
         terminou.set()
 
     with SessionLocal() as confirmacao:
-        service_eleicoes.obter_eleicao_para_votacao(confirmacao, eleicao_id)  # FOR SHARE
+        EleicaoService(confirmacao).obter_eleicao_para_votacao(eleicao_id)  # FOR SHARE
         thread = threading.Thread(target=encerrar)
         thread.start()
 
@@ -111,7 +111,7 @@ def test_d095_encerramento_espera_a_confirmacao_em_andamento(cliente, cabecalho_
 
     assert len(resultados) == 1 and not isinstance(resultados[0], Exception), resultados
     with SessionLocal() as sessao:
-        assert service_eleicoes.obter_eleicao(sessao, eleicao_id).status == "ENCERRADA"
+        assert EleicaoService(sessao).obter_eleicao(eleicao_id).status == "ENCERRADA"
 
 
 def test_d095_confirmacao_espera_o_encerramento_e_depois_e_recusada(

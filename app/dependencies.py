@@ -12,6 +12,7 @@ from app.core.exceptions import AcessoNegado, NaoAutenticado
 from app.dto.usuario_dto import UsuarioAutenticado
 from app.models.enums import Perfil
 from app.services.candidato_service import CandidatoService
+from app.services.eleicao_service import EleicaoService
 from app.services.eleitor_service import EleitorService
 from app.services.partido_service import PartidoService
 from app.services.usuario_service import UsuarioService
@@ -48,6 +49,13 @@ def obter_partido_service(sessao: Sessao) -> PartidoService:
 
 
 PartidoServiceDep = Annotated[PartidoService, Depends(obter_partido_service)]
+
+
+def obter_eleicao_service(sessao: Sessao) -> EleicaoService:
+    return EleicaoService(sessao)
+
+
+EleicaoServiceDep = Annotated[EleicaoService, Depends(obter_eleicao_service)]
 
 
 def obter_usuario_atual(

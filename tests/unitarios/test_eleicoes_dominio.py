@@ -6,7 +6,9 @@ import pytest
 
 from app.core.exceptions import ConflitoDeEstado, DadosInvalidos
 from app.dto.eleicao_dto import EleicaoResumo, NovaEleicaoDados
-from app.eleicoes.dominio import (
+from app.models.enums import Cargo, Perfil, StatusEleicao
+from app.schemas.eleicao_schema import links_da_eleicao
+from app.services.eleicao_service import (
     validar_abertura,
     validar_agendamento,
     validar_candidatura,
@@ -14,8 +16,6 @@ from app.eleicoes.dominio import (
     validar_edicao,
     validar_encerramento,
 )
-from app.models.enums import Cargo, Perfil, StatusEleicao
-from app.schemas.eleicao_schema import links_da_eleicao
 
 FUSO = ZoneInfo("America/Sao_Paulo")
 HOJE = date(2026, 11, 25)

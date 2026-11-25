@@ -6,12 +6,12 @@ from sqlalchemy.exc import IntegrityError
 from app.core.database import SessionLocal
 from app.core.exceptions import DadosInvalidos, NaoEncontrado
 from app.core.relogio import agora
-from app.eleicoes import service as service_eleicoes
 from app.models.enums import Cargo, Perfil
 from app.repositories.candidato_repository import CandidatoRepository
 from app.repositories.eleitor_repository import EleitorRepository
 from app.schemas.eleicao_schema import links_da_eleicao
 from app.services.candidato_service import CandidatoService
+from app.services.eleicao_service import EleicaoService
 from app.services.eleitor_service import EleitorService
 from app.services.usuario_service import UsuarioService
 from tests.auxiliares import (
@@ -197,7 +197,7 @@ def test_candidaturas_do_usuario_sem_candidato_devolve_lista_vazia():
     chefe_id = criar_chefe()
 
     with SessionLocal() as sessao:
-        assert service_eleicoes.candidaturas_do_usuario(sessao, chefe_id) == []
+        assert EleicaoService(sessao).candidaturas_do_usuario(chefe_id) == []
 
 
 def test_buscar_candidatura_por_numero_acha_ou_devolve_none(cliente, cabecalho_chefe):
@@ -205,14 +205,14 @@ def test_buscar_candidatura_por_numero_acha_ou_devolve_none(cliente, cabecalho_c
     ids = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)
 
     with SessionLocal() as sessao:
-        achada = service_eleicoes.buscar_candidatura_por_numero(
-            sessao, ids["eleicao_id"], Cargo.SENADOR, "202"
+        achada = EleicaoService(sessao).buscar_candidatura_por_numero(
+            ids["eleicao_id"], Cargo.SENADOR, "202"
         )
-        ausente = service_eleicoes.buscar_candidatura_por_numero(
-            sessao, ids["eleicao_id"], Cargo.SENADOR, "999"
+        ausente = EleicaoService(sessao).buscar_candidatura_por_numero(
+            ids["eleicao_id"], Cargo.SENADOR, "999"
         )
-        outro_cargo = service_eleicoes.buscar_candidatura_por_numero(
-            sessao, ids["eleicao_id"], Cargo.GOVERNADOR, "202"
+        outro_cargo = EleicaoService(sessao).buscar_candidatura_por_numero(
+            ids["eleicao_id"], Cargo.GOVERNADOR, "202"
         )
 
     assert achada is not None and achada.id == ids["candidaturas"]["SENADOR"]["202"]
@@ -224,7 +224,7 @@ def test_links_da_eleicao_aberta_para_perfil_desconhecido(cliente, cabecalho_che
     ids = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)
 
     with SessionLocal() as sessao:
-        eleicao = service_eleicoes.obter_eleicao(sessao, ids["eleicao_id"])
+        eleicao = EleicaoService(sessao).obter_eleicao(ids["eleicao_id"])
 
     links = links_da_eleicao(eleicao, "VISITANTE")
 

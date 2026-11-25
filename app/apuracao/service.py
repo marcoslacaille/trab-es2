@@ -14,8 +14,8 @@ from app.core.exceptions import AcessoNegado, ConflitoDeEstado, DadosInvalidos
 from app.dto.apuracao_dto import Apuracao, ComparecimentoEleicao, ResultadoCargo
 from app.dto.eleicao_dto import EleicaoResumo
 from app.dto.usuario_dto import UsuarioAutenticado
-from app.eleicoes import service as eleicoes_service
 from app.models.enums import Cargo, Perfil, StatusEleicao
+from app.services.eleicao_service import EleicaoService
 from app.services.eleitor_service import EleitorService
 from app.votacao import service as votacao_service
 
@@ -55,7 +55,7 @@ def _cargo_do_candidato(
     """RN-72: o Candidato só vê o cargo da sua candidatura nesta eleição."""
     minhas = [
         c
-        for c in eleicoes_service.candidaturas_do_usuario(sessao, usuario.id)
+        for c in EleicaoService(sessao).candidaturas_do_usuario(usuario.id)
         if c.eleicao_id == eleicao_id
     ]
     if not minhas:
@@ -80,7 +80,7 @@ def _apurar(
     agora: datetime,
 ) -> Apuracao:
     """Monta a apuração dos cargos pedidos (`None` = todos os disputados) e o comparecimento."""
-    candidaturas = eleicoes_service.listar_candidaturas(sessao, eleicao.id)
+    candidaturas = EleicaoService(sessao).listar_candidaturas(eleicao.id)
     contagens = votacao_service.contar_votos(sessao, eleicao.id)
     comparecimento = votacao_service.contar_comparecimento(sessao, eleicao.id)
     # `aberta_em` existe sempre que a eleição está ABERTA ou ENCERRADA (RN-15).
@@ -133,7 +133,7 @@ def apuracao_parcial(
     não é disputado: 422 `CARGO_NAO_DISPUTADO`. Aqui `mais_votado` é "quem lidera até agora".
     """
     _ler_num_mesmo_instante(sessao)
-    eleicao = eleicoes_service.obter_eleicao(sessao, eleicao_id)
+    eleicao = EleicaoService(sessao).obter_eleicao(eleicao_id)
     _exigir_status(eleicao, StatusEleicao.ABERTA)
     if usuario.perfil == Perfil.CANDIDATO:
         cargos = [_cargo_do_candidato(sessao, usuario, eleicao_id, cargo_pedido)]
@@ -156,7 +156,7 @@ def resultado_final(
     parcial, como no PLANO. Cargo que não é disputado: 422 `CARGO_NAO_DISPUTADO`.
     """
     _ler_num_mesmo_instante(sessao)
-    eleicao = eleicoes_service.obter_eleicao(sessao, eleicao_id)
+    eleicao = EleicaoService(sessao).obter_eleicao(eleicao_id)
     _exigir_status(eleicao, StatusEleicao.ENCERRADA)
     cargos = [cargo_pedido] if cargo_pedido is not None else None
     return _apurar(sessao, eleicao, cargos, "FINAL", agora)

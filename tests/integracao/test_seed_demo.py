@@ -7,8 +7,8 @@ from sqlalchemy import text
 from app.core.database import SessionLocal
 from app.core.relogio import agora
 from app.dto.eleicao_dto import NovaEleicaoDados
-from app.eleicoes import service as service_eleicoes
 from app.scripts.seed_demo import semear
+from app.services.eleicao_service import EleicaoService
 
 
 def _contar(tabela: str) -> int:
@@ -36,8 +36,7 @@ def test_semear_cria_o_cenario_e_repetir_nao_altera_nada(capsys):
 def test_d147_falha_no_meio_nao_grava_nada_e_permite_repetir(capsys):
     """D-147: se uma regra barra o cenário no meio, nada fica gravado e dá para repetir depois."""
     with SessionLocal() as sessao:  # já existe uma eleição de 1º turno hoje: o seed vai esbarrar
-        service_eleicoes.criar_eleicao(
-            sessao,
+        EleicaoService(sessao).criar_eleicao(
             NovaEleicaoDados(
                 descricao="Eleição já cadastrada",
                 data=agora().date(),

@@ -4,16 +4,18 @@ from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query, Response
-from sqlalchemy.orm import Session
 
-from app.core.database import obter_sessao
 from app.core.openapi import respostas_de_erro
 from app.core.relogio import obter_agora
 from app.core.validadores import MAIOR_ID
-from app.dependencies import UsuarioAutenticado, exige_perfil, obter_usuario_atual
+from app.dependencies import (
+    EleicaoServiceDep,
+    UsuarioAutenticado,
+    exige_perfil,
+    obter_usuario_atual,
+)
 from app.dto.candidatura_dto import AlteracoesCandidatura, NovaCandidaturaDados
 from app.dto.eleicao_dto import AlteracoesEleicao, NovaEleicaoDados
-from app.eleicoes import service
 from app.models.enums import Cargo, Perfil, StatusEleicao
 from app.schemas.candidatura_schema import (
     AlteracaoCandidatura,
@@ -50,10 +52,10 @@ IdDaCandidatura = Annotated[
 def criar_eleicao(
     dados: NovaEleicao,
     usuario: UsuarioChefe,
-    sessao: Annotated[Session, Depends(obter_sessao)],
+    service: EleicaoServiceDep,
     agora: Annotated[datetime, Depends(obter_agora)],
 ) -> EleicaoResposta:
-    eleicao = service.criar_eleicao(sessao, NovaEleicaoDados(**dados.model_dump()), agora)
+    eleicao = service.criar_eleicao(NovaEleicaoDados(**dados.model_dump()), agora)
     return EleicaoResposta.de_eleicao(eleicao, usuario.perfil)
 
 
@@ -66,12 +68,12 @@ def criar_eleicao(
 )
 def listar_eleicoes(
     usuario: UsuarioLogado,
-    sessao: Annotated[Session, Depends(obter_sessao)],
+    service: EleicaoServiceDep,
     status: Annotated[StatusEleicao | None, Query(description="Filtra pela situação.")] = None,
 ) -> list[EleicaoResposta]:
     return [
         EleicaoResposta.de_eleicao(eleicao, usuario.perfil)
-        for eleicao in service.listar_eleicoes(sessao, status)
+        for eleicao in service.listar_eleicoes(status)
     ]
 
 
@@ -85,9 +87,9 @@ def listar_eleicoes(
 def consultar_eleicao(
     eleicao_id: IdDaEleicao,
     usuario: UsuarioLogado,
-    sessao: Annotated[Session, Depends(obter_sessao)],
+    service: EleicaoServiceDep,
 ) -> EleicaoResposta:
-    return EleicaoResposta.de_eleicao(service.obter_eleicao(sessao, eleicao_id), usuario.perfil)
+    return EleicaoResposta.de_eleicao(service.obter_eleicao(eleicao_id), usuario.perfil)
 
 
 @roteador.patch(
@@ -104,11 +106,11 @@ def alterar_eleicao(
     eleicao_id: IdDaEleicao,
     alteracao: AlteracaoEleicao,
     usuario: UsuarioChefe,
-    sessao: Annotated[Session, Depends(obter_sessao)],
+    service: EleicaoServiceDep,
     agora: Annotated[datetime, Depends(obter_agora)],
 ) -> EleicaoResposta:
     alteracoes = AlteracoesEleicao(**alteracao.model_dump())
-    eleicao = service.editar_eleicao(sessao, eleicao_id, alteracoes, agora)
+    eleicao = service.editar_eleicao(eleicao_id, alteracoes, agora)
     return EleicaoResposta.de_eleicao(eleicao, usuario.perfil)
 
 
@@ -126,12 +128,10 @@ def alterar_eleicao(
 def abrir_eleicao(
     eleicao_id: IdDaEleicao,
     usuario: UsuarioChefe,
-    sessao: Annotated[Session, Depends(obter_sessao)],
+    service: EleicaoServiceDep,
     agora: Annotated[datetime, Depends(obter_agora)],
 ) -> EleicaoResposta:
-    return EleicaoResposta.de_eleicao(
-        service.abrir_eleicao(sessao, eleicao_id, agora), usuario.perfil
-    )
+    return EleicaoResposta.de_eleicao(service.abrir_eleicao(eleicao_id, agora), usuario.perfil)
 
 
 @roteador.post(
@@ -147,12 +147,10 @@ def abrir_eleicao(
 def encerrar_eleicao(
     eleicao_id: IdDaEleicao,
     usuario: UsuarioChefe,
-    sessao: Annotated[Session, Depends(obter_sessao)],
+    service: EleicaoServiceDep,
     agora: Annotated[datetime, Depends(obter_agora)],
 ) -> EleicaoResposta:
-    return EleicaoResposta.de_eleicao(
-        service.encerrar_eleicao(sessao, eleicao_id, agora), usuario.perfil
-    )
+    return EleicaoResposta.de_eleicao(service.encerrar_eleicao(eleicao_id, agora), usuario.perfil)
 
 
 CAMINHO_DAS_CANDIDATURAS = "/eleicoes/{eleicao_id}/candidaturas"
@@ -171,12 +169,12 @@ CAMINHO_DAS_CANDIDATURAS = "/eleicoes/{eleicao_id}/candidaturas"
 def listar_candidaturas(
     eleicao_id: IdDaEleicao,
     usuario: UsuarioChefe,
-    sessao: Annotated[Session, Depends(obter_sessao)],
+    service: EleicaoServiceDep,
     cargo: Annotated[Cargo | None, Query(description="Filtra pelo cargo.")] = None,
 ) -> list[CandidaturaResposta]:
     return [
         CandidaturaResposta.de_candidatura(candidatura)
-        for candidatura in service.listar_candidaturas(sessao, eleicao_id, cargo)
+        for candidatura in service.listar_candidaturas(eleicao_id, cargo)
     ]
 
 
@@ -196,11 +194,11 @@ def criar_candidatura(
     eleicao_id: IdDaEleicao,
     dados: NovaCandidatura,
     usuario: UsuarioChefe,
-    sessao: Annotated[Session, Depends(obter_sessao)],
+    service: EleicaoServiceDep,
     agora: Annotated[datetime, Depends(obter_agora)],
 ) -> CandidaturaResposta:
     candidatura = service.criar_candidatura(
-        sessao, eleicao_id, NovaCandidaturaDados(**dados.model_dump()), agora
+        eleicao_id, NovaCandidaturaDados(**dados.model_dump()), agora
     )
     return CandidaturaResposta.de_candidatura(candidatura)
 
@@ -220,10 +218,10 @@ def alterar_candidatura(
     candidatura_id: IdDaCandidatura,
     alteracao: AlteracaoCandidatura,
     usuario: UsuarioChefe,
-    sessao: Annotated[Session, Depends(obter_sessao)],
+    service: EleicaoServiceDep,
 ) -> CandidaturaResposta:
     candidatura = service.editar_candidatura(
-        sessao, eleicao_id, candidatura_id, AlteracoesCandidatura(**alteracao.model_dump())
+        eleicao_id, candidatura_id, AlteracoesCandidatura(**alteracao.model_dump())
     )
     return CandidaturaResposta.de_candidatura(candidatura)
 
@@ -239,9 +237,9 @@ def remover_candidatura(
     eleicao_id: IdDaEleicao,
     candidatura_id: IdDaCandidatura,
     usuario: UsuarioChefe,
-    sessao: Annotated[Session, Depends(obter_sessao)],
+    service: EleicaoServiceDep,
 ) -> Response:
-    service.remover_candidatura(sessao, eleicao_id, candidatura_id)
+    service.remover_candidatura(eleicao_id, candidatura_id)
     return Response(status_code=204)
 
 
@@ -254,9 +252,9 @@ def remover_candidatura(
 )
 def listar_minhas_candidaturas(
     usuario: UsuarioCandidato,
-    sessao: Annotated[Session, Depends(obter_sessao)],
+    service: EleicaoServiceDep,
 ) -> list[CandidaturaResposta]:
     return [
         CandidaturaResposta.de_candidatura(candidatura)
-        for candidatura in service.candidaturas_do_usuario(sessao, usuario.id)
+        for candidatura in service.candidaturas_do_usuario(usuario.id)
     ]

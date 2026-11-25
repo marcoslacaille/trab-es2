@@ -17,9 +17,9 @@ from app.dto.candidatura_dto import NovaCandidaturaDados
 from app.dto.eleicao_dto import NovaEleicaoDados
 from app.dto.eleitor_dto import NovoEleitorDados
 from app.dto.partido_dto import NovoPartidoDados
-from app.eleicoes import service as service_eleicoes
 from app.models.enums import Cargo, Perfil
 from app.services.candidato_service import CandidatoService
+from app.services.eleicao_service import EleicaoService
 from app.services.eleitor_service import EleitorService
 from app.services.partido_service import PartidoService
 from app.services.usuario_service import UsuarioService
@@ -183,6 +183,7 @@ def _criar_cenario(sessao: Session, momento: datetime) -> int:
     partidos = PartidoService(sessao)
     eleitores = EleitorService(sessao)
     candidatos = CandidatoService(sessao)
+    eleicoes = EleicaoService(sessao)
 
     partido_por_sigla = {}
     for sigla, nome, numero in PARTIDOS:
@@ -203,8 +204,7 @@ def _criar_cenario(sessao: Session, momento: datetime) -> int:
             momento,
         )
 
-    eleicao = service_eleicoes.criar_eleicao(
-        sessao,
+    eleicao = eleicoes.criar_eleicao(
         NovaEleicaoDados(
             descricao="Eleições Gerais 2026 — 1º turno (simulação)",
             data=momento.date(),
@@ -226,8 +226,7 @@ def _criar_cenario(sessao: Session, momento: datetime) -> int:
             ),
             momento,
         )
-        service_eleicoes.criar_candidatura(
-            sessao,
+        eleicoes.criar_candidatura(
             eleicao.id,
             NovaCandidaturaDados(
                 candidato_id=candidato.id,
