@@ -31,6 +31,6 @@ class Usuario(Base):
     # Só o hash bcrypt é gravado; a senha em si nunca (RN-05).
     senha_hash: Mapped[str] = mapped_column(String(60))
     perfil: Mapped[str] = mapped_column(String(20))
-    # Preenchidos pelo serviço com o relógio injetável, não por DEFAULT do banco (seção 6).
+    # Preenchidos pelo serviço com o relógio injetável, não por DEFAULT do banco.
     criado_em: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True))
     atualizado_em: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True))

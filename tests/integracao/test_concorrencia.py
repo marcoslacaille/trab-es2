@@ -1,4 +1,4 @@
-"""TI-73, D-095, D-145 e D-146: concorrência no voto (RN-54) e entre voto e encerramento (RN-18)."""
+"""TI-73: concorrência no voto (RN-54) e entre voto e encerramento (RN-18)."""
 
 import threading
 from datetime import datetime
@@ -86,7 +86,7 @@ def _eleitor_com_cedula(cliente, cabecalho_chefe, eleicao_id, agora):
 
 
 def test_d095_encerramento_espera_a_confirmacao_em_andamento(cliente, cabecalho_chefe, relogio):
-    """D-095 / RN-18: com uma confirmação segurando a trava, o encerramento só termina depois."""
+    """RN-18: com uma confirmação segurando a trava, o encerramento só termina depois."""
     eleicao_id = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)["eleicao_id"]
     agora = relogio()
     terminou = threading.Event()
@@ -119,7 +119,7 @@ def test_d095_encerramento_espera_a_confirmacao_em_andamento(cliente, cabecalho_
 def test_d095_confirmacao_espera_o_encerramento_e_depois_e_recusada(
     cliente, cabecalho_chefe, relogio
 ):
-    """D-095 / RN-18: voto que chega durante o encerramento espera e é recusado (não entra)."""
+    """RN-18: voto que chega durante o encerramento espera e é recusado (não entra)."""
     eleicao_id = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)["eleicao_id"]
     agora = relogio()
     usuario, token = _eleitor_com_cedula(cliente, cabecalho_chefe, eleicao_id, agora)
@@ -179,7 +179,7 @@ def test_confirmacao_repassa_erro_de_integridade_desconhecido(
 def test_d145_eleitor_excluido_durante_a_confirmacao_da_404(
     cliente, cabecalho_chefe, relogio, monkeypatch
 ):
-    """D-145 / RN-54: eleitor excluído no meio da confirmação → 404, sem gravar nada."""
+    """RN-54: eleitor excluído no meio da confirmação → 404, sem gravar nada."""
     eleicao_id = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)["eleicao_id"]
     agora = relogio()
     usuario, token = _eleitor_com_cedula(cliente, cabecalho_chefe, eleicao_id, agora)
@@ -199,7 +199,7 @@ def test_d145_eleitor_excluido_durante_a_confirmacao_da_404(
 def test_d146_apuracao_le_votos_e_votantes_no_mesmo_instante(
     cliente, cabecalho_chefe, relogio, monkeypatch
 ):
-    """D-146 / RN-74, RN-79: um voto confirmado no meio da apuração não aparece pela metade."""
+    """RN-74, RN-79: um voto confirmado no meio da apuração não aparece pela metade."""
     eleicao_id = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)["eleicao_id"]
     agora = relogio()
     eleitor, token = _eleitor_com_cedula(cliente, cabecalho_chefe, eleicao_id, agora)

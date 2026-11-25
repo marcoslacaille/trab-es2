@@ -37,7 +37,7 @@ def obter_paginacao(
 ) -> Paginacao:
     """Dependência FastAPI com `pagina` (1 a `MAIOR_PAGINA`, padrão 1) e `tamanho` (1 a 100).
 
-    O teto de `pagina` (D-137) evita que o deslocamento passe do BIGINT do banco (seria 500).
+    O teto de `pagina` evita que o deslocamento passe do BIGINT do banco (seria 500).
     """
     return Paginacao(pagina=pagina, tamanho=tamanho)
 

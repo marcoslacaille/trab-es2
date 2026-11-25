@@ -261,7 +261,7 @@ def _candidato_da_candidatura(cliente, cabecalho_chefe, eleicao_id: int, numero:
 def test_desempate_do_resultado_nao_muda_se_o_nascimento_for_editado_depois(
     cliente, cabecalho_chefe
 ):
-    """RN-77 / D-140: o desempate por idade usa a data de nascimento gravada na abertura.
+    """RN-77: o desempate por idade usa a data de nascimento gravada na abertura.
 
     Sem o retrato, deixar o candidato 20 "mais velho" depois do fim trocava o mais votado.
     """
@@ -294,7 +294,7 @@ def test_desempate_do_resultado_nao_muda_se_o_nascimento_for_editado_depois(
 def test_nome_de_urna_editado_depois_da_abertura_so_vale_para_eleicao_agendada(
     cliente, cabecalho_chefe
 ):
-    """RN-75 / D-140: cédula, parcial e resultado mostram o nome de urna da abertura.
+    """RN-75: cédula, parcial e resultado mostram o nome de urna da abertura.
 
     A edição continua valendo para o candidato e para as eleições ainda AGENDADAS.
     """

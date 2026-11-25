@@ -1,4 +1,4 @@
-"""TU-22 a TU-24: cédula cifrada (RN-57, RN-60, D-144)."""
+"""TU-22 a TU-24: cédula cifrada (RN-57, RN-60)."""
 
 import base64
 import json
@@ -107,7 +107,7 @@ def test_tu24_cedula_com_campos_faltando_ou_errados_e_invalida():
 
 
 def test_d144_cedula_nao_expoe_eleitor_nem_escolha():
-    """D-144 / RN-60: sem a chave, o token não revela o eleitor, o cargo nem a escolha."""
+    """RN-60: sem a chave, o token não revela o eleitor, o cargo nem a escolha."""
     token, _ = emitir_cedula(987654, 7, Cargo.PRESIDENTE, NOMINAL, AGORA)
     aberto = base64.urlsafe_b64decode(token + "=" * (-len(token) % 4))
     for revelador in (b"987654", b"candidatura_id", b"PRESIDENTE", b"NOMINAL", b"usuario"):

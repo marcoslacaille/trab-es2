@@ -31,6 +31,6 @@ class Eleitor(Base):
     )
     titulo_eleitor: Mapped[str] = mapped_column(CHAR(12))
     data_nascimento: Mapped[date] = mapped_column(Date)
-    # Preenchido pelo serviço com o relógio injetável (seção 6). A apuração usa este carimbo
+    # Preenchido pelo serviço com o relógio injetável. A apuração usa este carimbo
     # para saber se o eleitor já estava cadastrado quando a eleição foi aberta (RN-53).
     criado_em: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True))

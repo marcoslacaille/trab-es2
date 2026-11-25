@@ -21,7 +21,7 @@ class EleicaoRepository:
         """`SELECT ... FOR UPDATE`: trava a linha da eleição até o fim da transação.
 
         Toda alteração no agregado começa por aqui, então duas alterações nunca se cruzam. Espera as
-        travas compartilhadas das confirmações de voto em andamento terminarem (seção 9.5).
+        travas compartilhadas das confirmações de voto em andamento terminarem.
         """
         consulta = (
             select(Eleicao)

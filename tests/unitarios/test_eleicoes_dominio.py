@@ -276,7 +276,7 @@ LINKS_ESPERADOS = {
 
 @pytest.mark.parametrize(("perfil", "status"), list(LINKS_ESPERADOS))
 def test_tu18_links_por_perfil_e_status(perfil, status):
-    """TU-18 / RN-19: os links seguem a tabela da seção 9.5 em cada perfil × status."""
+    """TU-18 / RN-19: os links dependem do perfil e do status da eleição."""
     eleicao = replace(uma_eleicao(), status=status)
 
     links = links_da_eleicao(eleicao, perfil)

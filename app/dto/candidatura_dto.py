@@ -8,10 +8,9 @@ from app.models.enums import Cargo
 
 @dataclass(frozen=True)
 class CandidaturaDetalhada:
-    """Uma candidatura com os dados de exibição do candidato e do partido (seção 9.5).
+    """Uma candidatura com os dados de exibição do candidato e do partido.
 
-    `partido_id` não está na lista da seção 9.5, mas o contrato "Criar candidatura" devolve o
-    `id` do partido (D-066).
+    `partido_id` entra porque a resposta de "Criar candidatura" devolve o `id` do partido.
     """
 
     id: int

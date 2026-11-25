@@ -1,6 +1,6 @@
 """Cédula cifrada: a escolha do eleitor fica no token, não no banco (RN-56, RN-57, RN-60).
 
-Só `votacao` conhece este formato. A cédula é cifrada e autenticada com Fernet (D-144): quem
+Só `votacao` conhece este formato. A cédula é cifrada e autenticada com Fernet: quem
 tiver o token, sem a chave, não lê nem o eleitor nem a escolha, e qualquer alteração o invalida.
 A chave é derivada do `JWT_SEGREDO` com um contexto próprio, então é diferente da chave do token
 de acesso: um não serve no lugar do outro.
@@ -35,7 +35,7 @@ class Cedula:
 
 
 def _cifrador() -> Fernet:
-    """O Fernet da cédula, com a chave derivada do `JWT_SEGREDO` pelo HKDF (D-144)."""
+    """O Fernet da cédula, com a chave derivada do `JWT_SEGREDO` pelo HKDF."""
     segredo = obter_configuracao().jwt_segredo.encode("utf-8")
     chave = HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=CONTEXTO_DA_CHAVE).derive(
         segredo

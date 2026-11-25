@@ -24,7 +24,7 @@ class LinhaApuracao:
 
 @dataclass(frozen=True)
 class ResultadoCargo:
-    """A apuração de um cargo (seção 10, "Apuração parcial e resultado final")."""
+    """A apuração de um cargo."""
 
     cargo: Cargo
     total_votos: int

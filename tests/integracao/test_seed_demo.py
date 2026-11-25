@@ -1,4 +1,4 @@
-"""Script `seed_demo`: cria o cenário do zero, não duplica ao repetir e é atômico (D-147)."""
+"""Script `seed_demo`: cria o cenário do zero, não duplica ao repetir e é atômico."""
 
 from datetime import time
 
@@ -34,7 +34,7 @@ def test_semear_cria_o_cenario_e_repetir_nao_altera_nada(capsys):
 
 
 def test_d147_falha_no_meio_nao_grava_nada_e_permite_repetir(capsys):
-    """D-147: se uma regra barra o cenário no meio, nada fica gravado e dá para repetir depois."""
+    """Se uma regra barra o cenário no meio, nada fica gravado e dá para repetir depois."""
     with SessionLocal() as sessao:  # já existe uma eleição de 1º turno hoje: o seed vai esbarrar
         EleicaoService(sessao).criar_eleicao(
             NovaEleicaoDados(

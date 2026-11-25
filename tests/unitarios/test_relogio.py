@@ -1,4 +1,4 @@
-"""Relógio injetável: o horário do sistema é o de Brasília, com fuso (D-080)."""
+"""Relógio injetável: o horário do sistema é o de Brasília, com fuso."""
 
 from datetime import UTC, datetime, timedelta
 

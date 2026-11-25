@@ -344,8 +344,8 @@ def test_excluir_candidato_com_candidatura_da_409_e_so_depois_de_remover_a_candi
 ):
     """TI-29 / RN-33: com candidatura → 409 `EXCLUSAO_BLOQUEADA`; sem ela → 204.
 
-    Confirma que a FK `fk_candidaturas_candidato_id_candidatos` tem o nome que o serviço espera
-    (D-053): se tivesse outro, o erro seria o genérico `CONFLITO_DE_DADOS`.
+    Confirma que a FK `fk_candidaturas_candidato_id_candidatos` tem o nome que o serviço espera:
+    se tivesse outro, o erro seria o genérico `CONFLITO_DE_DADOS`.
     """
     nova_eleicao(cliente, cabecalho_chefe)
     candidatura = nova_candidatura(cliente, cabecalho_chefe).json()

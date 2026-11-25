@@ -64,7 +64,7 @@ def registrar_voto(
     agora: Agora,
     resposta: Response,
 ) -> PreviaVotoResposta:
-    # A prévia mostra a escolha e traz a cédula: nenhum cache pode guardá-la (RN-60, D-144).
+    # A prévia mostra a escolha e traz a cédula: nenhum cache pode guardá-la (RN-60).
     resposta.headers["Cache-Control"] = "no-store"
     pedido = PedidoRegistro(cargo=dados.cargo, modo=dados.modo, numero=dados.numero)
     return PreviaVotoResposta.de_previa(service.registrar_voto(usuario, eleicao_id, pedido, agora))

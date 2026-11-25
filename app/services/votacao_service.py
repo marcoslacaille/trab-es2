@@ -46,7 +46,7 @@ from app.services.eleicao_service import EleicaoService
 from app.services.eleitor_service import EleitorService
 
 PK_REGISTRO = "pk_registros_votacao"
-# FK que dispara quando o eleitor é excluído no meio da confirmação (D-145).
+# FK que dispara quando o eleitor é excluído no meio da confirmação.
 FK_ELEITOR_DO_REGISTRO = "fk_registros_votacao_eleitor_id_eleitores"
 
 MENSAGENS_DA_PREVIA = {
@@ -249,7 +249,7 @@ class VotacaoService:
         duas gravações (quem votou no cargo; o voto sem identificação) ficam na mesma transação,
         em tabelas sem ligação. Não há checagem de "já votou" antes: a chave primária decide de
         forma atômica e a violação vira 409 `VOTO_JA_REGISTRADO`. Eleitor excluído no meio da
-        confirmação: a FK recusa e a resposta é 404 `ELEITOR_NAO_ENCONTRADO` (D-145). A resposta
+        confirmação: a FK recusa e a resposta é 404 `ELEITOR_NAO_ENCONTRADO`. A resposta
         não contém a escolha.
         """
         cedula = ler_cedula(token_cedula, agora)

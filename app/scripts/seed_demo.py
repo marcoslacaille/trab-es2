@@ -1,4 +1,4 @@
-"""Cria os dados de demonstração (PLANO, seção 14). Uso: `python -m app.scripts.seed_demo`.
+"""Cria os dados de demonstração. Uso: `python -m app.scripts.seed_demo`.
 
 Usa os serviços dos módulos (nunca SQL direto), então todas as regras de negócio valem
 também aqui. As senhas são fixas e públicas: este script é só para a demonstração.
@@ -147,7 +147,7 @@ def semear() -> int:
 
     0: cenário criado. 1: já havia dados (algum partido), nada foi alterado. 2: uma regra de
     negócio impediu o cenário (por exemplo, já existe eleição de 1º turno hoje); nada foi gravado.
-    O cenário é atômico (D-147): os serviços fazem o próprio commit, mas aqui cada commit vira só
+    O cenário é atômico: os serviços fazem o próprio commit, mas aqui cada commit vira só
     um savepoint de uma transação externa, confirmada no fim ou desfeita por inteiro. O Chefe é
     criado só se ainda não existir (o `criar_chefe` pode tê-lo criado antes, com o mesmo CPF).
     """

@@ -36,7 +36,7 @@ from app.services.partido_service import PartidoService
 DESCRICAO_MAXIMA = 120
 CANDIDATURAS_DO_SEGUNDO_TURNO_POR_CARGO = 2
 
-# FK que dispara quando o candidato some entre a conferência e a gravação (D-145).
+# FK que dispara quando o candidato some entre a conferência e a gravação.
 FK_CANDIDATO_DA_CANDIDATURA = "fk_candidaturas_candidato_id_candidatos"
 
 
@@ -361,7 +361,7 @@ class EleicaoService:
 
         Trava a eleição e confere, nesta ordem (`validar_abertura`): status, nenhuma outra aberta,
         data, janela, ao menos uma candidatura e, no 2º turno, 2 por cargo. Grava em cada
-        candidatura o retrato do candidato (nome de urna e nascimento, D-140). Se duas aberturas
+        candidatura o retrato do candidato (nome de urna e nascimento). Se duas aberturas
         simultâneas passarem pelas conferências, o índice parcial do banco recusa a segunda
         (409 `OUTRA_ELEICAO_ABERTA`, traduzido pelo tratador de `IntegrityError`).
         Eleição inexistente: 404 `ELEICAO_NAO_ENCONTRADA`.
@@ -458,7 +458,7 @@ class EleicaoService:
             )
 
     def _gravar_retrato_dos_candidatos(self, eleicao_id: int) -> None:
-        """D-140: grava em cada candidatura o nome de urna e o nascimento do candidato de agora.
+        """Grava em cada candidatura o nome de urna e o nascimento do candidato de agora.
 
         Chamada na abertura. Daí em diante a cédula e a apuração usam esse retrato: editar o
         candidato depois não troca o desempate por idade (RN-77) nem os nomes da eleição.
@@ -474,9 +474,9 @@ class EleicaoService:
     def _detalhar(self, candidaturas: list[Candidatura]) -> list[CandidaturaDetalhada]:
         """Junta, em memória, os dados de exibição do candidato e do partido de cada candidatura.
 
-        Nome de urna e nascimento vêm do retrato gravado na abertura (D-140) ou, se a eleição
+        Nome de urna e nascimento vêm do retrato gravado na abertura ou, se a eleição
         ainda está AGENDADA (retrato nulo), do cadastro atual do candidato. Ordena pela ordem do
-        enum `Cargo` e depois pelo número (seção 9.5).
+        enum `Cargo` e depois pelo número.
         """
         candidatos = self.candidatos.obter_resumos_de_candidatos(
             [c.candidato_id for c in candidaturas]
@@ -513,7 +513,7 @@ class EleicaoService:
         máximo 2 candidaturas por cargo (RN-45), via `validar_candidatura`.
         Número já usado no cargo → 409 `NUMERO_JA_UTILIZADO` (RN-43); candidato que já tem
         candidatura na eleição → 409 `CANDIDATURA_DUPLICADA` (RN-44). Se o candidato for excluído
-        entre a conferência e a gravação, a FK recusa e a resposta é a mesma 422 da RN-46 (D-145).
+        entre a conferência e a gravação, a FK recusa e a resposta é a mesma 422 da RN-46.
         """
         eleicao = self._eleicao_editavel(eleicao_id)
         self._conferir_candidato(dados.candidato_id)

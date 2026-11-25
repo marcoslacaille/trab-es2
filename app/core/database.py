@@ -25,7 +25,7 @@ class Base(DeclarativeBase):
 
 
 # hide_parameters: a mensagem de erro do banco não leva os valores do SQL (hash da senha, CPF,
-# nome), que senão iriam para o log do erro 500 (seção 7, "Erros sem vazamento").
+# nome), que senão iriam para o log do erro 500.
 engine = create_engine(obter_configuracao().database_url, pool_pre_ping=True, hide_parameters=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 

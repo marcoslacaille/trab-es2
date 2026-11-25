@@ -1,4 +1,4 @@
-"""Exporta a especificação OpenAPI para `docs/openapi.json` (seção 11 do PLANO).
+"""Exporta a especificação OpenAPI para `docs/openapi.json`.
 
 Uso: `python -m app.scripts.exportar_openapi`. O arquivo alimenta o Swagger UI estático do
 GitHub Pages (`docs/index.html`); o TA-03 falha se ele ficar diferente da especificação do código.

@@ -96,7 +96,7 @@ class Link:
 def links_da_eleicao(eleicao: EleicaoResumo, perfil: str) -> list[Link]:
     """RN-19 (HATEOAS): as ações que o perfil pode fazer na eleição, dado o status dela.
 
-    `self` sempre aparece. O resto segue a tabela da seção 9.5 do PLANO: o Chefe edita, gerencia
+    `self` sempre aparece. O resto depende do perfil e do status: o Chefe edita, gerencia
     candidaturas e abre a AGENDADA, e encerra a ABERTA; Eleitor e Candidato veem a apuração
     parcial da ABERTA (o Eleitor também a cédula); todos veem o resultado da ENCERRADA.
     """

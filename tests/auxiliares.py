@@ -1,4 +1,4 @@
-"""Fábricas de dados e helpers de login para os testes (seção 12 do PLANO)."""
+"""Fábricas de dados e helpers de login para os testes."""
 
 from datetime import datetime
 from itertools import count

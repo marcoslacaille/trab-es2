@@ -64,7 +64,7 @@ def test_login_com_cpf_mal_formatado_responde_o_mesmo_401(cliente):
 
 
 def test_login_com_cpf_de_digitos_de_outro_alfabeto_responde_o_mesmo_401(cliente):
-    """TI-03 / RN-01, RN-07 (D-010): dígitos arábico-índicos recebem o 401 genérico."""
+    """TI-03 / RN-01, RN-07: dígitos arábico-índicos recebem o 401 genérico."""
     criar_chefe()
     senha_errada = _entrar(cliente, CPF_CHEFE, "Senha@Errada1")
 

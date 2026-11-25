@@ -15,7 +15,7 @@ NUMERO_ESCOLHIDO = "202"
 
 
 def _texto_do_log(registro: logging.LogRecord) -> str:
-    """Texto de um registro de log. No log de requisições, sem a duração em ms (D-104)."""
+    """Texto de um registro de log. No log de requisições, sem a duração em ms."""
     if registro.name == "eleicao.requisicoes":
         return re.sub(r" \(\d+\.\d ms\)$", "", registro.getMessage())
     return f"{registro.getMessage()} {registro.args}"
@@ -123,7 +123,7 @@ def test_ti72_logs_nao_contem_token_numero_nem_candidatura(
 
     # Junta mensagem formatada e argumentos de cada registro de log.
     # A duração do log de requisições (ex.: "202.4 ms") é só um tempo e pode coincidir com o
-    # número do candidato; por isso ela sai do texto conferido (D-104).
+    # número do candidato; por isso ela sai do texto conferido.
     texto = "\n".join(_texto_do_log(r) for r in caplog.records)
     assert token not in texto
     assert NUMERO_ESCOLHIDO not in texto
@@ -134,7 +134,7 @@ def test_ti72_logs_nao_contem_token_numero_nem_candidatura(
 def test_d144_previa_nao_fica_em_cache_e_a_cedula_e_opaca(
     cliente, cabecalho_chefe, cabecalho_eleitor
 ):
-    """D-144 / RN-60: a prévia vem com `no-store` e o `token_cedula` não revela a escolha."""
+    """RN-60: a prévia vem com `no-store` e o `token_cedula` não revela a escolha."""
     ids = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)
     resposta = cliente.post(
         f"{BASE}/{ids['eleicao_id']}/votos/registro",

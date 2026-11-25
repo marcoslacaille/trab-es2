@@ -479,7 +479,7 @@ def test_rn45_trocar_turno_para_2_com_candidaturas_compativeis_passa(cliente, ca
 
 
 def test_d145_candidato_excluido_antes_da_gravacao_da_422(cliente, cabecalho_chefe, monkeypatch):
-    """D-145 / RN-46: se o candidato some entre a conferência e a gravação, a FK recusa e a
+    """RN-46: se o candidato some entre a conferência e a gravação, a FK recusa e a
     resposta é 422 `REFERENCIA_INEXISTENTE` (e não o 409 de exclusão bloqueada)."""
     eleicao = nova_eleicao(cliente, cabecalho_chefe).json()["id"]
     partido = novo_partido(cliente, cabecalho_chefe).json()["id"]

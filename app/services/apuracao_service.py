@@ -120,7 +120,7 @@ def _exigir_status(eleicao: EleicaoResumo, esperado: StatusEleicao) -> None:
 class ApuracaoService:
     """Service de apuração: só leitura, sem commit (não há nada a gravar).
 
-    Toda a apuração lê o banco num mesmo instante (transação `REPEATABLE READ`, D-146).
+    Toda a apuração lê o banco num mesmo instante (transação `REPEATABLE READ`).
     """
 
     def __init__(
@@ -141,7 +141,7 @@ class ApuracaoService:
         """Abre uma transação `REPEATABLE READ`: toda leitura da apuração vê o mesmo instante.
 
         Sem isso, um voto confirmado entre a contagem dos votos e a dos votantes faria a mesma
-        resposta mostrar, por exemplo, 1 votante e 0 votos (D-146). O nível de isolamento só pode
+        resposta mostrar, por exemplo, 1 votante e 0 votos. O nível de isolamento só pode
         ser escolhido no começo de uma transação, então a leitura feita antes (a do usuário
         logado) é encerrada com `rollback`. Não há nada gravado para desfazer.
         """
@@ -249,7 +249,7 @@ class ApuracaoService:
 
         Eleição inexistente: 404. Status diferente de ENCERRADA: 409 `APURACAO_INDISPONIVEL`.
         O `usuario` não muda nada (qualquer perfil vê todos os cargos); a assinatura é a mesma da
-        parcial, como no PLANO. Cargo que não é disputado: 422 `CARGO_NAO_DISPUTADO`.
+        parcial. Cargo que não é disputado: 422 `CARGO_NAO_DISPUTADO`.
         """
         self._ler_num_mesmo_instante()
         eleicao = self.eleicoes.obter_eleicao(eleicao_id)

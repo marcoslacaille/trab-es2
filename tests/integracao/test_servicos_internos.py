@@ -235,7 +235,7 @@ def test_links_da_eleicao_aberta_para_perfil_desconhecido(cliente, cabecalho_che
 
 
 def test_votacao_com_perfil_eleitor_sem_cadastro_responde_404(cliente, cabecalho_chefe):
-    """D-087: credencial ELEITOR sem linha em `eleitores` recebe 404 nas 4 rotas de votação."""
+    """Credencial ELEITOR sem linha em `eleitores` recebe 404 nas 4 rotas de votação."""
     ids = eleicao_aberta_com_candidatos(cliente, cabecalho_chefe)
     eleicao = ids["eleicao_id"]
     with SessionLocal() as sessao:

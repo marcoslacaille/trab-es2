@@ -1,4 +1,4 @@
-"""Formato de resposta de cada tratador de erro (seção 5 do PLANO).
+"""Formato de resposta de cada tratador de erro.
 
 As rotas abaixo existem só dentro deste teste, num app próprio. O app real não ganha rotas de teste.
 """
@@ -109,7 +109,7 @@ def cliente_de_erros():
 
 
 def test_erro_de_negocio_responde_409_no_formato_padrao(cliente_de_erros):
-    """Seção 5: ErroDeNegocio vira o status da classe e o corpo {"erro": {...}}."""
+    """ErroDeNegocio vira o status da classe e o corpo {"erro": {...}}."""
     resposta = cliente_de_erros.get("/erro-com-detalhes")
 
     assert resposta.status_code == 409
@@ -133,7 +133,7 @@ def test_erro_de_negocio_responde_409_no_formato_padrao(cliente_de_erros):
     ],
 )
 def test_cada_erro_de_negocio_usa_o_status_da_sua_classe(cliente_de_erros, tipo, status):
-    """Seção 5: 401, 403, 404, 409 e 422 saem das subclasses, com detalhes vazios por padrão."""
+    """401, 403, 404, 409 e 422 saem das subclasses, com detalhes vazios por padrão."""
     resposta = cliente_de_erros.get(f"/erros/{tipo}")
 
     assert resposta.status_code == status
@@ -159,7 +159,7 @@ def test_somente_o_401_envia_o_cabecalho_www_authenticate(cliente_de_erros, tipo
 
 
 def test_cpf_invalido_no_corpo_responde_422_com_o_campo_e_a_mensagem(cliente_de_erros):
-    """Seção 10: o 422 lista os campos com problema; o prefixo 'Value error' do Pydantic sai."""
+    """O 422 lista os campos com problema; o prefixo 'Value error' do Pydantic sai."""
     resposta = cliente_de_erros.post("/validacao", json={"cpf": "123", "idade": 20})
 
     assert resposta.status_code == 422
@@ -173,7 +173,7 @@ def test_cpf_invalido_no_corpo_responde_422_com_o_campo_e_a_mensagem(cliente_de_
 
 
 def test_validacao_lista_todos_os_campos_com_problema(cliente_de_erros):
-    """Seção 10: campo faltando, tipo errado e campo extra aparecem juntos, sem o prefixo 'body'."""
+    """Campo faltando, tipo errado e campo extra aparecem juntos, sem o prefixo 'body'."""
     resposta = cliente_de_erros.post("/validacao", json={"idade": "abc", "perfil": "CHEFE_SECAO"})
 
     campos = resposta.json()["erro"]["detalhes"]["campos"]
@@ -184,7 +184,7 @@ def test_validacao_lista_todos_os_campos_com_problema(cliente_de_erros):
 
 
 def test_validacao_de_parametro_da_consulta_nao_leva_o_prefixo_query(cliente_de_erros):
-    """Seção 10: o nome do campo é o do parâmetro ('pagina'), sem dizer de onde ele veio."""
+    """O nome do campo é o do parâmetro ('pagina'), sem dizer de onde ele veio."""
     resposta = cliente_de_erros.get("/consulta", params={"pagina": 0})
 
     campos = resposta.json()["erro"]["detalhes"]["campos"]
@@ -210,7 +210,7 @@ def test_validacao_de_parametro_da_consulta_nao_leva_o_prefixo_query(cliente_de_
     ],
 )
 def test_integridade_e_traduzida_pelo_nome_da_restricao(cliente_de_erros, restricao, codigo):
-    """Seção 6: cada restrição do banco vira um 409 com o código da tabela de tradução."""
+    """Cada restrição do banco vira um 409 com o código da tabela de tradução."""
     resposta = cliente_de_erros.get(f"/integridade/{restricao}")
 
     assert resposta.status_code == 409
@@ -219,7 +219,7 @@ def test_integridade_e_traduzida_pelo_nome_da_restricao(cliente_de_erros, restri
 
 
 def test_integridade_de_restricao_desconhecida_vira_conflito_de_dados(cliente_de_erros):
-    """Seção 5: restrição que não está na tabela cai no código genérico CONFLITO_DE_DADOS."""
+    """Restrição que não está na tabela cai no código genérico CONFLITO_DE_DADOS."""
     resposta = cliente_de_erros.get("/integridade/uq_restricao_que_nao_existe")
 
     assert resposta.status_code == 409
@@ -227,7 +227,7 @@ def test_integridade_de_restricao_desconhecida_vira_conflito_de_dados(cliente_de
 
 
 def test_integridade_sem_nome_de_restricao_vira_conflito_de_dados(cliente_de_erros):
-    """Seção 5: se o driver não informa a restrição, o código também é CONFLITO_DE_DADOS."""
+    """Se o driver não informa a restrição, o código também é CONFLITO_DE_DADOS."""
     resposta = cliente_de_erros.get("/integridade-sem-nome")
 
     assert resposta.status_code == 409
@@ -259,7 +259,7 @@ def test_excecao_inesperada_responde_500_sem_vazar_a_mensagem_original(
 
 
 def test_rota_inexistente_responde_404_no_formato_padrao(cliente):
-    """Seção 10 (D-011): o 404 do framework também usa {"erro": {...}}, e não {"detail": ...}."""
+    """O 404 do framework também usa {"erro": {...}}, e não {"detail": ...}."""
     resposta = cliente.get("/rota-que-nao-existe")
 
     assert resposta.status_code == 404
@@ -273,7 +273,7 @@ def test_rota_inexistente_responde_404_no_formato_padrao(cliente):
 
 
 def test_metodo_nao_permitido_responde_405_no_formato_padrao(cliente):
-    """Seção 10 (D-011): o 405 do framework usa o formato padrão e mantém o cabeçalho Allow."""
+    """O 405 do framework usa o formato padrão e mantém o cabeçalho Allow."""
     resposta = cliente.delete("/health")
 
     assert resposta.status_code == 405
@@ -288,7 +288,7 @@ def test_metodo_nao_permitido_responde_405_no_formato_padrao(cliente):
 
 
 def test_outro_erro_http_do_framework_vira_erro_http(cliente_de_erros):
-    """Seção 10 (D-011): qualquer outro status do framework vira ERRO_HTTP, sem repassar o texto."""
+    """Qualquer outro status do framework vira ERRO_HTTP, sem repassar o texto."""
     resposta = cliente_de_erros.get("/status-http/400")
 
     assert resposta.status_code == 400

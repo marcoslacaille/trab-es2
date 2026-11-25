@@ -8,7 +8,7 @@ URL_TESTE = os.environ.get(
 
 
 def conferir_banco_de_teste(url: str) -> None:
-    """D-151: a suíte roda `alembic downgrade base` e `TRUNCATE` no banco que recebe.
+    """A suíte roda `alembic downgrade base` e `TRUNCATE` no banco que recebe.
 
     Para não apagar o banco da demonstração por engano, só aceita um banco cujo nome termine em
     `_teste` (o local, na porta 5433, e o do CI terminam). Para antes de qualquer conexão.

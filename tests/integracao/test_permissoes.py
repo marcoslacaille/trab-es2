@@ -1,4 +1,4 @@
-"""TI-08 / RN-03, RN-06: matriz de permissões de todas as rotas protegidas (seção 10 do PLANO)."""
+"""TI-08 / RN-03, RN-06: matriz de permissões de todas as rotas protegidas."""
 
 import pytest
 
@@ -54,7 +54,7 @@ def _chamar(cliente, metodo, caminho, cabecalho=None):
 
 
 def test_ti08_tabela_cobre_as_32_rotas_protegidas():
-    """TI-08: a tabela do teste tem as 32 rotas protegidas da seção 10 (33 menos o login)."""
+    """TI-08: a tabela do teste tem as 32 rotas protegidas (33 menos o login)."""
     assert len(ROTAS) == 32
     assert len(set((m, c) for m, c, _ in ROTAS)) == 32
 

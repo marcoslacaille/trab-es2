@@ -60,7 +60,7 @@ def test_ta02_lista_branca_so_tem_rotas_que_existem():
 
 
 def test_ta02_app_tem_33_rotas_de_negocio_mais_health():
-    """TA-02: 33 rotas sob `/api/v1` mais `/health` (seção 10); nenhuma rota some sem aviso."""
+    """TA-02: 33 rotas sob `/api/v1` mais `/health`; nenhuma rota some sem aviso."""
     caminhos = [rota.path for rota in rotas_da_api()]
 
     assert len([c for c in caminhos if c.startswith("/api/v1")]) == 33

@@ -1,4 +1,4 @@
-"""TI-74: o roteiro da demonstração (seção 16 do PLANO, partes 1 a 4) de ponta a ponta."""
+"""TI-74: o roteiro da demonstração, de ponta a ponta."""
 
 from tests.auxiliares import (
     SENHA_CANDIDATO,

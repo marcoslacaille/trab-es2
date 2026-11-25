@@ -193,7 +193,7 @@ def test_ti65_registro_duplicado_viola_a_chave_primaria(sessao):
 
 
 def test_ti65_excluir_eleitor_que_votou_viola_a_fk_do_registro(sessao):
-    """TI-65 / D-041: o nome real da FK é o que `excluir_eleitor` espera (EXCLUSAO_BLOQUEADA)."""
+    """TI-65: o nome real da FK é o que `excluir_eleitor` espera (EXCLUSAO_BLOQUEADA)."""
     eleicao_id = inserir_eleicao(sessao, "2026-11-25")
     eleitor_id = inserir_eleitor(sessao)
     inserir_registro(sessao, eleitor_id, eleicao_id, "PRESIDENTE")

@@ -1,6 +1,6 @@
-"""Entradas no limite: nenhuma delas pode virar erro 500 (seção 7, "Erros sem vazamento").
+"""Entradas no limite: nenhuma delas pode virar erro 500.
 
-Achados do teste de caixa-preta contra a API real (D-128 a D-130 e D-137): ID maior que o
+Achados do teste de caixa-preta contra a API real: ID maior que o
 BIGINT do PostgreSQL, caractere nulo em campo de texto, valores do SQL no log de erro e página
 cujo deslocamento (OFFSET) passa do BIGINT.
 """
@@ -37,7 +37,7 @@ def _codigo(resposta) -> str:
     ],
 )
 def test_id_de_caminho_maior_que_bigint_responde_422(cliente, cabecalho_chefe, caminho):
-    """Seção 10: ID de caminho fora da faixa do BIGINT é pedido errado (422), não erro 500."""
+    """ID de caminho fora da faixa do BIGINT é pedido errado (422), não erro 500."""
     metodo = "DELETE" if "candidaturas" in caminho else "GET"
 
     resposta = cliente.request(metodo, caminho, headers=cabecalho_chefe)
@@ -47,7 +47,7 @@ def test_id_de_caminho_maior_que_bigint_responde_422(cliente, cabecalho_chefe, c
 
 
 def test_id_da_votacao_maior_que_bigint_responde_422(cliente, cabecalho_eleitor):
-    """Seção 10: a cédula com ID gigante também é recusada na entrada (422)."""
+    """A cédula com ID gigante também é recusada na entrada (422)."""
     resposta = cliente.get(
         f"/api/v1/votacao/eleicoes/{ID_GIGANTE}/cedula", headers=cabecalho_eleitor
     )
@@ -123,9 +123,9 @@ def test_caractere_nulo_no_filtro_por_nome_responde_422(cliente, cabecalho_chefe
 @pytest.mark.parametrize("recurso", ["eleitores", "candidatos"])
 @pytest.mark.parametrize("pagina", [MAIOR_PAGINA + 1, 2**62, ID_GIGANTE])
 def test_pagina_acima_do_limite_responde_422(cliente, cabecalho_chefe, recurso, pagina):
-    """Seção 10: `pagina` cujo deslocamento passa do BIGINT é pedido errado (422), não 500.
+    """`pagina` cujo deslocamento passa do BIGINT é pedido errado (422), não 500.
 
-    Antes, `?pagina=4611686018427387904` chegava ao banco como OFFSET fora da faixa (D-137).
+    Antes, `?pagina=4611686018427387904` chegava ao banco como OFFSET fora da faixa.
     """
     resposta = cliente.get(f"/api/v1/{recurso}", params={"pagina": pagina}, headers=cabecalho_chefe)
 
@@ -136,7 +136,7 @@ def test_pagina_acima_do_limite_responde_422(cliente, cabecalho_chefe, recurso, 
 
 @pytest.mark.parametrize("recurso", ["eleitores", "candidatos"])
 def test_maior_pagina_com_o_maior_tamanho_responde_vazia(cliente, cabecalho_chefe, recurso):
-    """Seção 10: a última página aceita, com `tamanho=100`, ainda cabe no OFFSET do banco."""
+    """A última página aceita, com `tamanho=100`, ainda cabe no OFFSET do banco."""
     resposta = cliente.get(
         f"/api/v1/{recurso}",
         params={"pagina": MAIOR_PAGINA, "tamanho": TAMANHO_MAXIMO},
@@ -149,7 +149,7 @@ def test_maior_pagina_com_o_maior_tamanho_responde_vazia(cliente, cabecalho_chef
 
 
 def test_erro_do_banco_nao_leva_os_valores_do_sql():
-    """Seção 7: a mensagem de erro do banco (que vai para o log do 500) não traz os parâmetros.
+    """A mensagem de erro do banco (que vai para o log do 500) não traz os parâmetros.
 
     Sem `hide_parameters`, o SQLAlchemy põe os valores na mensagem (ex.: hash da senha e CPF).
     """

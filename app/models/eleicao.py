@@ -24,7 +24,7 @@ class Eleicao(Base):
     """Um pleito em uma data e turno: a raiz do agregado que contém as candidaturas.
 
     O status acompanha o ciclo AGENDADA → ABERTA → ENCERRADA (RN-13). Os carimbos de tempo
-    são preenchidos pelo serviço com o relógio injetável, nunca pelo banco (seção 6).
+    são preenchidos pelo serviço com o relógio injetável, nunca pelo banco.
     """
 
     __tablename__ = "eleicoes"

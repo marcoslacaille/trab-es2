@@ -18,7 +18,7 @@ def _normalizar(caminho: str) -> str:
 
 
 def _perfis_restritos() -> set[tuple[str, str]]:
-    """(método, caminho) das rotas que a tabela da seção 10 limita a menos de todos os perfis."""
+    """(método, caminho) das rotas que a tabela `ROTAS` limita a menos de todos os perfis."""
     return {(m, _normalizar(PREFIXO + c)) for m, c, perfis in ROTAS if perfis != TODOS}
 
 
@@ -46,7 +46,7 @@ def test_ta04_toda_rota_protegida_documenta_401():
 
 
 def test_ta04_toda_rota_com_perfil_restrito_documenta_403():
-    """TA-04 / RN-03: rotas que a seção 10 limita a certos perfis têm 403 em `responses`."""
+    """TA-04 / RN-03: rotas restritas a certos perfis têm 403 em `responses`."""
     documentadas = _respostas_documentadas()
     faltando = [
         f"{metodo} {caminho}"
@@ -58,7 +58,7 @@ def test_ta04_toda_rota_com_perfil_restrito_documenta_403():
 
 
 def test_ta04_tabela_de_perfis_usa_so_perfis_conhecidos():
-    """TA-04: a tabela da seção 10 usada aqui só cita Chefe, Eleitor e Candidato."""
+    """TA-04: a tabela de rotas usada aqui só cita Chefe, Eleitor e Candidato."""
     usados = {perfil for _, _, perfis in ROTAS for perfil in perfis}
 
     assert usados <= set(Perfil)
