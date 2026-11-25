@@ -72,15 +72,10 @@ class VotacaoRepository:
         ]
 
     def contar_comparecimento(self, eleicao_id: int) -> Comparecimento:
-        """Eleitores distintos que votaram e a contagem de registros por cargo."""
+        """Eleitores distintos que votaram em ao menos um cargo da eleição."""
         distintos = self.sessao.scalar(
             select(func.count(func.distinct(RegistroVotacao.eleitor_id))).where(
                 RegistroVotacao.eleicao_id == eleicao_id
             )
         )
-        por_cargo = self.sessao.execute(
-            select(RegistroVotacao.cargo, func.count())
-            .where(RegistroVotacao.eleicao_id == eleicao_id)
-            .group_by(RegistroVotacao.cargo)
-        )
-        return Comparecimento(distintos or 0, {Cargo(cargo): total for cargo, total in por_cargo})
+        return Comparecimento(distintos or 0)

@@ -49,7 +49,7 @@ def obter_cedula(
     response_model=PreviaVotoResposta,
     summary="Registra o voto (etapa 1)",
     description=(
-        "Devolve a prévia do voto e a cédula assinada. **Nada é gravado**: pode repetir para "
+        "Devolve a prévia do voto e a cédula cifrada. **Nada é gravado**: pode repetir para "
         "mudar de ideia. Número com candidatura vira voto NOMINAL, número sem candidatura vira "
         "NULO, modo BRANCO vira BRANCO. A cédula é cifrada e vale 5 minutos (RN-54 a 58). A "
         "resposta vem com `Cache-Control: no-store`, para a prévia não ficar guardada em cache."

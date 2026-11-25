@@ -1,4 +1,4 @@
-"""retrato das candidaturas: nome de urna e nascimento do candidato gravados na abertura (D-140)
+"""retrato das candidaturas: nome de urna e nascimento do candidato gravados na abertura
 
 Revision ID: 0006
 Revises: 0005

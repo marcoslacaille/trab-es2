@@ -38,7 +38,7 @@ def validar_senha(senha: str) -> None:
 
 
 class UsuarioService:
-    """Service de usuários: casos de uso de identidade.
+    """Service de usuários: login, credenciais e consulta dos usuários.
 
     `criar_credencial`, `atualizar_credencial` e `remover_credencial` são pensados para outros
     services (eleitores, candidatos) e **não fazem commit**: quem chama controla a transação,

@@ -25,7 +25,7 @@ def _com_pontuacao(cpf: str) -> str:
 
 
 def _criar_candidato(cpf: str) -> None:
-    """Cria uma credencial de candidato direto pelo serviço (o módulo de candidatos é posterior)."""
+    """Cria só a credencial de um candidato, direto pelo `UsuarioService`."""
     with SessionLocal() as sessao:
         UsuarioService(sessao).criar_credencial(
             cpf, "Candidato de Teste", "Candidato@123", Perfil.CANDIDATO, agora()

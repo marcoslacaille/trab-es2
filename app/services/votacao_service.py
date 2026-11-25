@@ -201,12 +201,12 @@ class VotacaoService:
         pedido: PedidoRegistro,
         agora: datetime,
     ) -> PreviaVoto:
-        """Etapa 1 do voto: confere tudo e devolve a prévia com a cédula assinada (RN-54 a 58).
+        """Etapa 1 do voto: confere tudo e devolve a prévia com a cédula cifrada (RN-54 a 58).
 
         **Não grava nada e não faz commit** (RN-56): o eleitor pode registrar de novo para mudar
         de ideia. Ordem: eleitor e eleição (RN-50 a 53); já votou no cargo, 409
         `VOTO_JA_REGISTRADO` (RN-54); cargo sem candidaturas, 422 `CARGO_NAO_DISPUTADO` (RN-55);
-        `resolver_escolha` (RN-58); cédula assinada, válida por 5 minutos (RN-57).
+        `resolver_escolha` (RN-58); cédula cifrada, válida por 5 minutos (RN-57).
         """
         eleitor, _ = self._eleitor_apto_a_votar(usuario, eleicao_id, agora)
         if self.repository.ja_votou(eleitor.id, eleicao_id, pedido.cargo):

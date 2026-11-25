@@ -8,7 +8,7 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstra
 
 from app.core.validadores import sem_caractere_nulo
 from app.dto.eleicao_dto import EleicaoResumo
-from app.models.enums import StatusEleicao
+from app.models.enums import Perfil, StatusEleicao
 
 
 def _sem_fuso(horario: time) -> time:
@@ -77,12 +77,6 @@ class AlteracaoEleicao(BaseModel):
 
 PREFIXO_DA_API = "/api/v1"
 
-# Perfis como texto: `eleicoes` não importa `identidade`. O `Perfil` é um `StrEnum`, então
-# `links_da_eleicao` aceita um `Perfil` normalmente.
-CHEFE_SECAO = "CHEFE_SECAO"
-ELEITOR = "ELEITOR"
-CANDIDATO = "CANDIDATO"
-
 
 @dataclass(frozen=True)
 class Link:
@@ -93,7 +87,7 @@ class Link:
     href: str
 
 
-def links_da_eleicao(eleicao: EleicaoResumo, perfil: str) -> list[Link]:
+def links_da_eleicao(eleicao: EleicaoResumo, perfil: Perfil) -> list[Link]:
     """RN-19 (HATEOAS): as ações que o perfil pode fazer na eleição, dado o status dela.
 
     `self` sempre aparece. O resto depende do perfil e do status: o Chefe edita, gerencia
@@ -104,7 +98,7 @@ def links_da_eleicao(eleicao: EleicaoResumo, perfil: str) -> list[Link]:
     apuracao = f"{PREFIXO_DA_API}/apuracao/eleicoes/{eleicao.id}"
     links = [Link("self", "GET", base)]
 
-    if eleicao.status == StatusEleicao.AGENDADA and perfil == CHEFE_SECAO:
+    if eleicao.status == StatusEleicao.AGENDADA and perfil == Perfil.CHEFE_SECAO:
         links += [
             Link("editar", "PATCH", base),
             Link("candidaturas", "GET", f"{base}/candidaturas"),
@@ -112,12 +106,12 @@ def links_da_eleicao(eleicao: EleicaoResumo, perfil: str) -> list[Link]:
             Link("abrir", "POST", f"{base}/abertura"),
         ]
     if eleicao.status == StatusEleicao.ABERTA:
-        if perfil == CHEFE_SECAO:
+        if perfil == Perfil.CHEFE_SECAO:
             links.append(Link("encerrar", "POST", f"{base}/encerramento"))
-        if perfil == ELEITOR:
+        if perfil == Perfil.ELEITOR:
             cedula = f"{PREFIXO_DA_API}/votacao/eleicoes/{eleicao.id}/cedula"
             links.append(Link("cedula", "GET", cedula))
-        if perfil in (CHEFE_SECAO, ELEITOR, CANDIDATO):
+        if perfil in (Perfil.CHEFE_SECAO, Perfil.ELEITOR, Perfil.CANDIDATO):
             links.append(Link("apuracao-parcial", "GET", f"{apuracao}/parcial"))
     if eleicao.status == StatusEleicao.ENCERRADA:
         links.append(Link("resultado", "GET", f"{apuracao}/resultado"))

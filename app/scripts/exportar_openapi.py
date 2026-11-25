@@ -1,7 +1,8 @@
 """Exporta a especificação OpenAPI para `docs/openapi.json`.
 
 Uso: `python -m app.scripts.exportar_openapi`. O arquivo alimenta o Swagger UI estático do
-GitHub Pages (`docs/index.html`); o TA-03 falha se ele ficar diferente da especificação do código.
+GitHub Pages (`docs/index.html`); o teste `test_especificacao_publicada_esta_atualizada`
+falha se ele ficar diferente da especificação do código.
 """
 
 import json

@@ -71,7 +71,7 @@ _PARTIDO_DUPLICADO = TraducaoDeRestricao(
     "PARTIDO_DUPLICADO", 409, "Já existe um partido com esta sigla, nome ou número."
 )
 
-# Tabela de tradução: nome da restrição (convenção de nomes do banco.py) -> erro da API.
+# Tabela de tradução: nome da restrição (convenção de nomes de core/database.py) -> erro da API.
 ERROS_POR_RESTRICAO: dict[str, TraducaoDeRestricao] = {
     "uq_usuarios_cpf": TraducaoDeRestricao(
         "CPF_JA_CADASTRADO", 409, "Já existe um usuário com este CPF."

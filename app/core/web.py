@@ -41,7 +41,9 @@ class CorpoDoErro(BaseModel):
         }
     )
 
-    codigo: str = Field(description="Código estável do erro (catálogo da seção 10 do PLANO).")
+    codigo: str = Field(
+        description="Código estável do erro, para o cliente decidir o que fazer sem ler a mensagem."
+    )
     mensagem: str = Field(description="Explicação legível para uma pessoa.")
     detalhes: dict = Field(default_factory=dict, description="Dados extras; pode ser vazio.")
 

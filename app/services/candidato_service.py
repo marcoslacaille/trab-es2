@@ -213,7 +213,7 @@ class CandidatoService:
     def obter_candidato_do_usuario(self, usuario_id: int) -> CandidatoResumo | None:
         """Devolve o candidato dono desta credencial, ou `None` se não houver.
 
-        Usada por `eleicoes`.
+        Usada pelo `EleicaoService`.
         """
         candidato = self.repository.buscar_candidato_por_usuario_id(usuario_id)
         return self._resumir_candidato(candidato) if candidato else None
@@ -221,7 +221,7 @@ class CandidatoService:
     def obter_resumos_de_candidatos(self, ids: list[int]) -> dict[int, CandidatoResumo]:
         """Resumos dos candidatos que existem, indexados pelo id (ids inexistentes ficam de fora).
 
-        Usada por `eleicoes` para montar a lista de candidaturas numa única consulta.
+        Usada pelo `EleicaoService` para montar a lista de candidaturas numa única consulta.
         """
         if not ids:
             return {}

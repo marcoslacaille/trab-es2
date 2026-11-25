@@ -187,7 +187,7 @@ def test_resolver_escolha_vira_nominal_nulo_ou_branco(modo, numero, esperada):
 
 
 def test_registrar_voto_nao_grava_nem_faz_commit():
-    """RN-56 e RN-58: a prévia traz a cédula assinada, mas nada é gravado e não há commit."""
+    """RN-56 e RN-58: a prévia traz a cédula cifrada, mas nada é gravado e não há commit."""
     service = um_service()
     pedido = PedidoRegistro(cargo=Cargo.PRESIDENTE, modo=ModoEscolha.NUMERO, numero="45")
 

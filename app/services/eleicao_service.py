@@ -606,13 +606,3 @@ class EleicaoService:
             self.repository.listar_candidaturas_do_candidato(candidato.id)
         )
         return sorted(candidaturas, key=lambda c: c.eleicao_id)
-
-    def buscar_candidatura_por_numero(
-        self, eleicao_id: int, cargo: Cargo, numero: str
-    ) -> CandidaturaDetalhada | None:
-        """A candidatura que usa este número neste cargo da eleição, ou `None`.
-
-        Usada pela votação para decidir entre voto NOMINAL (existe) e NULO (não existe).
-        """
-        candidatura = self.repository.buscar_candidatura_por_numero(eleicao_id, cargo, numero)
-        return self._detalhar([candidatura])[0] if candidatura else None

@@ -17,7 +17,7 @@ from app.services.usuario_service import UsuarioService
 def criar_chefe() -> int:
     """RN-04: cria o Chefe da Seção com os dados do `.env`. Devolve 0 se deu certo, 1 se falhou.
 
-    Valida CPF (RN-07), nome (RN-08) e senha (RN-05) pelo próprio serviço de identidade.
+    Valida CPF (RN-07), nome (RN-08) e senha (RN-05) pelo próprio `UsuarioService`.
     A mensagem impressa nunca contém a senha.
     """
     configuracao = obter_configuracao()

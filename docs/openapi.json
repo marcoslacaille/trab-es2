@@ -2543,7 +2543,7 @@
           "Votação"
         ],
         "summary": "Registra o voto (etapa 1)",
-        "description": "Devolve a prévia do voto e a cédula assinada. **Nada é gravado**: pode repetir para mudar de ideia. Número com candidatura vira voto NOMINAL, número sem candidatura vira NULO, modo BRANCO vira BRANCO. A cédula é cifrada e vale 5 minutos (RN-54 a 58). A resposta vem com `Cache-Control: no-store`, para a prévia não ficar guardada em cache.",
+        "description": "Devolve a prévia do voto e a cédula cifrada. **Nada é gravado**: pode repetir para mudar de ideia. Número com candidatura vira voto NOMINAL, número sem candidatura vira NULO, modo BRANCO vira BRANCO. A cédula é cifrada e vale 5 minutos (RN-54 a 58). A resposta vem com `Cache-Control: no-store`, para a prévia não ficar guardada em cache.",
         "operationId": "registrar_voto",
         "security": [
           {
@@ -3967,7 +3967,7 @@
           "codigo": {
             "type": "string",
             "title": "Codigo",
-            "description": "Código estável do erro (catálogo da seção 10 do PLANO)."
+            "description": "Código estável do erro, para o cliente decidir o que fazer sem ler a mensagem."
           },
           "mensagem": {
             "type": "string",
