@@ -5,16 +5,13 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query, Response
 from pydantic import AfterValidator
-from sqlalchemy.orm import Session
 
-from app.core.database import obter_sessao
 from app.core.openapi import respostas_de_erro
 from app.core.paginacao import Pagina, Paginacao, obter_paginacao
 from app.core.relogio import obter_agora
 from app.core.validadores import MAIOR_ID, sem_caractere_nulo
-from app.dependencies import UsuarioAutenticado, exige_perfil
+from app.dependencies import EleitorServiceDep, UsuarioAutenticado, exige_perfil
 from app.dto.eleitor_dto import AlteracoesEleitor, NovoEleitorDados
-from app.eleitores import service
 from app.models.enums import Perfil
 from app.schemas.eleitor_schema import AlteracaoEleitor, EleitorResposta, NovoEleitor
 
@@ -38,10 +35,10 @@ IdDoEleitor = Annotated[int, Path(gt=0, le=MAIOR_ID, description="Identificador 
 )
 def cadastrar_eleitor(
     dados: NovoEleitor,
-    sessao: Annotated[Session, Depends(obter_sessao)],
+    service: EleitorServiceDep,
     agora: Annotated[datetime, Depends(obter_agora)],
 ) -> EleitorResposta:
-    eleitor = service.cadastrar_eleitor(sessao, NovoEleitorDados(**dados.model_dump()), agora)
+    eleitor = service.cadastrar_eleitor(NovoEleitorDados(**dados.model_dump()), agora)
     return EleitorResposta.model_validate(eleitor)
 
 
@@ -54,7 +51,7 @@ def cadastrar_eleitor(
     responses=respostas_de_erro(401, 403, 422),
 )
 def listar_eleitores(
-    sessao: Annotated[Session, Depends(obter_sessao)],
+    service: EleitorServiceDep,
     paginacao: Annotated[Paginacao, Depends(obter_paginacao)],
     nome: Annotated[
         str | None,
@@ -62,7 +59,7 @@ def listar_eleitores(
         AfterValidator(sem_caractere_nulo),
     ] = None,
 ) -> Pagina[EleitorResposta]:
-    pagina = service.listar_eleitores(sessao, nome, paginacao)
+    pagina = service.listar_eleitores(nome, paginacao)
     return Pagina[EleitorResposta](
         itens=[EleitorResposta.model_validate(eleitor) for eleitor in pagina.itens],
         pagina=pagina.pagina,
@@ -81,9 +78,9 @@ def listar_eleitores(
 )
 def consultar_meus_dados_de_eleitor(
     usuario: Annotated[UsuarioAutenticado, Depends(exige_perfil(Perfil.ELEITOR))],
-    sessao: Annotated[Session, Depends(obter_sessao)],
+    service: EleitorServiceDep,
 ) -> EleitorResposta:
-    return EleitorResposta.model_validate(service.obter_eleitor_logado(sessao, usuario.id))
+    return EleitorResposta.model_validate(service.obter_eleitor_logado(usuario.id))
 
 
 @roteador.get(
@@ -94,10 +91,8 @@ def consultar_meus_dados_de_eleitor(
     description="Só o Chefe da Seção consulta eleitores pelo id (RN-20).",
     responses=respostas_de_erro(401, 403, 404, 422),
 )
-def consultar_eleitor(
-    eleitor_id: IdDoEleitor, sessao: Annotated[Session, Depends(obter_sessao)]
-) -> EleitorResposta:
-    return EleitorResposta.model_validate(service.obter_eleitor(sessao, eleitor_id))
+def consultar_eleitor(eleitor_id: IdDoEleitor, service: EleitorServiceDep) -> EleitorResposta:
+    return EleitorResposta.model_validate(service.obter_eleitor(eleitor_id))
 
 
 @roteador.patch(
@@ -114,11 +109,11 @@ def consultar_eleitor(
 def alterar_eleitor(
     eleitor_id: IdDoEleitor,
     alteracao: AlteracaoEleitor,
-    sessao: Annotated[Session, Depends(obter_sessao)],
+    service: EleitorServiceDep,
     agora: Annotated[datetime, Depends(obter_agora)],
 ) -> EleitorResposta:
     eleitor = service.atualizar_eleitor(
-        sessao, eleitor_id, AlteracoesEleitor(**alteracao.model_dump()), agora
+        eleitor_id, AlteracoesEleitor(**alteracao.model_dump()), agora
     )
     return EleitorResposta.model_validate(eleitor)
 
@@ -135,8 +130,6 @@ def alterar_eleitor(
     ),
     responses=respostas_de_erro(401, 403, 404, 409, 422),
 )
-def excluir_eleitor(
-    eleitor_id: IdDoEleitor, sessao: Annotated[Session, Depends(obter_sessao)]
-) -> Response:
-    service.excluir_eleitor(sessao, eleitor_id)
+def excluir_eleitor(eleitor_id: IdDoEleitor, service: EleitorServiceDep) -> Response:
+    service.excluir_eleitor(eleitor_id)
     return Response(status_code=204)

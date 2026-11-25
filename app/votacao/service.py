@@ -33,9 +33,9 @@ from app.dto.votacao_dto import (
     PreviaVoto,
 )
 from app.eleicoes import service as eleicoes_service
-from app.eleitores import service as eleitores_service
 from app.models.enums import DIGITOS_POR_CARGO, Cargo, TipoVoto
 from app.repositories.votacao_repository import VotacaoRepository
+from app.services.eleitor_service import EleitorService
 from app.votacao import dominio
 
 PK_REGISTRO = "pk_registros_votacao"
@@ -51,7 +51,7 @@ MENSAGENS_DA_PREVIA = {
 
 def _eleitor_do(sessao: Session, usuario: UsuarioAutenticado) -> EleitorResumo:
     """O eleitor desta credencial; 404 `ELEITOR_NAO_ENCONTRADO` se não houver."""
-    eleitor = eleitores_service.obter_eleitor_do_usuario(sessao, usuario.id)
+    eleitor = EleitorService(sessao).obter_eleitor_do_usuario(usuario.id)
     if eleitor is None:
         raise NaoEncontrado("Eleitor não encontrado.", codigo="ELEITOR_NAO_ENCONTRADO")
     return eleitor

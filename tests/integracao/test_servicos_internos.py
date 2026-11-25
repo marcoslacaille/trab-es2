@@ -3,16 +3,16 @@
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from app.candidatos import service as service_candidatos
 from app.core.database import SessionLocal
 from app.core.exceptions import DadosInvalidos, NaoEncontrado
 from app.core.relogio import agora
 from app.eleicoes import service as service_eleicoes
-from app.eleitores import service as service_eleitores
 from app.models.enums import Cargo, Perfil
 from app.repositories.candidato_repository import CandidatoRepository
 from app.repositories.eleitor_repository import EleitorRepository
 from app.schemas.eleicao_schema import links_da_eleicao
+from app.services.candidato_service import CandidatoService
+from app.services.eleitor_service import EleitorService
 from app.services.usuario_service import UsuarioService
 from tests.auxiliares import (
     SENHA_CANDIDATO,
@@ -121,7 +121,7 @@ def test_obter_candidato_logado_sem_candidato_responde_404():
     chefe_id = criar_chefe()
 
     with SessionLocal() as sessao, pytest.raises(NaoEncontrado) as erro:
-        service_candidatos.obter_candidato_logado(sessao, chefe_id)
+        CandidatoService(sessao).obter_candidato_logado(chefe_id)
 
     assert erro.value.codigo == "CANDIDATO_NAO_ENCONTRADO"
 
@@ -132,7 +132,7 @@ def test_candidato_sem_credencial_e_inconsistencia_interna(cliente, cabecalho_ch
     monkeypatch.setattr(UsuarioService, "obter_usuarios", lambda self, ids: {})
 
     with SessionLocal() as sessao, pytest.raises(LookupError):
-        service_candidatos.obter_candidato(sessao, criado["id"])
+        CandidatoService(sessao).obter_candidato(criado["id"])
 
 
 def test_excluir_candidato_repassa_erro_de_integridade_desconhecido(
@@ -147,7 +147,7 @@ def test_excluir_candidato_repassa_erro_de_integridade_desconhecido(
     monkeypatch.setattr(CandidatoRepository, "remover_candidato", falhar)
 
     with SessionLocal() as sessao, pytest.raises(IntegrityError):
-        service_candidatos.excluir_candidato(sessao, criado["id"])
+        CandidatoService(sessao).excluir_candidato(criado["id"])
 
 
 # ------------------------------------------------------------------- eleitores
@@ -158,9 +158,9 @@ def test_obter_eleitor_do_usuario_sem_eleitor_devolve_none():
     chefe_id = criar_chefe()
 
     with SessionLocal() as sessao:
-        assert service_eleitores.obter_eleitor_do_usuario(sessao, chefe_id) is None
+        assert EleitorService(sessao).obter_eleitor_do_usuario(chefe_id) is None
         with pytest.raises(NaoEncontrado) as erro:
-            service_eleitores.obter_eleitor_logado(sessao, chefe_id)
+            EleitorService(sessao).obter_eleitor_logado(chefe_id)
 
     assert erro.value.codigo == "ELEITOR_NAO_ENCONTRADO"
 
@@ -171,7 +171,7 @@ def test_eleitor_sem_credencial_e_inconsistencia_interna(cliente, cabecalho_chef
     monkeypatch.setattr(UsuarioService, "obter_usuarios", lambda self, ids: {})
 
     with SessionLocal() as sessao, pytest.raises(LookupError):
-        service_eleitores.obter_eleitor(sessao, criado["id"])
+        EleitorService(sessao).obter_eleitor(criado["id"])
 
 
 def test_excluir_eleitor_repassa_erro_de_integridade_desconhecido(
@@ -186,7 +186,7 @@ def test_excluir_eleitor_repassa_erro_de_integridade_desconhecido(
     monkeypatch.setattr(EleitorRepository, "remover", falhar)
 
     with SessionLocal() as sessao, pytest.raises(IntegrityError):
-        service_eleitores.excluir_eleitor(sessao, criado["id"])
+        EleitorService(sessao).excluir_eleitor(criado["id"])
 
 
 # -------------------------------------------------------------------- eleições

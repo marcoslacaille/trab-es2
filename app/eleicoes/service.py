@@ -9,7 +9,6 @@ from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.candidatos import service as service_candidatos
 from app.core.exceptions import (
     ConflitoDeEstado,
     DadosInvalidos,
@@ -34,6 +33,8 @@ from app.models.candidatura import Candidatura
 from app.models.eleicao import Eleicao
 from app.models.enums import Cargo, StatusEleicao
 from app.repositories.eleicao_repository import EleicaoRepository
+from app.services.candidato_service import CandidatoService
+from app.services.partido_service import PartidoService
 
 # FK que dispara quando o candidato some entre a conferência e a gravação (D-145).
 FK_CANDIDATO_DA_CANDIDATURA = "fk_candidaturas_candidato_id_candidatos"
@@ -213,7 +214,7 @@ def _eleicao_editavel(sessao: Session, eleicao_id: int) -> Eleicao:
 
 def _conferir_partido(sessao: Session, partido_id: int) -> None:
     """RN-46: levanta 422 `REFERENCIA_INEXISTENTE` (`detalhes.campo` = `partido_id`)."""
-    if service_candidatos.obter_partido(sessao, partido_id) is None:
+    if PartidoService(sessao).obter_partido(partido_id) is None:
         raise DadosInvalidos(
             "O partido informado não existe.",
             codigo="REFERENCIA_INEXISTENTE",
@@ -223,7 +224,7 @@ def _conferir_partido(sessao: Session, partido_id: int) -> None:
 
 def _conferir_candidato(sessao: Session, candidato_id: int) -> None:
     """RN-46: levanta 422 `REFERENCIA_INEXISTENTE` (`detalhes.campo` = `candidato_id`)."""
-    if not service_candidatos.obter_resumos_de_candidatos(sessao, [candidato_id]):
+    if not CandidatoService(sessao).obter_resumos_de_candidatos([candidato_id]):
         raise DadosInvalidos(
             "O candidato informado não existe.",
             codigo="REFERENCIA_INEXISTENTE",
@@ -264,8 +265,8 @@ def _gravar_retrato_dos_candidatos(sessao: Session, eleicao_id: int) -> None:
     candidato depois não troca o desempate por idade (RN-77) nem os nomes da eleição.
     """
     candidaturas = EleicaoRepository(sessao).listar_candidaturas(eleicao_id)
-    candidatos = service_candidatos.obter_resumos_de_candidatos(
-        sessao, [c.candidato_id for c in candidaturas]
+    candidatos = CandidatoService(sessao).obter_resumos_de_candidatos(
+        [c.candidato_id for c in candidaturas]
     )
     for candidatura in candidaturas:
         candidatura.nome_urna = candidatos[candidatura.candidato_id].nome_urna
@@ -279,10 +280,10 @@ def _detalhar(sessao: Session, candidaturas: list[Candidatura]) -> list[Candidat
     ainda está AGENDADA (retrato nulo), do cadastro atual do candidato. Ordena pela ordem do
     enum `Cargo` e depois pelo número (seção 9.5).
     """
-    candidatos = service_candidatos.obter_resumos_de_candidatos(
-        sessao, [c.candidato_id for c in candidaturas]
+    candidatos = CandidatoService(sessao).obter_resumos_de_candidatos(
+        [c.candidato_id for c in candidaturas]
     )
-    partidos = {partido.id: partido for partido in service_candidatos.listar_partidos(sessao)}
+    partidos = {partido.id: partido for partido in PartidoService(sessao).listar_partidos()}
     ordem_dos_cargos = list(Cargo)
     detalhadas = []
     for c in candidaturas:
@@ -408,7 +409,7 @@ def candidaturas_do_usuario(sessao: Session, usuario_id: int) -> list[Candidatur
     Ordenadas por eleição, cargo e número. Credencial sem candidato (por exemplo, um eleitor)
     devolve lista vazia; quem barra o acesso é a rota (só o perfil CANDIDATO).
     """
-    candidato = service_candidatos.obter_candidato_do_usuario(sessao, usuario_id)
+    candidato = CandidatoService(sessao).obter_candidato_do_usuario(usuario_id)
     if candidato is None:
         return []
     candidaturas = _detalhar(

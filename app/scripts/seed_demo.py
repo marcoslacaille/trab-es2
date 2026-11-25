@@ -9,7 +9,6 @@ from datetime import date, datetime, time
 
 from sqlalchemy.orm import Session
 
-from app.candidatos import service as service_candidatos
 from app.core.database import engine
 from app.core.exceptions import ConflitoDeEstado, ErroDeNegocio
 from app.core.relogio import agora
@@ -19,8 +18,10 @@ from app.dto.eleicao_dto import NovaEleicaoDados
 from app.dto.eleitor_dto import NovoEleitorDados
 from app.dto.partido_dto import NovoPartidoDados
 from app.eleicoes import service as service_eleicoes
-from app.eleitores import service as service_eleitores
 from app.models.enums import Cargo, Perfil
+from app.services.candidato_service import CandidatoService
+from app.services.eleitor_service import EleitorService
+from app.services.partido_service import PartidoService
 from app.services.usuario_service import UsuarioService
 
 CHEFE_CPF = "291.417.776-38"
@@ -159,7 +160,7 @@ def semear() -> int:
             autoflush=False,
             expire_on_commit=False,
         ) as sessao:
-            if service_candidatos.listar_partidos(sessao):
+            if PartidoService(sessao).listar_partidos():
                 transacao.rollback()
                 print("Dados de demonstração já existem; nada foi alterado.")
                 print("Para recomeçar: docker compose down -v, up -d e alembic upgrade head.")
@@ -179,17 +180,19 @@ def semear() -> int:
 def _criar_cenario(sessao: Session, momento: datetime) -> int:
     """Grava Chefe, partidos, eleitores, eleição e candidaturas. Devolve o id da eleição."""
     _criar_chefe_se_preciso(sessao, momento)
+    partidos = PartidoService(sessao)
+    eleitores = EleitorService(sessao)
+    candidatos = CandidatoService(sessao)
 
     partido_por_sigla = {}
     for sigla, nome, numero in PARTIDOS:
-        partido = service_candidatos.criar_partido(
-            sessao, NovoPartidoDados(sigla=sigla, nome=nome, numero=numero), momento
+        partido = partidos.criar_partido(
+            NovoPartidoDados(sigla=sigla, nome=nome, numero=numero), momento
         )
         partido_por_sigla[sigla] = partido.id
 
     for nome, cpf, titulo, nascimento in ELEITORES:
-        service_eleitores.cadastrar_eleitor(
-            sessao,
+        eleitores.cadastrar_eleitor(
             NovoEleitorDados(
                 nome=nome,
                 cpf=cpf,
@@ -213,8 +216,7 @@ def _criar_cenario(sessao: Session, momento: datetime) -> int:
     )
 
     for cargo, numero, nome_urna, nome, cpf, nascimento, sigla in CANDIDATOS:
-        candidato = service_candidatos.cadastrar_candidato(
-            sessao,
+        candidato = candidatos.cadastrar_candidato(
             NovoCandidatoDados(
                 nome=nome,
                 nome_urna=nome_urna,

@@ -1,4 +1,4 @@
-"""Entrega o `UsuarioService`, o usuário logado e o perfil exigido às rotas, por `Depends`."""
+"""Entrega os services, o usuário logado e o perfil exigido às rotas, por `Depends`."""
 
 from typing import Annotated
 
@@ -11,6 +11,9 @@ from app.core.database import obter_sessao
 from app.core.exceptions import AcessoNegado, NaoAutenticado
 from app.dto.usuario_dto import UsuarioAutenticado
 from app.models.enums import Perfil
+from app.services.candidato_service import CandidatoService
+from app.services.eleitor_service import EleitorService
+from app.services.partido_service import PartidoService
 from app.services.usuario_service import UsuarioService
 
 # auto_error=False: nós mesmos respondemos 401 no formato padrão de erro da API.
@@ -24,6 +27,27 @@ def obter_usuario_service(sessao: Sessao) -> UsuarioService:
 
 
 UsuarioServiceDep = Annotated[UsuarioService, Depends(obter_usuario_service)]
+
+
+def obter_eleitor_service(sessao: Sessao) -> EleitorService:
+    return EleitorService(sessao)
+
+
+EleitorServiceDep = Annotated[EleitorService, Depends(obter_eleitor_service)]
+
+
+def obter_candidato_service(sessao: Sessao) -> CandidatoService:
+    return CandidatoService(sessao)
+
+
+CandidatoServiceDep = Annotated[CandidatoService, Depends(obter_candidato_service)]
+
+
+def obter_partido_service(sessao: Sessao) -> PartidoService:
+    return PartidoService(sessao)
+
+
+PartidoServiceDep = Annotated[PartidoService, Depends(obter_partido_service)]
 
 
 def obter_usuario_atual(

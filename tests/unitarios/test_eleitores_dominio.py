@@ -3,7 +3,7 @@ from datetime import date
 import pytest
 
 from app.core.exceptions import DadosInvalidos
-from app.eleitores.dominio import validar_idade_eleitor, validar_titulo_eleitor
+from app.services.eleitor_service import validar_idade_eleitor, validar_titulo_eleitor
 
 HOJE = date(2026, 11, 25)
 

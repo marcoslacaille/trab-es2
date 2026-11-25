@@ -2,13 +2,13 @@ from datetime import date
 
 import pytest
 
-from app.candidatos.dominio import (
-    validar_nascimento_do_candidato,
-    validar_nome_de_urna,
-    validar_partido,
-)
 from app.core.exceptions import DadosInvalidos
 from app.dto.partido_dto import NovoPartidoDados
+from app.services.candidato_service import (
+    validar_nascimento_do_candidato,
+    validar_nome_de_urna,
+)
+from app.services.partido_service import validar_partido
 
 HOJE = date(2026, 11, 25)
 

@@ -15,8 +15,8 @@ from app.dto.apuracao_dto import Apuracao, ComparecimentoEleicao, ResultadoCargo
 from app.dto.eleicao_dto import EleicaoResumo
 from app.dto.usuario_dto import UsuarioAutenticado
 from app.eleicoes import service as eleicoes_service
-from app.eleitores import service as eleitores_service
 from app.models.enums import Cargo, Perfil, StatusEleicao
+from app.services.eleitor_service import EleitorService
 from app.votacao import service as votacao_service
 
 PREFIXO_DA_API = "/api/v1"
@@ -84,7 +84,7 @@ def _apurar(
     contagens = votacao_service.contar_votos(sessao, eleicao.id)
     comparecimento = votacao_service.contar_comparecimento(sessao, eleicao.id)
     # `aberta_em` existe sempre que a eleição está ABERTA ou ENCERRADA (RN-15).
-    aptos = eleitores_service.contar_aptos(sessao, eleicao.aberta_em)
+    aptos = EleitorService(sessao).contar_aptos(eleicao.aberta_em)
 
     disputados = sorted({c.cargo for c in candidaturas}, key=list(Cargo).index)
     if cargos_pedidos is None:

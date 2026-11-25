@@ -19,6 +19,7 @@ from app.eleicoes import service as service_eleicoes
 from app.models.enums import Cargo, Perfil, TipoVoto
 from app.repositories.eleicao_repository import EleicaoRepository
 from app.repositories.votacao_repository import VotacaoRepository
+from app.services.eleitor_service import EleitorService
 from app.votacao import service
 from tests.auxiliares import SENHA_ELEITOR, eleicao_aberta_com_candidatos, login, novo_eleitor
 
@@ -180,9 +181,7 @@ def test_d145_eleitor_excluido_durante_a_confirmacao_da_404(
     usuario, token = _eleitor_com_cedula(cliente, cabecalho_chefe, eleicao_id, agora)
     # Simula a corrida: o eleitor foi lido, mas a linha já não existe quando o registro é gravado.
     sumido = EleitorResumo(id=999_999, usuario_id=usuario.id, criado_em=agora)
-    monkeypatch.setattr(
-        service.eleitores_service, "obter_eleitor_do_usuario", lambda sessao, usuario_id: sumido
-    )
+    monkeypatch.setattr(EleitorService, "obter_eleitor_do_usuario", lambda self, usuario_id: sumido)
 
     with SessionLocal() as sessao, pytest.raises(NaoEncontrado) as erro:
         service.confirmar_voto(sessao, usuario, eleicao_id, token, agora)
