@@ -166,20 +166,23 @@ def semear() -> int:
                 print("Para recomeçar: docker compose down -v, up -d e alembic upgrade head.")
                 return 1
             try:
-                eleicao_id = _criar_cenario(sessao, momento)
+                eleicao_id, chefe_criado = _criar_cenario(sessao, momento)
             except ErroDeNegocio as erro:
                 transacao.rollback()
                 print(f"Não foi possível criar a demonstração: {erro.mensagem} ({erro.codigo}).")
                 print("Nada foi gravado.")
                 return 2
         transacao.commit()  # outro erro sai sem commit: fechar a conexão desfaz tudo
-    _imprimir_logins(eleicao_id)
+    _imprimir_logins(eleicao_id, chefe_criado)
     return 0
 
 
-def _criar_cenario(sessao: Session, momento: datetime) -> int:
-    """Grava Chefe, partidos, eleitores, eleição e candidaturas. Devolve o id da eleição."""
-    _criar_chefe_se_preciso(sessao, momento)
+def _criar_cenario(sessao: Session, momento: datetime) -> tuple[int, bool]:
+    """Grava Chefe, partidos, eleitores, eleição e candidaturas.
+
+    Devolve o id da eleição e se o Chefe foi criado agora (ou já existia).
+    """
+    chefe_criado = _criar_chefe_se_preciso(sessao, momento)
     partidos = PartidoService(sessao)
     eleitores = EleitorService(sessao)
     candidatos = CandidatoService(sessao)
@@ -236,27 +239,37 @@ def _criar_cenario(sessao: Session, momento: datetime) -> int:
             ),
             momento,
         )
-    return eleicao.id
+    return eleicao.id, chefe_criado
 
 
-def _criar_chefe_se_preciso(sessao, momento) -> None:
-    """Cria o Chefe da Seção da demonstração, a menos que o CPF já exista."""
+def _criar_chefe_se_preciso(sessao, momento) -> bool:
+    """Cria o Chefe da Seção da demonstração, a menos que ele já exista. Diz se criou.
+
+    O `criar_chefe` pode tê-lo criado antes, com a senha do `.env`. Se o CPF for de um
+    usuário que não é Chefe, a demonstração ficaria sem Chefe: o seed para sem gravar nada.
+    """
+    usuarios = UsuarioService(sessao)
     try:
-        UsuarioService(sessao).criar_credencial(
-            CHEFE_CPF, CHEFE_NOME, CHEFE_SENHA, Perfil.CHEFE_SECAO, momento
-        )
+        usuarios.criar_credencial(CHEFE_CPF, CHEFE_NOME, CHEFE_SENHA, Perfil.CHEFE_SECAO, momento)
     except ConflitoDeEstado as erro:
         if erro.codigo != "CPF_JA_CADASTRADO":
             raise
-        return
+        if usuarios.perfil_do_cpf(CHEFE_CPF) != Perfil.CHEFE_SECAO:
+            raise ConflitoDeEstado(
+                "O CPF do Chefe da demonstração já é de um usuário que não é Chefe.",
+                codigo="CPF_DO_CHEFE_EM_USO",
+            ) from erro
+        return False
     sessao.commit()
+    return True
 
 
-def _imprimir_logins(eleicao_id: int) -> None:
+def _imprimir_logins(eleicao_id: int, chefe_criado: bool) -> None:
     """Mostra a tabela de logins da demonstração (senhas fixas: nunca use em produção)."""
     print(f"Dados de demonstração criados. Eleição de hoje: id {eleicao_id} (AGENDADA).\n")
     print(f"{'Perfil':<10} {'Nome':<24} {'CPF':<16} Senha")
-    print(f"{'Chefe':<10} {CHEFE_NOME:<24} {CHEFE_CPF:<16} {CHEFE_SENHA}")
+    senha_do_chefe = CHEFE_SENHA if chefe_criado else "(já existia: a do CHEFE_SENHA do .env)"
+    print(f"{'Chefe':<10} {CHEFE_NOME:<24} {CHEFE_CPF:<16} {senha_do_chefe}")
     for nome, cpf, _, _ in ELEITORES:
         print(f"{'Eleitor':<10} {nome:<24} {cpf:<16} {SENHA_ELEITORES}")
     for _, _, nome_urna, _, cpf, _, _ in CANDIDATOS:

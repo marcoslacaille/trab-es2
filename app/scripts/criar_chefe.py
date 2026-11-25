@@ -37,7 +37,14 @@ def criar_chefe() -> int:
         except ConflitoDeEstado as erro:
             if erro.codigo != "CPF_JA_CADASTRADO":
                 raise
-            print("Já existe um usuário com o CPF de CHEFE_CPF; nada foi alterado.")
+            perfil = UsuarioService(sessao).perfil_do_cpf(configuracao.chefe_cpf)
+            if perfil != Perfil.CHEFE_SECAO:
+                print(
+                    "O CPF de CHEFE_CPF já é de um usuário que não é Chefe da Seção; "
+                    "nada foi alterado."
+                )
+                return 1
+            print("Já existe um Chefe da Seção com o CPF de CHEFE_CPF; nada foi alterado.")
             return 0
         except DadosInvalidos as erro:
             print(f"Não foi possível criar o Chefe da Seção: {erro.mensagem}")
