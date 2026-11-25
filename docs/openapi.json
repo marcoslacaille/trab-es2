@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "API de Simulação de Eleição Eletrônica",
-    "description": "\nAPI de simulação de eleição eletrônica (trabalho de Engenharia de Software II).\n\n**Como autenticar:** clique em *Authorize*, informe o CPF em `username` e a senha em `password`.\n\n**Fluxo do voto:** consulte a cédula → registre o voto (recebe `token_cedula`) →\nconfirme com o token.\n\n**Erros:** todas as rotas respondem `{\"erro\": {\"codigo\", \"mensagem\", \"detalhes\"}}`.\n",
-    "version": "1.0.0"
+    "description": "\nAPI de simulação de eleição eletrônica (trabalho de Engenharia de Software II).\n\n**Como autenticar:** com a API rodando, abra `/docs` (por exemplo, http://localhost:8000/docs),\nclique em *Authorize* e informe o CPF em `username` e a senha em `password`. A cópia publicada\nno GitHub Pages é só para consulta: lá não há API para executar as rotas.\n\n**Fluxo do voto:** consulte a cédula → registre o voto (recebe `token_cedula`) →\nconfirme com o token.\n\n**Erros:** todas as rotas respondem `{\"erro\": {\"codigo\", \"mensagem\", \"detalhes\"}}`.\n",
+    "version": "2.0.0"
   },
   "paths": {
     "/api/v1/auth/login": {
@@ -3283,7 +3283,7 @@
             ],
             "title": "Data",
             "examples": [
-              "2026-11-25"
+              "2030-10-06"
             ]
           },
           "turno": {
@@ -4117,8 +4117,10 @@
         "title": "EleicaoResposta",
         "description": "Uma eleição, com situação, janela e carimbos de tempo.",
         "example": {
+          "aberta_em": "2026-11-25T08:00:05-03:00",
           "data": "2026-11-25",
           "descricao": "Eleições Gerais 2026 — 1º turno",
+          "encerrada_em": "2026-11-25T17:00:10-03:00",
           "horario_abertura": "08:00:00",
           "horario_encerramento": "17:00:00",
           "id": 1,
@@ -4129,27 +4131,17 @@
               "rel": "self"
             },
             {
-              "href": "/api/v1/eleicoes/1",
-              "metodo": "PATCH",
-              "rel": "editar"
-            },
-            {
               "href": "/api/v1/eleicoes/1/candidaturas",
               "metodo": "GET",
               "rel": "candidaturas"
             },
             {
-              "href": "/api/v1/eleicoes/1/candidaturas",
-              "metodo": "POST",
-              "rel": "nova-candidatura"
-            },
-            {
-              "href": "/api/v1/eleicoes/1/abertura",
-              "metodo": "POST",
-              "rel": "abrir"
+              "href": "/api/v1/apuracao/eleicoes/1/resultado",
+              "metodo": "GET",
+              "rel": "resultado"
             }
           ],
-          "status": "AGENDADA",
+          "status": "ENCERRADA",
           "turno": 1
         }
       },
@@ -4459,7 +4451,7 @@
             "title": "Descricao",
             "description": "Nome do pleito (1 a 120 caracteres).",
             "examples": [
-              "Eleições Gerais 2026 — 1º turno"
+              "Eleições Gerais 2030 — 1º turno"
             ]
           },
           "data": {
@@ -4468,7 +4460,7 @@
             "title": "Data",
             "description": "Dia da eleição; não pode ser anterior a hoje.",
             "examples": [
-              "2026-11-25"
+              "2030-10-06"
             ]
           },
           "turno": {
@@ -4512,8 +4504,8 @@
         "title": "NovaEleicao",
         "description": "Dados para agendar uma eleição (RN-11). Campos desconhecidos são recusados.",
         "example": {
-          "data": "2026-11-25",
-          "descricao": "Eleições Gerais 2026 — 1º turno",
+          "data": "2030-10-06",
+          "descricao": "Eleições Gerais 2030 — 1º turno",
           "horario_abertura": "08:00",
           "horario_encerramento": "17:00",
           "turno": 1
@@ -4905,7 +4897,7 @@
             "title": "Token Cedula",
             "description": "Token recebido no registro do voto.",
             "examples": [
-              "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+              "gAAAAABpQ2..."
             ]
           }
         },
@@ -4917,7 +4909,7 @@
         "title": "PedidoConfirmacaoVoto",
         "description": "Etapa 2 do voto: a cédula recebida no registro.",
         "example": {
-          "token_cedula": "eyJhbGciOiJIUzI1NiIs..."
+          "token_cedula": "gAAAAABpQ2..."
         }
       },
       "PedidoRegistroVoto": {

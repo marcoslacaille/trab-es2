@@ -21,7 +21,7 @@ from app.core.web import registrar_tratadores
 
 app = FastAPI(
     title="API de Simulação de Eleição Eletrônica",
-    version="1.0.0",
+    version="2.0.0",
     description=DESCRICAO_API,
     openapi_tags=TAGS,
     swagger_ui_parameters=PARAMETROS_SWAGGER_UI,

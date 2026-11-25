@@ -33,8 +33,8 @@ class NovaEleicao(BaseModel):
         extra="forbid",
         json_schema_extra={
             "example": {
-                "descricao": "Eleições Gerais 2026 — 1º turno",
-                "data": "2026-11-25",
+                "descricao": "Eleições Gerais 2030 — 1º turno",
+                "data": "2030-10-06",
                 "turno": 1,
                 "horario_abertura": "08:00",
                 "horario_encerramento": "17:00",
@@ -44,10 +44,10 @@ class NovaEleicao(BaseModel):
 
     descricao: Descricao = Field(
         description="Nome do pleito (1 a 120 caracteres).",
-        examples=["Eleições Gerais 2026 — 1º turno"],
+        examples=["Eleições Gerais 2030 — 1º turno"],
     )
     data: date = Field(
-        description="Dia da eleição; não pode ser anterior a hoje.", examples=["2026-11-25"]
+        description="Dia da eleição; não pode ser anterior a hoje.", examples=["2030-10-06"]
     )
     turno: int = Field(
         ge=1, le=2, description="1 ou 2. Cada turno é uma eleição separada.", examples=[1]
@@ -69,7 +69,7 @@ class AlteracaoEleicao(BaseModel):
     )
 
     descricao: Descricao | None = Field(default=None, examples=["Eleições Gerais 2026 — 1º turno"])
-    data: date | None = Field(default=None, examples=["2026-11-25"])
+    data: date | None = Field(default=None, examples=["2030-10-06"])
     turno: int | None = Field(default=None, ge=1, le=2, examples=[1])
     horario_abertura: Horario | None = Field(default=None, examples=["08:00"])
     horario_encerramento: Horario | None = Field(default=None, examples=["17:00"])
@@ -141,23 +141,21 @@ class EleicaoResposta(BaseModel):
                 "turno": 1,
                 "horario_abertura": "08:00:00",
                 "horario_encerramento": "17:00:00",
-                "status": "AGENDADA",
-                "aberta_em": None,
-                "encerrada_em": None,
+                "status": "ENCERRADA",
+                "aberta_em": "2026-11-25T08:00:05-03:00",
+                "encerrada_em": "2026-11-25T17:00:10-03:00",
                 "links": [
                     {"rel": "self", "metodo": "GET", "href": "/api/v1/eleicoes/1"},
-                    {"rel": "editar", "metodo": "PATCH", "href": "/api/v1/eleicoes/1"},
                     {
                         "rel": "candidaturas",
                         "metodo": "GET",
                         "href": "/api/v1/eleicoes/1/candidaturas",
                     },
                     {
-                        "rel": "nova-candidatura",
-                        "metodo": "POST",
-                        "href": "/api/v1/eleicoes/1/candidaturas",
+                        "rel": "resultado",
+                        "metodo": "GET",
+                        "href": "/api/v1/apuracao/eleicoes/1/resultado",
                     },
-                    {"rel": "abrir", "metodo": "POST", "href": "/api/v1/eleicoes/1/abertura"},
                 ],
             }
         },

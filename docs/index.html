@@ -3,16 +3,33 @@
 <head>
   <meta charset="utf-8">
   <title>API de Simulação de Eleição Eletrônica — Documentação</title>
-  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.34.1/swagger-ui.css">
+  <style>
+    /* Página só de consulta: sem a API por trás, o Authorize não teria onde fazer login. */
+    .swagger-ui .auth-wrapper { display: none; }
+    .aviso {
+      max-width: 1420px;
+      margin: 16px auto 0;
+      padding: 10px 20px;
+      font-family: sans-serif;
+      background: #fff8e1;
+      border: 1px solid #e9cf7a;
+      border-radius: 4px;
+    }
+  </style>
 </head>
 <body>
+  <p class="aviso">
+    Documentação para consulta. Para executar as rotas, rode a API (veja o README do
+    repositório) e abra <code>http://localhost:8000/docs</code>.
+  </p>
   <div id="swagger-ui"></div>
-  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script src="https://unpkg.com/swagger-ui-dist@5.34.1/swagger-ui-bundle.js"></script>
   <script>
     window.ui = SwaggerUIBundle({
       url: "openapi.json",
       dom_id: "#swagger-ui",
-      persistAuthorization: true,
+      supportedSubmitMethods: [],
       displayRequestDuration: true,
       filter: true
     });

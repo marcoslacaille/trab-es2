@@ -5,7 +5,9 @@ from app.core.web import ErroResposta
 DESCRICAO_API = """
 API de simulação de eleição eletrônica (trabalho de Engenharia de Software II).
 
-**Como autenticar:** clique em *Authorize*, informe o CPF em `username` e a senha em `password`.
+**Como autenticar:** com a API rodando, abra `/docs` (por exemplo, http://localhost:8000/docs),
+clique em *Authorize* e informe o CPF em `username` e a senha em `password`. A cópia publicada
+no GitHub Pages é só para consulta: lá não há API para executar as rotas.
 
 **Fluxo do voto:** consulte a cédula → registre o voto (recebe `token_cedula`) →
 confirme com o token.

@@ -178,14 +178,14 @@ class PedidoConfirmacaoVoto(BaseModel):
     """Etapa 2 do voto: a cédula recebida no registro."""
 
     model_config = ConfigDict(
-        extra="forbid", json_schema_extra={"example": {"token_cedula": "eyJhbGciOiJIUzI1NiIs..."}}
+        extra="forbid", json_schema_extra={"example": {"token_cedula": "gAAAAABpQ2..."}}
     )
 
     token_cedula: str = Field(
         min_length=1,
         max_length=2000,
         description="Token recebido no registro do voto.",
-        examples=["eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."],
+        examples=["gAAAAABpQ2..."],
     )
 
 
