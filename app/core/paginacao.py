@@ -1,10 +1,10 @@
-"""Paginação padrão das listagens: parâmetros de entrada e formato da resposta."""
+"""Paginação padrão das listagens: o pedido (`Paginacao`) e o resultado (`Pagina`).
+
+Não depende de framework, porque repositories e services o usam. Os parâmetros `pagina` e
+`tamanho` da URL e o JSON da resposta ficam em `core/web.py`.
+"""
 
 from dataclasses import dataclass
-from typing import Annotated
-
-from fastapi import Query
-from pydantic import BaseModel, Field
 
 from app.core.validadores import MAIOR_ID
 
@@ -27,25 +27,11 @@ class Paginacao:
         return (self.pagina - 1) * self.tamanho
 
 
-def obter_paginacao(
-    pagina: Annotated[
-        int, Query(ge=1, le=MAIOR_PAGINA, description="Número da página (começa em 1).")
-    ] = 1,
-    tamanho: Annotated[
-        int, Query(ge=1, le=TAMANHO_MAXIMO, description="Itens por página (de 1 a 100).")
-    ] = 20,
-) -> Paginacao:
-    """Dependência FastAPI com `pagina` (1 a `MAIOR_PAGINA`, padrão 1) e `tamanho` (1 a 100).
-
-    O teto de `pagina` evita que o deslocamento passe do BIGINT do banco (seria 500).
-    """
-    return Paginacao(pagina=pagina, tamanho=tamanho)
-
-
-class Pagina[T](BaseModel):
-    """Resposta de toda listagem: os itens da página e o total geral para o cliente paginar."""
+@dataclass(frozen=True)
+class Pagina[T]:
+    """Uma página de uma listagem: os itens e o total geral, para o cliente paginar."""
 
     itens: list[T]
-    pagina: int = Field(description="Página devolvida (começa em 1).")
-    tamanho: int = Field(description="Itens por página pedidos.")
-    total: int = Field(description="Total de itens do filtro, somando todas as páginas.")
+    pagina: int
+    tamanho: int
+    total: int

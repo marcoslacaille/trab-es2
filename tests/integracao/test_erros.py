@@ -19,10 +19,9 @@ from app.core.exceptions import (
     DadosInvalidos,
     NaoAutenticado,
     NaoEncontrado,
-    registrar_tratadores,
-    registro,
 )
 from app.core.validadores import cpf_valido, normalizar_cpf
+from app.core.web import registrar_tratadores, registro
 
 ERROS_POR_TIPO = {
     "nao-autenticado": NaoAutenticado,

@@ -15,9 +15,9 @@ from app.controllers import (
     votacao_controller,
 )
 from app.core.database import obter_sessao
-from app.core.exceptions import registrar_tratadores
 from app.core.log_requisicoes import registrar_log_de_requisicoes
 from app.core.openapi import DESCRICAO_API, PARAMETROS_SWAGGER_UI, TAGS
+from app.core.web import registrar_tratadores
 
 app = FastAPI(
     title="API de Simulação de Eleição Eletrônica",

@@ -1,6 +1,6 @@
 """Textos e utilitários da documentação Swagger/OpenAPI."""
 
-from app.core.exceptions import ErroResposta
+from app.core.web import ErroResposta
 
 DESCRICAO_API = """
 API de simulação de eleição eletrônica (trabalho de Engenharia de Software II).

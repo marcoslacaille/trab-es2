@@ -7,9 +7,10 @@ from fastapi import APIRouter, Depends, Path, Query, Response
 from pydantic import AfterValidator
 
 from app.core.openapi import respostas_de_erro
-from app.core.paginacao import Pagina, Paginacao, obter_paginacao
+from app.core.paginacao import Paginacao
 from app.core.relogio import obter_agora
 from app.core.validadores import MAIOR_ID, sem_caractere_nulo
+from app.core.web import PaginaResposta, obter_paginacao
 from app.dependencies import EleitorServiceDep, UsuarioAutenticado, exige_perfil
 from app.dto.eleitor_dto import AlteracoesEleitor, NovoEleitorDados
 from app.models.enums import Perfil
@@ -44,7 +45,7 @@ def cadastrar_eleitor(
 
 @roteador.get(
     "",
-    response_model=Pagina[EleitorResposta],
+    response_model=PaginaResposta[EleitorResposta],
     dependencies=somente_chefe,
     summary="Lista os eleitores",
     description="Ordenados por nome, com filtro opcional por parte do nome e paginação (RN-20).",
@@ -58,9 +59,9 @@ def listar_eleitores(
         Query(max_length=120, description="Parte do nome, sem diferenciar maiúsculas."),
         AfterValidator(sem_caractere_nulo),
     ] = None,
-) -> Pagina[EleitorResposta]:
+) -> PaginaResposta[EleitorResposta]:
     pagina = service.listar_eleitores(nome, paginacao)
-    return Pagina[EleitorResposta](
+    return PaginaResposta[EleitorResposta](
         itens=[EleitorResposta.model_validate(eleitor) for eleitor in pagina.itens],
         pagina=pagina.pagina,
         tamanho=pagina.tamanho,

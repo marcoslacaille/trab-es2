@@ -113,7 +113,7 @@ sequenceDiagram
 
 - **Injeção de dependência:** services e repositories são classes que recebem as dependências no construtor, com um padrão montado a partir da sessão. O `dependencies.py` entrega os services prontos aos controllers por `Depends` e resolve o usuário logado e o perfil exigido (`exige_perfil`). O repository nunca faz commit; a transação é do service.
 - **`schemas` e `dto`:** os schemas são o JSON da API, em Pydantic. Os DTOs são dataclasses sem framework, e é por isso que `seed_demo` e `criar_chefe` usam os mesmos services sem passar pela API.
-- **Regras de dependência:** controllers não importam repositories nem SQLAlchemy; services não importam FastAPI nem schemas; DTOs e enums não importam framework; só o `UsuarioService` e o `dependencies.py` usam `core/security.py` (bcrypt e JWT), e só o `VotacaoService` usa `core/cedula.py`. O `tests/arquitetura/test_camadas.py` lê o código com `ast` e falha se alguma for quebrada.
+- **Regras de dependência:** controllers não importam repositories nem SQLAlchemy; services não importam FastAPI nem schemas, nem indiretamente (o que é do FastAPI e serve a todas as rotas, como o formato de erro, os tratadores e a paginação da URL, fica em `core/web.py`, que só os controllers e o `main.py` importam); DTOs e enums não importam framework; só o `UsuarioService` e o `dependencies.py` usam `core/security.py` (bcrypt e JWT), e só o `VotacaoService` usa `core/cedula.py`. O `tests/arquitetura/test_camadas.py` lê o código com `ast` e falha se alguma for quebrada.
 - **Decisões:** monólito, sem rede entre módulos; SQLAlchemy síncrono, com rotas `def`; voto em duas etapas, com cédula cifrada (Fernet) que expira em 5 minutos e não grava nada; sigilo por desenho, com duas tabelas sem ligação; relógio injetável (`obter_agora`), para testar datas e horários; trava na eleição, de modo que não se vota no instante do encerramento; apuração lida num mesmo instante do banco (`REPEATABLE READ`).
 
 ## 5. Modularização
@@ -126,7 +126,7 @@ sequenceDiagram
 | `schemas/` | JSON de entrada e saída (Pydantic), que alimenta o Swagger |
 | `dto/` | Dataclasses que trafegam entre controller, service e repository |
 | `models/` | Tabelas ORM, uma por arquivo, e os enums (`enums.py`) |
-| `core/` | Configuração, banco, segurança, erros, OpenAPI, relógio, paginação, validadores e cédula |
+| `core/` | Configuração, banco, segurança, erros, OpenAPI, relógio, paginação, validadores, cédula e a parte web comum às rotas (`web.py`) |
 | `scripts/` | `criar_chefe`, `seed_demo` e `exportar_openapi` |
 | `main.py`, `dependencies.py` | Criação do app e entrega dos services, do usuário logado e do perfil |
 

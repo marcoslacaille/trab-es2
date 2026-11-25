@@ -9,6 +9,7 @@ service do assunto `eleitor`), e os imports dele são conferidos contra estas re
   próprio repository e os models do próprio assunto;
 - ocultação de informação: `core/security.py` e `core/cedula.py` só têm quem os importe por dever;
 - `dto/` e `models/enums.py` sem framework;
+- services e repositories não chegam ao FastAPI nem indiretamente, pelos módulos que importam;
 - nenhum import relativo.
 
 Os testes do próprio verificador ficam no fim do arquivo.
@@ -89,6 +90,7 @@ ARQUIVOS_ESPERADOS = {
         "relogio",
         "security",
         "validadores",
+        "web",
     },
 }
 
@@ -165,6 +167,14 @@ SEM_FRAMEWORK = {
     "models": {"fastapi"},
 }
 FRAMEWORKS_DOS_DADOS = {"fastapi", "pydantic", "sqlalchemy"}
+
+# O que services e repositories não alcançam nem indiretamente: a regra vale também para os
+# módulos de `app/` que eles importam, e para os que esses importam (por isso o que é do FastAPI
+# em `core/` fica em `core/web.py`, que nenhum dos dois importa).
+SEM_FRAMEWORK_NEM_INDIRETO = {
+    "services": {"fastapi", "starlette"},
+    "repositories": {"fastapi", "starlette"},
+}
 
 # Grafo entre os services: de quem cada um pode depender.
 GRAFO = {
@@ -333,6 +343,51 @@ def _framework_nos_dados(arquivo: Path, base: Path = BASE) -> list[str]:
     ]
 
 
+def _arquivo_do_modulo(importado: str, base: Path) -> Path | None:
+    """O arquivo de onde vem o nome importado: `app.core.web.X` -> `base/app/core/web.py`."""
+    partes = importado.split(".")
+    for fim in range(len(partes), 1, -1):
+        caminho = base.joinpath(*partes[:fim])
+        if caminho.with_suffix(".py").is_file():
+            return caminho.with_suffix(".py")
+        if (caminho / "__init__.py").is_file():
+            return caminho / "__init__.py"
+    return None
+
+
+def _framework_indireto(arquivo: Path, base: Path = BASE) -> list[str]:
+    """Service ou repository que chega ao FastAPI por um módulo de `app/` que importa.
+
+    Segue os imports de `app` em profundidade (cada módulo uma vez) e acusa o primeiro import
+    direto de quem leva ao framework.
+    """
+    origem = _origem(arquivo, base)
+    proibidas = SEM_FRAMEWORK_NEM_INDIRETO.get(origem.camada)
+    if not proibidas:
+        return []
+    problemas = []
+    visitados: set[Path] = set()
+    for importado, _ in _importacoes_de_app(arquivo):
+        pendentes = [_arquivo_do_modulo(importado, base)]
+        while pendentes:
+            atual = pendentes.pop()
+            if atual is None or atual in visitados:
+                continue
+            visitados.add(atual)
+            for nome in _importacoes(atual):
+                biblioteca = nome.split(".")[0]
+                if biblioteca in proibidas:
+                    caminho = atual.relative_to(base).as_posix()
+                    motivo = (
+                        f"{origem.camada} não chega a {biblioteca} nem indiretamente: "
+                        f"{caminho} importa {nome}"
+                    )
+                    problemas.append(f"{_onde(arquivo, base, importado)} ({motivo})")
+                elif biblioteca == "app":
+                    pendentes.append(_arquivo_do_modulo(nome, base))
+    return problemas
+
+
 def _import_relativo(arquivo: Path, base: Path = BASE) -> list[str]:
     """Imports relativos: neles o destino não fica claro, e a fronteira passaria sem conferência."""
     return [
@@ -351,6 +406,7 @@ REGRAS: dict[str, Regra] = {
     "security": _security_fora_do_lugar,
     "cedula": _cedula_fora_do_lugar,
     "framework": _framework_nos_dados,
+    "framework_indireto": _framework_indireto,
     "relativo": _import_relativo,
 }
 
@@ -488,6 +544,12 @@ def test_dto_e_enums_nao_importam_framework():
     JSON nem banco."""
     arquivos = [*_arquivos("dto"), RAIZ / "models" / "enums.py"]
     assert _violacoes(_framework_nos_dados, arquivos) == []
+
+
+def test_services_e_repositories_nao_chegam_ao_fastapi_nem_indiretamente():
+    """Nem pelos módulos de `core/` que importam: o que é do FastAPI fica em `core/web.py`."""
+    arquivos = _arquivos("services") + _arquivos("repositories")
+    assert _violacoes(_framework_indireto, arquivos) == []
 
 
 def test_nenhum_import_relativo():
@@ -726,6 +788,27 @@ def test_verificador_aceita_o_que_a_tabela_permite(tmp_path):
                 acusacoes[f"{nome}: {caminho}"] = problemas
 
     assert acusacoes == {}
+
+
+def test_verificador_acha_o_framework_indireto(tmp_path):
+    """O caminho até o FastAPI é acusado no import do service; sem o framework no caminho, não."""
+    _gravar(tmp_path, "app/core/web.py", "from fastapi import Query\n")
+    _gravar(tmp_path, "app/core/paginacao.py", "from app.core.web import obter_paginacao\n")
+    _gravar(tmp_path, "app/core/relogio.py", "from datetime import datetime\n")
+    service = _gravar(
+        tmp_path,
+        "app/services/eleitor_service.py",
+        "from app.core.relogio import agora\nfrom app.core.paginacao import Paginacao\n",
+    )
+    controller = _gravar(
+        tmp_path, "app/controllers/eleitor_controller.py", "from app.core.web import Query\n"
+    )
+
+    assert _framework_indireto(service, tmp_path) == [
+        "app/services/eleitor_service.py importa app.core.paginacao.Paginacao (services não "
+        "chega a fastapi nem indiretamente: app/core/web.py importa fastapi.Query)"
+    ]
+    assert _framework_indireto(controller, tmp_path) == []  # controller pode usar o FastAPI
 
 
 def test_verificador_acha_o_ciclo():
