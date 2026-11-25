@@ -7,13 +7,13 @@ from fastapi import APIRouter, Depends, Path, Query
 from sqlalchemy.orm import Session
 
 from app.apuracao import service
-from app.apuracao.schemas import ApuracaoResposta
 from app.core.database import obter_sessao
 from app.core.openapi import respostas_de_erro
 from app.core.relogio import obter_agora
 from app.core.validadores import MAIOR_ID
 from app.identidade.dependencias import UsuarioAutenticado, exige_perfil, obter_usuario_atual
 from app.models.enums import Cargo, Perfil
+from app.schemas.apuracao_schema import ApuracaoResposta
 
 roteador = APIRouter(prefix="/apuracao/eleicoes/{eleicao_id}", tags=["Apuração"])
 

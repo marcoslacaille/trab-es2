@@ -1,4 +1,4 @@
-"""Schemas de eleitores: o JSON de entrada e saída, com exemplos para o Swagger."""
+"""Schemas de eleitor: o JSON de entrada e saída da API."""
 
 from datetime import date, datetime
 from typing import Annotated

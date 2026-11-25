@@ -14,12 +14,12 @@ from app.core.relogio import obter_agora
 from app.core.validadores import MAIOR_ID, sem_caractere_nulo
 from app.dto.eleitor_dto import AlteracoesEleitor, NovoEleitorDados
 from app.eleitores import service
-from app.eleitores.schemas import AlteracaoEleitor, EleitorResposta, NovoEleitor
 
 # `Perfil` e `UsuarioAutenticado` vêm de `dependencias`, a única parte de `identidade` (além do
 # serviço) que as rotas de outros módulos podem importar (seção 5).
 from app.identidade.dependencias import UsuarioAutenticado, exige_perfil
 from app.models.enums import Perfil
+from app.schemas.eleitor_schema import AlteracaoEleitor, EleitorResposta, NovoEleitor
 
 roteador = APIRouter(prefix="/eleitores", tags=["Eleitores"])
 

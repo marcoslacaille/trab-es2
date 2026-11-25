@@ -11,7 +11,7 @@ from app.core.openapi import respostas_de_erro
 from app.dto.usuario_dto import UsuarioAutenticado
 from app.identidade import service
 from app.identidade.dependencias import obter_usuario_atual
-from app.identidade.schemas import LoginResposta, UsuarioLogadoResposta, UsuarioResposta
+from app.schemas.usuario_schema import LoginResposta, UsuarioLogadoResposta, UsuarioResposta
 
 roteador = APIRouter(prefix="/auth", tags=["Autenticação"])
 

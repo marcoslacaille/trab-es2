@@ -13,19 +13,17 @@ from app.core.validadores import MAIOR_ID
 from app.dto.candidatura_dto import AlteracoesCandidatura, NovaCandidaturaDados
 from app.dto.eleicao_dto import AlteracoesEleicao, NovaEleicaoDados
 from app.eleicoes import service
-from app.eleicoes.schemas import (
-    AlteracaoCandidatura,
-    AlteracaoEleicao,
-    CandidaturaResposta,
-    EleicaoResposta,
-    NovaCandidatura,
-    NovaEleicao,
-)
 
 # `identidade.dependencias` é a única parte de `identidade` (além do serviço) que as rotas de
 # outros módulos podem importar (seção 5).
 from app.identidade.dependencias import UsuarioAutenticado, exige_perfil, obter_usuario_atual
 from app.models.enums import Cargo, Perfil, StatusEleicao
+from app.schemas.candidatura_schema import (
+    AlteracaoCandidatura,
+    CandidaturaResposta,
+    NovaCandidatura,
+)
+from app.schemas.eleicao_schema import AlteracaoEleicao, EleicaoResposta, NovaEleicao
 
 roteador = APIRouter(prefix="/eleicoes", tags=["Eleições"])
 # Candidaturas: sob `/eleicoes/{id}/candidaturas` (pela raiz do agregado) e `/candidaturas/minhas`.

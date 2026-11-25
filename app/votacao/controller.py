@@ -16,8 +16,7 @@ from app.core.validadores import MAIOR_ID
 from app.dto.votacao_dto import PedidoRegistro
 from app.identidade.dependencias import UsuarioAutenticado, exige_perfil
 from app.models.enums import Perfil
-from app.votacao import service
-from app.votacao.schemas import (
+from app.schemas.votacao_schema import (
     CedulaResposta,
     ComprovanteVotoResposta,
     ParticipacaoResposta,
@@ -25,6 +24,7 @@ from app.votacao.schemas import (
     PedidoRegistroVoto,
     PreviaVotoResposta,
 )
+from app.votacao import service
 
 roteador = APIRouter(prefix="/votacao/eleicoes/{eleicao_id}", tags=["Votação"])
 

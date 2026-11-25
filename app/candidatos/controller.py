@@ -8,13 +8,6 @@ from pydantic import AfterValidator
 from sqlalchemy.orm import Session
 
 from app.candidatos import service
-from app.candidatos.schemas import (
-    AlteracaoCandidato,
-    CandidatoResposta,
-    NovoCandidato,
-    NovoPartido,
-    PartidoResposta,
-)
 from app.core.database import obter_sessao
 from app.core.openapi import respostas_de_erro
 from app.core.paginacao import Pagina, Paginacao, obter_paginacao
@@ -27,6 +20,8 @@ from app.dto.partido_dto import NovoPartidoDados
 # outros módulos podem importar (seção 5).
 from app.identidade.dependencias import UsuarioAutenticado, exige_perfil, obter_usuario_atual
 from app.models.enums import Perfil
+from app.schemas.candidato_schema import AlteracaoCandidato, CandidatoResposta, NovoCandidato
+from app.schemas.partido_schema import NovoPartido, PartidoResposta
 
 roteador = APIRouter()
 

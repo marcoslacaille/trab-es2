@@ -8,12 +8,12 @@ from app.candidatos import service as service_candidatos
 from app.core.database import SessionLocal
 from app.core.exceptions import DadosInvalidos, NaoEncontrado
 from app.core.relogio import agora
-from app.eleicoes import dominio as dominio_eleicoes
 from app.eleicoes import service as service_eleicoes
 from app.eleitores import repository as repository_eleitores
 from app.eleitores import service as service_eleitores
 from app.identidade import service as service_identidade
 from app.models.enums import Cargo, Perfil
+from app.schemas.eleicao_schema import links_da_eleicao
 from tests.auxiliares import (
     SENHA_CANDIDATO,
     SENHA_ELEITOR,
@@ -226,7 +226,7 @@ def test_links_da_eleicao_aberta_para_perfil_desconhecido(cliente, cabecalho_che
     with SessionLocal() as sessao:
         eleicao = service_eleicoes.obter_eleicao(sessao, ids["eleicao_id"])
 
-    links = dominio_eleicoes.links_da_eleicao(eleicao, "VISITANTE")
+    links = links_da_eleicao(eleicao, "VISITANTE")
 
     assert [link.rel for link in links] == ["self"]
 

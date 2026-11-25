@@ -1,15 +1,14 @@
-"""Schemas de eleições e candidaturas: o JSON de entrada e saída (contratos Pydantic)."""
+"""Schemas de eleição: o JSON de entrada e saída da API, com os links HATEOAS."""
 
+from dataclasses import dataclass
 from datetime import date, datetime, time
 from typing import Annotated
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints
 
-from app.core.validadores import MAIOR_ID, sem_caractere_nulo
-from app.dto.candidatura_dto import CandidaturaDetalhada
+from app.core.validadores import sem_caractere_nulo
 from app.dto.eleicao_dto import EleicaoResumo
-from app.eleicoes.dominio import links_da_eleicao
-from app.models.enums import Cargo, StatusEleicao
+from app.models.enums import StatusEleicao
 
 
 def _sem_fuso(horario: time) -> time:
@@ -74,6 +73,55 @@ class AlteracaoEleicao(BaseModel):
     turno: int | None = Field(default=None, ge=1, le=2, examples=[1])
     horario_abertura: Horario | None = Field(default=None, examples=["08:00"])
     horario_encerramento: Horario | None = Field(default=None, examples=["17:00"])
+
+
+PREFIXO_DA_API = "/api/v1"
+
+# Perfis como texto: `eleicoes` não importa `identidade`. O `Perfil` é um `StrEnum`, então
+# `links_da_eleicao` aceita um `Perfil` normalmente.
+CHEFE_SECAO = "CHEFE_SECAO"
+ELEITOR = "ELEITOR"
+CANDIDATO = "CANDIDATO"
+
+
+@dataclass(frozen=True)
+class Link:
+    """Uma ação possível sobre a eleição (HATEOAS): nome, método HTTP e caminho."""
+
+    rel: str
+    metodo: str
+    href: str
+
+
+def links_da_eleicao(eleicao: EleicaoResumo, perfil: str) -> list[Link]:
+    """RN-19 (HATEOAS): as ações que o perfil pode fazer na eleição, dado o status dela.
+
+    `self` sempre aparece. O resto segue a tabela da seção 9.5 do PLANO: o Chefe edita, gerencia
+    candidaturas e abre a AGENDADA, e encerra a ABERTA; Eleitor e Candidato veem a apuração
+    parcial da ABERTA (o Eleitor também a cédula); todos veem o resultado da ENCERRADA.
+    """
+    base = f"{PREFIXO_DA_API}/eleicoes/{eleicao.id}"
+    apuracao = f"{PREFIXO_DA_API}/apuracao/eleicoes/{eleicao.id}"
+    links = [Link("self", "GET", base)]
+
+    if eleicao.status == StatusEleicao.AGENDADA and perfil == CHEFE_SECAO:
+        links += [
+            Link("editar", "PATCH", base),
+            Link("candidaturas", "GET", f"{base}/candidaturas"),
+            Link("nova-candidatura", "POST", f"{base}/candidaturas"),
+            Link("abrir", "POST", f"{base}/abertura"),
+        ]
+    if eleicao.status == StatusEleicao.ABERTA:
+        if perfil == CHEFE_SECAO:
+            links.append(Link("encerrar", "POST", f"{base}/encerramento"))
+        if perfil == ELEITOR:
+            cedula = f"{PREFIXO_DA_API}/votacao/eleicoes/{eleicao.id}/cedula"
+            links.append(Link("cedula", "GET", cedula))
+        if perfil in (CHEFE_SECAO, ELEITOR, CANDIDATO):
+            links.append(Link("apuracao-parcial", "GET", f"{apuracao}/parcial"))
+    if eleicao.status == StatusEleicao.ENCERRADA:
+        links.append(Link("resultado", "GET", f"{apuracao}/resultado"))
+    return links
 
 
 class LinkResposta(BaseModel):
@@ -158,98 +206,4 @@ class EleicaoResposta(BaseModel):
                 LinkResposta(rel=link.rel, metodo=link.metodo, href=link.href)
                 for link in links_da_eleicao(eleicao, perfil)
             ],
-        )
-
-
-# ---------------------------------------------------------------- candidaturas
-
-Numero = Annotated[
-    str, Field(max_length=20, description="Só dígitos, na quantidade do cargo.", examples=["10"])
-]
-
-
-class NovaCandidatura(BaseModel):
-    """Dados para criar uma candidatura (RN-40). Campos desconhecidos são recusados."""
-
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
-            "example": {"candidato_id": 1, "partido_id": 1, "cargo": "PRESIDENTE", "numero": "10"}
-        },
-    )
-
-    candidato_id: int = Field(
-        gt=0, le=MAIOR_ID, description="Candidato que disputa (RN-46: precisa existir)."
-    )
-    partido_id: int = Field(
-        gt=0, le=MAIOR_ID, description="Partido pelo qual disputa (RN-46: precisa existir)."
-    )
-    cargo: Cargo = Field(description="Um dos 5 cargos (RN-41).")
-    numero: Numero
-
-
-class AlteracaoCandidatura(BaseModel):
-    """O que pode mudar numa candidatura: cargo, número e partido. Candidato e eleição, não."""
-
-    model_config = ConfigDict(extra="forbid", json_schema_extra={"example": {"numero": "11"}})
-
-    cargo: Cargo | None = Field(default=None, examples=["PRESIDENTE"])
-    numero: Numero | None = Field(default=None, examples=["11"])
-    partido_id: int | None = Field(default=None, gt=0, le=MAIOR_ID, examples=[1])
-
-
-class CandidatoDaCandidatura(BaseModel):
-    """Candidato como aparece na candidatura."""
-
-    id: int = Field(description="Identificador do candidato.", examples=[1])
-    nome_urna: str = Field(description="Nome de urna.", examples=["Carlos Lima"])
-
-
-class PartidoDaCandidatura(BaseModel):
-    """Partido como aparece na candidatura."""
-
-    id: int = Field(description="Identificador do partido.", examples=[1])
-    sigla: str = Field(description="Sigla do partido.", examples=["PINO"])
-    numero: int = Field(description="Número do partido.", examples=[10])
-
-
-class CandidaturaResposta(BaseModel):
-    """Uma candidatura com os dados de exibição do candidato e do partido."""
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "id": 1,
-                "eleicao_id": 1,
-                "cargo": "PRESIDENTE",
-                "numero": "10",
-                "candidato": {"id": 1, "nome_urna": "Carlos Lima"},
-                "partido": {"id": 1, "sigla": "PINO", "numero": 10},
-            }
-        }
-    )
-
-    id: int = Field(description="Identificador da candidatura.", examples=[1])
-    eleicao_id: int = Field(description="Eleição em que disputa.", examples=[1])
-    cargo: Cargo = Field(description="Cargo disputado.", examples=["PRESIDENTE"])
-    numero: str = Field(description="Número do candidato no cargo.", examples=["10"])
-    candidato: CandidatoDaCandidatura = Field(description="Dados de exibição do candidato.")
-    partido: PartidoDaCandidatura = Field(description="Dados de exibição do partido.")
-
-    @classmethod
-    def de_candidatura(cls, candidatura: CandidaturaDetalhada) -> "CandidaturaResposta":
-        """Monta a resposta a partir da candidatura detalhada do serviço."""
-        return cls(
-            id=candidatura.id,
-            eleicao_id=candidatura.eleicao_id,
-            cargo=candidatura.cargo,
-            numero=candidatura.numero,
-            candidato=CandidatoDaCandidatura(
-                id=candidatura.candidato_id, nome_urna=candidatura.nome_urna
-            ),
-            partido=PartidoDaCandidatura(
-                id=candidatura.partido_id,
-                sigla=candidatura.partido_sigla,
-                numero=candidatura.partido_numero,
-            ),
         )

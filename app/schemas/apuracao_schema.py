@@ -1,4 +1,4 @@
-"""Schemas da apuração (seção 10): o JSON de resposta. Sem data de nascimento (RN-77)."""
+"""Schemas de apuração: o JSON de resposta da API, sem data de nascimento (RN-77)."""
 
 from datetime import datetime
 from typing import Literal

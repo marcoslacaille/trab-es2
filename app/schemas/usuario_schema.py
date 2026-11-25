@@ -1,4 +1,4 @@
-"""Schemas de identidade: o JSON de entrada e saída, com exemplos para o Swagger."""
+"""Schemas de usuário e login: o JSON de entrada e saída da API."""
 
 from datetime import datetime
 from typing import Literal

@@ -1,9 +1,8 @@
-"""Regras puras de eleições: ciclo de vida, validações da abertura e links HATEOAS.
+"""Regras puras de eleições: ciclo de vida e validações da abertura.
 
 Não importa FastAPI nem SQLAlchemy: tudo aqui roda sem banco e sem HTTP.
 """
 
-from dataclasses import dataclass
 from datetime import date, datetime
 
 from app.core.exceptions import ConflitoDeEstado, DadosInvalidos
@@ -16,24 +15,8 @@ from app.models.enums import (
     numero_valido_para_cargo,
 )
 
-PREFIXO_DA_API = "/api/v1"
 DESCRICAO_MAXIMA = 120
 CANDIDATURAS_DO_SEGUNDO_TURNO_POR_CARGO = 2
-
-# Perfis como texto: `eleicoes` não importa `identidade`. O `Perfil` é um `StrEnum`, então
-# `links_da_eleicao` aceita um `Perfil` normalmente.
-CHEFE_SECAO = "CHEFE_SECAO"
-ELEITOR = "ELEITOR"
-CANDIDATO = "CANDIDATO"
-
-
-@dataclass(frozen=True)
-class Link:
-    """Uma ação possível sobre a eleição (HATEOAS): nome, método HTTP e caminho."""
-
-    rel: str
-    metodo: str
-    href: str
 
 
 def validar_agendamento(dados: NovaEleicaoDados, hoje: date) -> NovaEleicaoDados:
@@ -230,34 +213,3 @@ def validar_encerramento(status: StatusEleicao) -> None:
             codigo="TRANSICAO_INVALIDA",
             detalhes={"status": status.value},
         )
-
-
-def links_da_eleicao(eleicao: EleicaoResumo, perfil: str) -> list[Link]:
-    """RN-19 (HATEOAS): as ações que o perfil pode fazer na eleição, dado o status dela.
-
-    `self` sempre aparece. O resto segue a tabela da seção 9.5 do PLANO: o Chefe edita, gerencia
-    candidaturas e abre a AGENDADA, e encerra a ABERTA; Eleitor e Candidato veem a apuração
-    parcial da ABERTA (o Eleitor também a cédula); todos veem o resultado da ENCERRADA.
-    """
-    base = f"{PREFIXO_DA_API}/eleicoes/{eleicao.id}"
-    apuracao = f"{PREFIXO_DA_API}/apuracao/eleicoes/{eleicao.id}"
-    links = [Link("self", "GET", base)]
-
-    if eleicao.status == StatusEleicao.AGENDADA and perfil == CHEFE_SECAO:
-        links += [
-            Link("editar", "PATCH", base),
-            Link("candidaturas", "GET", f"{base}/candidaturas"),
-            Link("nova-candidatura", "POST", f"{base}/candidaturas"),
-            Link("abrir", "POST", f"{base}/abertura"),
-        ]
-    if eleicao.status == StatusEleicao.ABERTA:
-        if perfil == CHEFE_SECAO:
-            links.append(Link("encerrar", "POST", f"{base}/encerramento"))
-        if perfil == ELEITOR:
-            cedula = f"{PREFIXO_DA_API}/votacao/eleicoes/{eleicao.id}/cedula"
-            links.append(Link("cedula", "GET", cedula))
-        if perfil in (CHEFE_SECAO, ELEITOR, CANDIDATO):
-            links.append(Link("apuracao-parcial", "GET", f"{apuracao}/parcial"))
-    if eleicao.status == StatusEleicao.ENCERRADA:
-        links.append(Link("resultado", "GET", f"{apuracao}/resultado"))
-    return links
