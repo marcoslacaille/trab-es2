@@ -7,22 +7,13 @@ Não importa FastAPI nem SQLAlchemy: tudo aqui roda sem banco e sem HTTP. Os tip
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import ROUND_HALF_UP, Decimal
-from enum import StrEnum
 
-from app.compartilhado.dominio import Cargo
-from app.eleicoes.dominio import CandidaturaDetalhada, StatusEleicao
-from app.votacao.dominio import ContagemVoto, TipoVoto
+from app.eleicoes.dominio import CandidaturaDetalhada
+from app.models.enums import Cargo, SituacaoCargo, StatusEleicao, TipoVoto
+from app.votacao.dominio import ContagemVoto
 
 CRITERIO_MAIOR_VOTACAO = "MAIOR_VOTACAO"
 CRITERIO_DESEMPATE_POR_IDADE = "DESEMPATE_POR_IDADE"
-
-
-class SituacaoCargo(StrEnum):
-    """Como o cargo terminou (ou está) na apuração."""
-
-    DEFINIDO = "DEFINIDO"
-    EMPATE = "EMPATE"
-    SEM_VOTOS_VALIDOS = "SEM_VOTOS_VALIDOS"
 
 
 @dataclass(frozen=True)

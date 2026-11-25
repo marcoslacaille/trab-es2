@@ -2,20 +2,12 @@
 
 from dataclasses import dataclass
 from datetime import datetime
-from enum import StrEnum
 
 from app.core.exceptions import DadosInvalidos
 from app.core.security import BYTES_MAXIMOS_SENHA
+from app.models.enums import Perfil
 
 TAMANHO_MINIMO_SENHA = 8
-
-
-class Perfil(StrEnum):
-    """Papel do usuário. Cada usuário tem exatamente um (RN-03)."""
-
-    CHEFE_SECAO = "CHEFE_SECAO"
-    ELEITOR = "ELEITOR"
-    CANDIDATO = "CANDIDATO"
 
 
 @dataclass(frozen=True)

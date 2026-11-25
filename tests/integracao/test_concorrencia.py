@@ -9,16 +9,16 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from app.apuracao import service as service_apuracao
-from app.compartilhado.dominio import Cargo
 from app.core import cedula
 from app.core.database import SessionLocal
 from app.core.exceptions import ConflitoDeEstado, NaoEncontrado
 from app.eleicoes import repository as repository_eleicoes
 from app.eleicoes import service as service_eleicoes
 from app.eleitores.dominio import EleitorResumo
-from app.identidade.dominio import Perfil, UsuarioAutenticado
+from app.identidade.dominio import UsuarioAutenticado
+from app.models.enums import Cargo, Perfil, TipoVoto
 from app.votacao import service
-from app.votacao.dominio import Escolha, TipoVoto
+from app.votacao.dominio import Escolha
 from tests.auxiliares import SENHA_ELEITOR, eleicao_aberta_com_candidatos, login, novo_eleitor
 
 

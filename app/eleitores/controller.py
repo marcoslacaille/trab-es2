@@ -18,7 +18,8 @@ from app.eleitores.schemas import AlteracaoEleitor, EleitorResposta, NovoEleitor
 
 # `Perfil` e `UsuarioAutenticado` vêm de `dependencias`, a única parte de `identidade` (além do
 # serviço) que as rotas de outros módulos podem importar (seção 5).
-from app.identidade.dependencias import Perfil, UsuarioAutenticado, exige_perfil
+from app.identidade.dependencias import UsuarioAutenticado, exige_perfil
+from app.models.enums import Perfil
 
 roteador = APIRouter(prefix="/eleitores", tags=["Eleitores"])
 

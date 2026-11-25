@@ -3,7 +3,7 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import create_engine, pool
 
-import app.registro_modelos  # noqa: F401  (importar registra os modelos em Base.metadata)
+import app.models  # noqa: F401  (importar registra os modelos em Base.metadata)
 from app.core.config import obter_configuracao
 from app.core.database import Base
 
@@ -12,7 +12,7 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name, disable_existing_loggers=False)
 
-# Autogenerate compara os modelos importados em registro_modelos com o banco.
+# Autogenerate compara os modelos importados em app.models com o banco.
 target_metadata = Base.metadata
 
 # A URL vem da configuração da aplicação (e não do alembic.ini). Nos testes, ela já aponta

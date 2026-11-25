@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.identidade.dominio import Perfil
+from app.models.enums import Perfil
 
 
 class UsuarioResposta(BaseModel):

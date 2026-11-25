@@ -10,7 +10,6 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.candidatos import service as service_candidatos
-from app.compartilhado.dominio import Cargo
 from app.core.exceptions import (
     ConflitoDeEstado,
     DadosInvalidos,
@@ -25,7 +24,6 @@ from app.eleicoes.dominio import (
     EleicaoResumo,
     NovaCandidaturaDados,
     NovaEleicaoDados,
-    StatusEleicao,
     validar_abertura,
     validar_agendamento,
     validar_candidatura,
@@ -33,7 +31,9 @@ from app.eleicoes.dominio import (
     validar_edicao,
     validar_encerramento,
 )
-from app.eleicoes.model import Candidatura, Eleicao
+from app.models.candidatura import Candidatura
+from app.models.eleicao import Eleicao
+from app.models.enums import Cargo, StatusEleicao
 
 # FK que dispara quando o candidato some entre a conferência e a gravação (D-145).
 FK_CANDIDATO_DA_CANDIDATURA = "fk_candidaturas_candidato_id_candidatos"

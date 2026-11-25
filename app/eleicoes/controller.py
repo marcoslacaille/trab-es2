@@ -6,7 +6,6 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path, Query, Response
 from sqlalchemy.orm import Session
 
-from app.compartilhado.dominio import Cargo
 from app.core.database import obter_sessao
 from app.core.openapi import respostas_de_erro
 from app.core.relogio import obter_agora
@@ -17,7 +16,6 @@ from app.eleicoes.dominio import (
     AlteracoesEleicao,
     NovaCandidaturaDados,
     NovaEleicaoDados,
-    StatusEleicao,
 )
 from app.eleicoes.schemas import (
     AlteracaoCandidatura,
@@ -30,12 +28,8 @@ from app.eleicoes.schemas import (
 
 # `identidade.dependencias` é a única parte de `identidade` (além do serviço) que as rotas de
 # outros módulos podem importar (seção 5).
-from app.identidade.dependencias import (
-    Perfil,
-    UsuarioAutenticado,
-    exige_perfil,
-    obter_usuario_atual,
-)
+from app.identidade.dependencias import UsuarioAutenticado, exige_perfil, obter_usuario_atual
+from app.models.enums import Cargo, Perfil, StatusEleicao
 
 roteador = APIRouter(prefix="/eleicoes", tags=["Eleições"])
 # Candidaturas: sob `/eleicoes/{id}/candidaturas` (pela raiz do agregado) e `/candidaturas/minhas`.

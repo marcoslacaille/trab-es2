@@ -2,7 +2,6 @@ from datetime import date
 
 import pytest
 
-from app.compartilhado.dominio import Cargo, numero_valido_para_cargo
 from app.core.validadores import (
     calcular_idade,
     cpf_valido,
@@ -10,6 +9,7 @@ from app.core.validadores import (
     sem_caractere_nulo,
     so_digitos,
 )
+from app.models.enums import Cargo, numero_valido_para_cargo
 
 # Quantidade de dígitos de cada cargo, escrita aqui de propósito (e não lida de
 # DIGITOS_POR_CARGO), para o teste conferir a regra e não repetir o código.

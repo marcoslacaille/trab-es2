@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.identidade.dominio import Perfil
+from app.models.enums import Perfil
 
 PREFIXO = "/api/v1"
 C, E, K = Perfil.CHEFE_SECAO, Perfil.ELEITOR, Perfil.CANDIDATO

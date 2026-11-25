@@ -83,7 +83,7 @@ CORE_DE_UM_MODULO = {
 }
 
 # Primeiro nome depois de `app.` que é raiz de composição (inclui o `app/__init__.py`).
-NOMES_DA_RAIZ = {"__init__", "main", "scripts", "registro_modelos"}
+NOMES_DA_RAIZ = {"__init__", "main", "scripts"}
 
 Classe = tuple[str | None, str | None]
 
@@ -250,9 +250,8 @@ def test_ta01_dominio_nao_importa_fastapi_nem_sqlalchemy(modulo):
 
 
 def _arquivo_de_enums() -> Path:
-    """`models/enums.py`; até a T03 criá-lo, o `compartilhado/dominio.py` que vira esse arquivo."""
-    novo = RAIZ / "models" / "enums.py"
-    return novo if novo.exists() else RAIZ / COMPARTILHADO / "dominio.py"
+    """`models/enums.py`: os enums e as constantes de cargo, que todas as camadas usam."""
+    return RAIZ / "models" / "enums.py"
 
 
 def test_enums_nao_importam_fastapi_nem_sqlalchemy():
@@ -389,11 +388,11 @@ def test_sanidade_toda_camada_esperada_tem_arquivos_para_verificar():
         ("app/identidade/dependencias.py", "identidade", "dependencias"),
         ("app/identidade/senhas.py", "identidade", "senhas"),
         ("app/votacao/cedulas.py", "votacao", "cedulas"),
-        ("app/compartilhado/relogio.py", "compartilhado", None),
-        ("app/registro_modelos.py", "raiz", None),
+        ("app/apuracao/dominio.py", "apuracao", "dominio"),
+        ("app/identidade/controller.py", "identidade", "controller"),
         # layout antigo: nomes importados
         ("app.eleicoes.repository.buscar", "eleicoes", "repository"),
-        ("app.compartilhado.dominio.Cargo", "compartilhado", None),
+        ("app.identidade.dominio.Perfil", "identidade", "dominio"),
         # layout novo: arquivos
         ("app/controllers/auth_controller.py", "identidade", "controller"),
         ("app/controllers/candidatura_controller.py", "eleicoes", "controller"),

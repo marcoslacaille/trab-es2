@@ -10,7 +10,8 @@ from app.core import security
 from app.core.database import obter_sessao
 from app.core.exceptions import AcessoNegado, NaoAutenticado
 from app.identidade import service
-from app.identidade.dominio import Perfil, UsuarioAutenticado
+from app.identidade.dominio import UsuarioAutenticado
+from app.models.enums import Perfil
 
 # auto_error=False: nós mesmos respondemos 401 no formato padrão de erro da API.
 esquema_oauth2 = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)

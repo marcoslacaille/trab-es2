@@ -14,8 +14,9 @@ from app.core.exceptions import ConflitoDeEstado, DadosInvalidos, NaoAutenticado
 from app.core.paginacao import Pagina, Paginacao
 from app.core.validadores import cpf_valido, normalizar_cpf
 from app.identidade import repository
-from app.identidade.dominio import Perfil, ResultadoDoLogin, UsuarioAutenticado, validar_senha
-from app.identidade.model import Usuario
+from app.identidade.dominio import ResultadoDoLogin, UsuarioAutenticado, validar_senha
+from app.models.enums import Perfil
+from app.models.usuario import Usuario
 
 NOME_MINIMO = 3
 NOME_MAXIMO = 120

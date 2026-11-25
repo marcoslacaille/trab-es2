@@ -5,14 +5,9 @@ from typing import Annotated
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints
 
-from app.compartilhado.dominio import Cargo
 from app.core.validadores import MAIOR_ID, sem_caractere_nulo
-from app.eleicoes.dominio import (
-    CandidaturaDetalhada,
-    EleicaoResumo,
-    StatusEleicao,
-    links_da_eleicao,
-)
+from app.eleicoes.dominio import CandidaturaDetalhada, EleicaoResumo, links_da_eleicao
+from app.models.enums import Cargo, StatusEleicao
 
 
 def _sem_fuso(horario: time) -> time:

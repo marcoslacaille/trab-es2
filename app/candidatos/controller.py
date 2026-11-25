@@ -24,12 +24,8 @@ from app.core.validadores import MAIOR_ID, sem_caractere_nulo
 
 # `identidade.dependencias` é a única parte de `identidade` (além do serviço) que as rotas de
 # outros módulos podem importar (seção 5).
-from app.identidade.dependencias import (
-    Perfil,
-    UsuarioAutenticado,
-    exige_perfil,
-    obter_usuario_atual,
-)
+from app.identidade.dependencias import UsuarioAutenticado, exige_perfil, obter_usuario_atual
+from app.models.enums import Perfil
 
 roteador = APIRouter()
 

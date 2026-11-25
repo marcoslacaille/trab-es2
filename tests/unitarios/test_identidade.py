@@ -4,12 +4,12 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from app.compartilhado.dominio import Cargo
 from app.core import cedula, security
 from app.core.config import obter_configuracao
 from app.core.exceptions import DadosInvalidos, NaoAutenticado
-from app.identidade.dominio import Perfil, validar_senha
-from app.votacao.dominio import Escolha, TipoVoto
+from app.identidade.dominio import validar_senha
+from app.models.enums import Cargo, Perfil, TipoVoto
+from app.votacao.dominio import Escolha
 
 
 @pytest.mark.parametrize(

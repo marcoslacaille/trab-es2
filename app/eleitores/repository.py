@@ -6,7 +6,7 @@ from datetime import datetime
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.eleitores.model import Eleitor
+from app.models.eleitor import Eleitor
 
 
 def buscar_por_id(sessao: Session, eleitor_id: int) -> Eleitor | None:

@@ -1,4 +1,4 @@
-"""Model: tabela ORM `eleitores` (seção 6 do PLANO): os dados de quem pode votar."""
+"""Tabela `eleitores`: os dados de quem pode votar."""
 
 from datetime import date, datetime
 

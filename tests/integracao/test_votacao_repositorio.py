@@ -3,10 +3,9 @@
 Não há ID de TI no PLANO para estas funções; o serviço da votação as usa (D-082).
 """
 
-from app.compartilhado.dominio import Cargo
 from app.core.database import SessionLocal
+from app.models.enums import Cargo, TipoVoto
 from app.votacao import repository
-from app.votacao.dominio import TipoVoto
 from tests.integracao.test_banco_restricoes import (
     inserir_candidatura,
     inserir_eleicao,

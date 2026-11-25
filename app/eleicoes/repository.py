@@ -5,9 +5,9 @@ from datetime import date
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.compartilhado.dominio import Cargo
-from app.eleicoes.dominio import StatusEleicao
-from app.eleicoes.model import Candidatura, Eleicao
+from app.models.candidatura import Candidatura
+from app.models.eleicao import Eleicao
+from app.models.enums import Cargo, StatusEleicao
 
 
 def buscar_por_id(sessao: Session, eleicao_id: int) -> Eleicao | None:

@@ -1,8 +1,4 @@
-"""Model: tabelas ORM `registros_votacao` e `votos` (seção 6 do PLANO).
-
-As duas tabelas **não têm ligação entre si**, de propósito: uma diz *quem* votou em qual cargo,
-a outra diz *o quê* foi votado. Nenhuma coluna ou chave permite juntar as duas (RN-60).
-"""
+"""Tabela `votos`: o que foi votado, sem ligação com `registros_votacao` (RN-60)."""
 
 import uuid
 
@@ -18,32 +14,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
-
-CARGOS_VALIDOS = (
-    "cargo IN ('DEPUTADO_FEDERAL','DEPUTADO_ESTADUAL','SENADOR','GOVERNADOR','PRESIDENTE')"
-)
-
-
-class RegistroVotacao(Base):
-    """Marca que o eleitor já votou em um cargo de uma eleição. Não diz em quem (RN-54, RN-60).
-
-    A chave primária composta é o que impede o voto duplo, mesmo com duas requisições
-    simultâneas. Sem coluna de horário e sem coluna de candidatura, de propósito.
-    """
-
-    __tablename__ = "registros_votacao"
-    __table_args__ = (CheckConstraint(CARGOS_VALIDOS, name="cargo_valido"),)
-
-    eleitor_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("eleitores.id", ondelete="RESTRICT"), primary_key=True
-    )
-    eleicao_id: Mapped[int] = mapped_column(
-        BigInteger,
-        ForeignKey("eleicoes.id", ondelete="RESTRICT"),
-        primary_key=True,
-        index=True,
-    )
-    cargo: Mapped[str] = mapped_column(String(20), primary_key=True)
+from app.models.enums import CARGOS_VALIDOS
 
 
 class Voto(Base):

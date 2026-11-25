@@ -10,7 +10,6 @@ from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.compartilhado.dominio import DIGITOS_POR_CARGO, Cargo
 from app.core.cedula import emitir_cedula, ler_cedula
 from app.core.exceptions import (
     ConflitoDeEstado,
@@ -23,6 +22,7 @@ from app.eleicoes.dominio import EleicaoResumo
 from app.eleitores import service as eleitores_service
 from app.eleitores.dominio import EleitorResumo
 from app.identidade.dominio import UsuarioAutenticado
+from app.models.enums import DIGITOS_POR_CARGO, Cargo, TipoVoto
 from app.votacao import dominio, repository
 from app.votacao.dominio import (
     CandidatoDaCedula,
@@ -35,7 +35,6 @@ from app.votacao.dominio import (
     Participacao,
     PedidoRegistro,
     PreviaVoto,
-    TipoVoto,
 )
 
 PK_REGISTRO = "pk_registros_votacao"

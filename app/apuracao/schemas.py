@@ -5,14 +5,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.apuracao.dominio import (
-    Apuracao,
-    LinhaApuracao,
-    ResultadoCargo,
-    SituacaoCargo,
-    StatusEleicao,
-)
-from app.compartilhado.dominio import Cargo
+from app.apuracao.dominio import Apuracao, LinhaApuracao, ResultadoCargo
+from app.models.enums import Cargo, SituacaoCargo, StatusEleicao
 
 _EXEMPLO = {
     "eleicao_id": 1,

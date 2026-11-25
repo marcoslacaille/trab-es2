@@ -1,4 +1,4 @@
-"""Model: tabela ORM `usuarios` (seção 6 do PLANO): a credencial de quem faz login."""
+"""Tabela `usuarios`: a credencial de quem faz login."""
 
 from datetime import datetime
 

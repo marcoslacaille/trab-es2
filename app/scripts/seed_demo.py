@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 
 from app.candidatos import service as service_candidatos
 from app.candidatos.dominio import NovoCandidatoDados, NovoPartidoDados
-from app.compartilhado.dominio import Cargo
 from app.core.database import engine
 from app.core.exceptions import ConflitoDeEstado, ErroDeNegocio
 from app.core.relogio import agora
@@ -20,7 +19,7 @@ from app.eleicoes.dominio import NovaCandidaturaDados, NovaEleicaoDados
 from app.eleitores import service as service_eleitores
 from app.eleitores.dominio import NovoEleitorDados
 from app.identidade import service as service_identidade
-from app.identidade.dominio import Perfil
+from app.models.enums import Cargo, Perfil
 
 CHEFE_CPF = "291.417.776-38"
 CHEFE_NOME = "Chefe da Seção"

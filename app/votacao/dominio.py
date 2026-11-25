@@ -5,26 +5,17 @@ Não importa FastAPI nem SQLAlchemy: tudo aqui roda sem banco e sem HTTP.
 
 from dataclasses import dataclass
 from datetime import datetime
-from enum import StrEnum
 
-from app.compartilhado.dominio import DIGITOS_POR_CARGO, Cargo, numero_valido_para_cargo
 from app.core.exceptions import AcessoNegado, ConflitoDeEstado, DadosInvalidos
-from app.eleicoes.dominio import CandidaturaDetalhada, EleicaoResumo, StatusEleicao
-
-
-class TipoVoto(StrEnum):
-    """O que o voto vale na apuração."""
-
-    NOMINAL = "NOMINAL"
-    BRANCO = "BRANCO"
-    NULO = "NULO"
-
-
-class ModoEscolha(StrEnum):
-    """Como o eleitor escolhe: digitando um número ou apertando BRANCO (sem flag booleana)."""
-
-    NUMERO = "NUMERO"
-    BRANCO = "BRANCO"
+from app.eleicoes.dominio import CandidaturaDetalhada, EleicaoResumo
+from app.models.enums import (
+    DIGITOS_POR_CARGO,
+    Cargo,
+    ModoEscolha,
+    StatusEleicao,
+    TipoVoto,
+    numero_valido_para_cargo,
+)
 
 
 @dataclass(frozen=True)

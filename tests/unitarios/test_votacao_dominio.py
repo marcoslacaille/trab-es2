@@ -6,16 +6,10 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from app.compartilhado.dominio import Cargo
 from app.core.exceptions import AcessoNegado, ConflitoDeEstado, DadosInvalidos
-from app.eleicoes.dominio import CandidaturaDetalhada, EleicaoResumo, StatusEleicao
-from app.votacao.dominio import (
-    ModoEscolha,
-    TipoVoto,
-    resolver_escolha,
-    validar_eleitor_apto,
-    validar_pode_votar,
-)
+from app.eleicoes.dominio import CandidaturaDetalhada, EleicaoResumo
+from app.models.enums import Cargo, ModoEscolha, StatusEleicao, TipoVoto
+from app.votacao.dominio import resolver_escolha, validar_eleitor_apto, validar_pode_votar
 
 FUSO = ZoneInfo("America/Sao_Paulo")
 HOJE = date(2026, 11, 25)

@@ -6,9 +6,10 @@ As duas tabelas nunca são juntadas: nenhuma função daqui relaciona eleitor e 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.compartilhado.dominio import Cargo
-from app.votacao.dominio import Comparecimento, ContagemVoto, TipoVoto
-from app.votacao.model import RegistroVotacao, Voto
+from app.models.enums import Cargo, TipoVoto
+from app.models.registro_votacao import RegistroVotacao
+from app.models.voto import Voto
+from app.votacao.dominio import Comparecimento, ContagemVoto
 
 
 def inserir_registro(sessao: Session, eleitor_id: int, eleicao_id: int, cargo: Cargo) -> None:

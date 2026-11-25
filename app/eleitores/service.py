@@ -20,11 +20,12 @@ from app.eleitores.dominio import (
     validar_idade_eleitor,
     validar_titulo_eleitor,
 )
-from app.eleitores.model import Eleitor
 
-# Um módulo só importa `service` de outro (seção 5). `Perfil` e `UsuarioAutenticado` chegam
-# por aí porque `identidade.service` já os importa de seu `dominio`.
+# Um módulo só importa `service` de outro (seção 5). `UsuarioAutenticado` chega por aí porque
+# `identidade.service` já o importa de seu `dominio`.
 from app.identidade import service as service_identidade
+from app.models.eleitor import Eleitor
+from app.models.enums import Perfil
 
 # Restrição que impede apagar quem já votou (a tabela nasce na migração 0005).
 FK_ELEITOR_JA_VOTOU = "fk_registros_votacao_eleitor_id_eleitores"
@@ -78,7 +79,7 @@ def cadastrar_eleitor(
         )
 
     usuario_id = service_identidade.criar_credencial(
-        sessao, dados.cpf, dados.nome, dados.senha, service_identidade.Perfil.ELEITOR, agora
+        sessao, dados.cpf, dados.nome, dados.senha, Perfil.ELEITOR, agora
     )
     eleitor = Eleitor(
         usuario_id=usuario_id,
@@ -99,9 +100,7 @@ def listar_eleitores(
     A paginação e o filtro de nome ficam com `identidade.listar_usuarios`; aqui só se buscam,
     numa única consulta, os eleitores desses usuários.
     """
-    usuarios = service_identidade.listar_usuarios(
-        sessao, service_identidade.Perfil.ELEITOR, nome, paginacao
-    )
+    usuarios = service_identidade.listar_usuarios(sessao, Perfil.ELEITOR, nome, paginacao)
     eleitores = repository.buscar_por_usuarios_ids(sessao, [u.id for u in usuarios.itens])
     por_usuario = {eleitor.usuario_id: eleitor for eleitor in eleitores}
     return Pagina[EleitorDetalhado](

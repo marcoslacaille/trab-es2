@@ -3,7 +3,7 @@ from datetime import datetime
 from app.core.database import SessionLocal
 from app.core.relogio import agora
 from app.identidade import service
-from app.identidade.dominio import Perfil
+from app.models.enums import Perfil
 from tests.auxiliares import (
     SENHA_ELEITOR,
     eleicao_aberta_com_candidatos,

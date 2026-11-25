@@ -12,9 +12,8 @@ from app.core.exceptions import NaoAutenticado
 from app.core.validadores import MAIOR_ID
 
 if TYPE_CHECKING:
-    # Só para a anotação: `identidade/dominio.py` importa a constante daqui, e importar `Perfil`
-    # de verdade fecharia um ciclo.
-    from app.identidade.dominio import Perfil
+    # Só para a anotação de `criar_token_acesso`.
+    from app.models.enums import Perfil
 
 # Limite do bcrypt: ele só lê os 72 primeiros bytes e as versões recentes recusam senhas maiores.
 BYTES_MAXIMOS_SENHA = 72

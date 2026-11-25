@@ -15,10 +15,10 @@ from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
-from app.compartilhado.dominio import Cargo
 from app.core.config import obter_configuracao
 from app.core.exceptions import DadosInvalidos
-from app.votacao.dominio import Escolha, TipoVoto
+from app.models.enums import Cargo, TipoVoto
+from app.votacao.dominio import Escolha
 
 CONTEXTO_DA_CHAVE = b"eleicao-api:cedula"
 

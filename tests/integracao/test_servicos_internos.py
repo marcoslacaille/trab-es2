@@ -5,7 +5,6 @@ from sqlalchemy.exc import IntegrityError
 
 from app.candidatos import repository as repository_candidatos
 from app.candidatos import service as service_candidatos
-from app.compartilhado.dominio import Cargo
 from app.core.database import SessionLocal
 from app.core.exceptions import DadosInvalidos, NaoEncontrado
 from app.core.relogio import agora
@@ -14,7 +13,7 @@ from app.eleicoes import service as service_eleicoes
 from app.eleitores import repository as repository_eleitores
 from app.eleitores import service as service_eleitores
 from app.identidade import service as service_identidade
-from app.identidade.dominio import Perfil
+from app.models.enums import Cargo, Perfil
 from tests.auxiliares import (
     SENHA_CANDIDATO,
     SENHA_ELEITOR,

@@ -3,8 +3,8 @@
 import json
 import re
 
-from app.identidade.dominio import Perfil
 from app.main import app
+from app.models.enums import Perfil
 from app.scripts.exportar_openapi import CAMINHO_OPENAPI
 from tests.arquitetura.test_rotas_protegidas import LISTA_BRANCA, rotas_da_api
 from tests.integracao.test_permissoes import ROTAS, TODOS

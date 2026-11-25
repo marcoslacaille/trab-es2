@@ -5,15 +5,15 @@ Não importa FastAPI nem SQLAlchemy: tudo aqui roda sem banco e sem HTTP.
 
 from dataclasses import dataclass
 from datetime import date, datetime, time
-from enum import StrEnum
 
-from app.compartilhado.dominio import (
+from app.core.exceptions import ConflitoDeEstado, DadosInvalidos
+from app.models.enums import (
     CARGOS_DO_SEGUNDO_TURNO,
     DIGITOS_POR_CARGO,
     Cargo,
+    StatusEleicao,
     numero_valido_para_cargo,
 )
-from app.core.exceptions import ConflitoDeEstado, DadosInvalidos
 
 PREFIXO_DA_API = "/api/v1"
 DESCRICAO_MAXIMA = 120
@@ -24,14 +24,6 @@ CANDIDATURAS_DO_SEGUNDO_TURNO_POR_CARGO = 2
 CHEFE_SECAO = "CHEFE_SECAO"
 ELEITOR = "ELEITOR"
 CANDIDATO = "CANDIDATO"
-
-
-class StatusEleicao(StrEnum):
-    """Ciclo de vida da eleição, sempre nesta ordem e sem volta (RN-13)."""
-
-    AGENDADA = "AGENDADA"
-    ABERTA = "ABERTA"
-    ENCERRADA = "ENCERRADA"
 
 
 @dataclass(frozen=True)

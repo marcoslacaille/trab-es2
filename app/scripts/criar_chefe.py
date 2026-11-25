@@ -11,7 +11,7 @@ from app.core.database import SessionLocal
 from app.core.exceptions import ConflitoDeEstado, DadosInvalidos
 from app.core.relogio import agora
 from app.identidade import service
-from app.identidade.dominio import Perfil
+from app.models.enums import Perfil
 
 
 def criar_chefe() -> int:

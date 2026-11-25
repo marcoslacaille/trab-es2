@@ -21,13 +21,15 @@ from app.candidatos.dominio import (
     validar_nome_de_urna,
     validar_partido,
 )
-from app.candidatos.model import Candidato, Partido
 from app.core.exceptions import ConflitoDeEstado, NaoEncontrado, nome_da_restricao
 from app.core.paginacao import Pagina, Paginacao
 
-# Um módulo só importa `service` de outro (seção 5). `Perfil` e `UsuarioAutenticado` chegam
-# por aí porque `identidade.service` já os importa de seu `dominio` (mesmo caso de `eleitores`).
+# Um módulo só importa `service` de outro (seção 5). `UsuarioAutenticado` chega por aí porque
+# `identidade.service` já o importa de seu `dominio` (mesmo caso de `eleitores`).
 from app.identidade import service as service_identidade
+from app.models.candidato import Candidato
+from app.models.enums import Perfil
+from app.models.partido import Partido
 
 # Restrição que impede apagar quem tem candidatura (a tabela nasce na migração 0004).
 FK_CANDIDATO_COM_CANDIDATURA = "fk_candidaturas_candidato_id_candidatos"
@@ -95,7 +97,7 @@ def cadastrar_candidato(
     validar_nascimento_do_candidato(dados.data_nascimento, agora.date())
 
     usuario_id = service_identidade.criar_credencial(
-        sessao, dados.cpf, dados.nome, dados.senha, service_identidade.Perfil.CANDIDATO, agora
+        sessao, dados.cpf, dados.nome, dados.senha, Perfil.CANDIDATO, agora
     )
     candidato = Candidato(
         usuario_id=usuario_id,
@@ -116,9 +118,7 @@ def listar_candidatos(
     A paginação e o filtro de nome ficam com `identidade.listar_usuarios`; aqui só se buscam,
     numa única consulta, os candidatos desses usuários.
     """
-    usuarios = service_identidade.listar_usuarios(
-        sessao, service_identidade.Perfil.CANDIDATO, nome, paginacao
-    )
+    usuarios = service_identidade.listar_usuarios(sessao, Perfil.CANDIDATO, nome, paginacao)
     candidatos = repository.buscar_candidatos_por_usuarios_ids(
         sessao, [u.id for u in usuarios.itens]
     )

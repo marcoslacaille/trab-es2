@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from app.core.database import SessionLocal
 from app.core.relogio import agora
 from app.identidade import service
-from app.identidade.dominio import Perfil
+from app.models.enums import Perfil
 
 CPF_CHEFE = "29141777638"
 SENHA_CHEFE = "Chefe@2026"
