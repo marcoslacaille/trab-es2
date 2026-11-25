@@ -18,7 +18,7 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    """Cria `usuarios` com as restrições nomeadas pela convenção do banco.py."""
+    """Cria `usuarios` com as restrições nomeadas pela convenção de app/core/database.py."""
     op.create_table(
         "usuarios",
         sa.Column("id", sa.BigInteger(), sa.Identity(always=False), nullable=False),

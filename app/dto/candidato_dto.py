@@ -6,7 +6,7 @@ from datetime import date, datetime
 
 @dataclass(frozen=True)
 class CandidatoResumo:
-    """O mínimo que outros módulos precisam saber de um candidato (usado por `eleicoes`).
+    """O mínimo que outros services precisam saber de um candidato (usado pelo `EleicaoService`).
 
     A data de nascimento serve ao desempate por idade da apuração (RN-77).
     """

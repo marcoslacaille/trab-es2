@@ -98,17 +98,6 @@ class EleicaoRepository:
         consulta = select(Candidatura).where(Candidatura.candidato_id == candidato_id)
         return list(self.sessao.scalars(consulta))
 
-    def buscar_candidatura_por_numero(
-        self, eleicao_id: int, cargo: Cargo, numero: str
-    ) -> Candidatura | None:
-        """A candidatura que usa este número neste cargo da eleição, se houver."""
-        consulta = select(Candidatura).where(
-            Candidatura.eleicao_id == eleicao_id,
-            Candidatura.cargo == cargo.value,
-            Candidatura.numero == numero,
-        )
-        return self.sessao.scalars(consulta).first()
-
     def contar_candidaturas_no_cargo(
         self, eleicao_id: int, cargo: Cargo, ignorando_id: int | None = None
     ) -> int:

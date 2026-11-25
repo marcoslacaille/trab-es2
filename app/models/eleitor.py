@@ -13,8 +13,8 @@ from app.core.database import Base
 class Eleitor(Base):
     """Eleitor cadastrado pelo Chefe da Seção. Nome e CPF ficam na credencial (`usuarios`).
 
-    A chave estrangeira aponta para `usuarios` pelo nome da tabela em texto: este módulo não
-    importa o modelo de `identidade`. Os nomes das restrições seguem a convenção do `banco.py`
+    A chave estrangeira aponta para `usuarios` pelo nome da tabela em texto, sem importar o
+    model do usuário. Os nomes das restrições seguem a convenção de `core/database.py`
     (ex.: `uq_eleitores_titulo_eleitor`), para a aplicação traduzi-las em erros amigáveis.
     """
 

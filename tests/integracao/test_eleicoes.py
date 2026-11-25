@@ -147,7 +147,7 @@ def test_ciclo_de_vida_abrir_encerrar_e_nao_reabrir(cliente, cabecalho_chefe, re
     assert corpo["status"] == "ABERTA"
     assert instante(corpo["aberta_em"]) == datetime(2026, 11, 25, 10, 0, tzinfo=FUSO)
     assert corpo["encerrada_em"] is None
-    assert rels(corpo) == ["self", "encerrar", "apuracao-parcial"]
+    assert rels(corpo) == ["self", "candidaturas", "encerrar", "apuracao-parcial"]
 
     relogio.avancar(hours=9)  # 19:00, depois do horário previsto
     encerrada = cliente.post(f"{ELEICOES}/1/encerramento", headers=cabecalho_chefe)
@@ -159,15 +159,17 @@ def test_ciclo_de_vida_abrir_encerrar_e_nao_reabrir(cliente, cabecalho_chefe, re
     assert corpo["status"] == "ENCERRADA"
     assert instante(corpo["aberta_em"]) == datetime(2026, 11, 25, 10, 0, tzinfo=FUSO)
     assert instante(corpo["encerrada_em"]) == datetime(2026, 11, 25, 19, 0, tzinfo=FUSO)
-    assert rels(corpo) == ["self", "resultado"]
+    assert rels(corpo) == ["self", "candidaturas", "resultado"]
     for resposta in (reabrir, encerrar_de_novo):
         assert resposta.status_code == 409
         assert resposta.json()["erro"]["codigo"] == "TRANSICAO_INVALIDA"
         assert resposta.json()["erro"]["detalhes"] == {"status": "ENCERRADA"}
 
 
-def test_abertura_recusada_sem_candidaturas_ou_fora_da_janela(cliente, cabecalho_chefe, relogio):
-    """RN-15: sem candidaturas → `SEM_CANDIDATURAS`; fora da janela de 08:00 às 17:00 → 409."""
+def test_abertura_recusada_sem_candidaturas_fora_da_janela_ou_da_data(
+    cliente, cabecalho_chefe, relogio
+):
+    """RN-15: sem candidaturas → `SEM_CANDIDATURAS`; fora das 08:00 às 17:00 ou do dia → 409."""
     nova_eleicao(cliente, cabecalho_chefe)
 
     sem_candidaturas = cliente.post(f"{ELEICOES}/1/abertura", headers=cabecalho_chefe)
@@ -184,7 +186,26 @@ def test_abertura_recusada_sem_candidaturas_ou_fora_da_janela(cliente, cabecalho
 
     assert (antes.status_code, antes.json()["erro"]["codigo"]) == (409, "FORA_DA_JANELA")
     assert (depois.status_code, depois.json()["erro"]["codigo"]) == (409, "FORA_DA_JANELA")
+
+    relogio.avancar(hours=17)  # 10:00 do dia seguinte: dentro do horário, mas fora da data
+    outro_dia = cliente.post(f"{ELEICOES}/1/abertura", headers=cabecalho_chefe)
+
+    assert (outro_dia.status_code, outro_dia.json()["erro"]["codigo"]) == (409, "FORA_DA_DATA")
     assert cliente.get(f"{ELEICOES}/1", headers=cabecalho_chefe).json()["status"] == "AGENDADA"
+
+
+def test_segundo_turno_so_abre_com_duas_candidaturas_por_cargo(cliente, cabecalho_chefe):
+    """RN-17: no 2º turno, um só candidato no cargo dá 409 `SEGUNDO_TURNO_INCOMPLETO`."""
+    eleicao = nova_eleicao(cliente, cabecalho_chefe, turno=2).json()["id"]
+    assert nova_candidatura(cliente, cabecalho_chefe, eleicao, numero="10").status_code == 201
+
+    incompleta = cliente.post(f"{ELEICOES}/{eleicao}/abertura", headers=cabecalho_chefe)
+
+    assert incompleta.status_code == 409
+    assert incompleta.json()["erro"]["codigo"] == "SEGUNDO_TURNO_INCOMPLETO"
+    assert nova_candidatura(cliente, cabecalho_chefe, eleicao, numero="20").status_code == 201
+    completa = cliente.post(f"{ELEICOES}/{eleicao}/abertura", headers=cabecalho_chefe)
+    assert completa.status_code == 200, completa.text
 
 
 def test_so_uma_eleicao_aberta_por_vez(cliente, cabecalho_chefe):
@@ -236,7 +257,7 @@ def test_qualquer_perfil_consulta_a_eleicao_e_recebe_os_proprios_links(
     assert [e["id"] for e in todas] == [1, 2]
     assert [e["id"] for e in agendadas] == [1]
     assert [e["id"] for e in encerradas] == [2]
-    assert rels(encerradas[0]) == ["self", "resultado"]
+    assert rels(encerradas[0]) == ["self", "candidaturas", "resultado"]  # visão do Chefe
     assert abertas == []
     assert invalida.status_code == 422
     assert invalida.json()["erro"]["codigo"] == "DADOS_INVALIDOS"

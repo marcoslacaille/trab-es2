@@ -6,7 +6,7 @@ from datetime import date, datetime
 
 @dataclass(frozen=True)
 class EleitorResumo:
-    """O mínimo que outros módulos precisam saber de um eleitor (usado por `votacao`)."""
+    """O mínimo que outros services precisam saber de um eleitor (usado pelo `VotacaoService`)."""
 
     id: int
     usuario_id: int

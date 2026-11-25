@@ -12,8 +12,8 @@ from app.core.database import Base
 class Candidato(Base):
     """A pessoa que disputa cargos. Nome e CPF ficam na credencial (`usuarios`).
 
-    Não é a candidatura: ligar o candidato a uma eleição, cargo e número é trabalho do módulo
-    `eleicoes`. A chave estrangeira aponta para `usuarios` pelo nome da tabela em texto.
+    Não é a candidatura: ligar o candidato a uma eleição, cargo e número é trabalho do
+    `EleicaoService`. A chave estrangeira aponta para `usuarios` pelo nome da tabela em texto.
     """
 
     __tablename__ = "candidatos"

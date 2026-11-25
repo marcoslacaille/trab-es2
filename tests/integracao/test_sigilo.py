@@ -72,7 +72,8 @@ def test_esquema_nao_liga_voto_a_eleitor_nem_guarda_horario(
 
 
 def test_nenhuma_resposta_revela_a_escolha(cliente, cabecalho_chefe, cabecalho_eleitor):
-    """Depois de votar, nenhuma resposta traz o número nem o nome escolhido; a prévia é opaca."""
+    """Depois de votar, nenhuma resposta traz o número nem o nome escolhido, e o token da prévia
+    não revela a escolha (a prévia mostra o candidato ao próprio eleitor, de propósito)."""
     ids, nome_escolhido, confirmacao = _eleicao_com_voto_em_senador(
         cliente, cabecalho_chefe, cabecalho_eleitor
     )

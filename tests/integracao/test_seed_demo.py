@@ -7,8 +7,10 @@ from sqlalchemy import text
 from app.core.database import SessionLocal
 from app.core.relogio import agora
 from app.dto.eleicao_dto import NovaEleicaoDados
-from app.scripts.seed_demo import semear
+from app.models.enums import Perfil
+from app.scripts.seed_demo import CHEFE_CPF, CHEFE_SENHA, semear
 from app.services.eleicao_service import EleicaoService
+from app.services.usuario_service import UsuarioService
 
 
 def _contar(tabela: str) -> int:
@@ -61,3 +63,32 @@ def test_falha_no_meio_nao_grava_nada_e_permite_repetir(capsys):
         sessao.commit()
     assert semear() == 0
     assert _contar("partidos") > 0
+
+
+def test_semear_com_o_chefe_ja_criado_avisa_que_a_senha_e_a_do_env(capsys):
+    """Com o Chefe criado antes (pelo `criar_chefe`, com outra senha), o seed não imprime a dele."""
+    with SessionLocal() as sessao:
+        UsuarioService(sessao).criar_credencial(
+            CHEFE_CPF, "Chefe da Seção", "OutraSenha@1", Perfil.CHEFE_SECAO, agora()
+        )
+        sessao.commit()
+
+    assert semear() == 0
+
+    linha_do_chefe = next(
+        linha for linha in capsys.readouterr().out.splitlines() if linha.startswith("Chefe ")
+    )
+    assert "já existia" in linha_do_chefe and CHEFE_SENHA not in linha_do_chefe
+
+
+def test_semear_para_se_o_cpf_do_chefe_for_de_outro_perfil(capsys):
+    """Se o CPF do Chefe da demonstração já é de um eleitor, o seed sai com 2 e não grava nada."""
+    with SessionLocal() as sessao:
+        UsuarioService(sessao).criar_credencial(
+            CHEFE_CPF, "Eleitor Qualquer", "Eleitor@123", Perfil.ELEITOR, agora()
+        )
+        sessao.commit()
+
+    assert semear() == 2
+    assert "CPF_DO_CHEFE_EM_USO" in capsys.readouterr().out
+    assert _contar("partidos") == 0

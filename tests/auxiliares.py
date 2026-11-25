@@ -41,7 +41,7 @@ def gerar_cpf(semente: int) -> str:
 
 
 def criar_chefe() -> int:
-    """Cria o Chefe da Seção direto pelo serviço de identidade, com commit. Devolve o id."""
+    """Cria o Chefe da Seção direto pelo `UsuarioService`, com commit. Devolve o id."""
     with SessionLocal() as sessao:
         usuario_id = UsuarioService(sessao).criar_credencial(
             CPF_CHEFE, "Chefe da Seção", SENHA_CHEFE, Perfil.CHEFE_SECAO, agora()

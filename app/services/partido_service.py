@@ -80,6 +80,6 @@ class PartidoService:
         return [self._resumir_partido(partido) for partido in partidos]
 
     def obter_partido(self, partido_id: int) -> PartidoResumo | None:
-        """Devolve o partido ou `None` se não existir. Usada por `eleicoes` (RN-46)."""
+        """Devolve o partido ou `None` se não existir. Usada pelo `EleicaoService` (RN-46)."""
         partido = self.repository.buscar_partido_por_id(partido_id)
         return self._resumir_partido(partido) if partido else None

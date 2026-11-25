@@ -38,7 +38,7 @@ def validar_senha(senha: str) -> None:
 
 
 class UsuarioService:
-    """Service de usuários: casos de uso de identidade.
+    """Service de usuários: login, credenciais e consulta dos usuários.
 
     `criar_credencial`, `atualizar_credencial` e `remover_credencial` são pensados para outros
     services (eleitores, candidatos) e **não fazem commit**: quem chama controla a transação,
@@ -66,6 +66,15 @@ class UsuarioService:
                 codigo="DADOS_INVALIDOS",
             )
         return nome
+
+    def perfil_do_cpf(self, cpf: str) -> Perfil | None:
+        """O perfil do usuário com este CPF (com ou sem pontuação), ou `None` se não houver.
+
+        Usada pelos scripts para saber se o CPF do Chefe já é de um Chefe.
+        """
+        cpf_normalizado = normalizar_cpf(cpf)
+        usuario = self.repository.buscar_por_cpf(cpf_normalizado) if cpf_normalizado else None
+        return Perfil(usuario.perfil) if usuario else None
 
     def autenticar(self, cpf: str, senha: str) -> ResultadoDoLogin:
         """RN-01: login por CPF e senha.

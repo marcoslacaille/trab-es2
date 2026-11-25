@@ -33,10 +33,9 @@ class ContagemVoto:
 
 @dataclass(frozen=True)
 class Comparecimento:
-    """Quantos eleitores votaram em ao menos um cargo, e quantos votaram em cada cargo."""
+    """Quantos eleitores votaram em ao menos um cargo."""
 
     eleitores_que_votaram: int
-    por_cargo: dict[Cargo, int]
 
 
 @dataclass(frozen=True)

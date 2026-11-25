@@ -17,7 +17,7 @@ from app.services.usuario_service import UsuarioService
 def criar_chefe() -> int:
     """RN-04: cria o Chefe da Seção com os dados do `.env`. Devolve 0 se deu certo, 1 se falhou.
 
-    Valida CPF (RN-07), nome (RN-08) e senha (RN-05) pelo próprio serviço de identidade.
+    Valida CPF (RN-07), nome (RN-08) e senha (RN-05) pelo próprio `UsuarioService`.
     A mensagem impressa nunca contém a senha.
     """
     configuracao = obter_configuracao()
@@ -37,7 +37,14 @@ def criar_chefe() -> int:
         except ConflitoDeEstado as erro:
             if erro.codigo != "CPF_JA_CADASTRADO":
                 raise
-            print("Já existe um usuário com o CPF de CHEFE_CPF; nada foi alterado.")
+            perfil = UsuarioService(sessao).perfil_do_cpf(configuracao.chefe_cpf)
+            if perfil != Perfil.CHEFE_SECAO:
+                print(
+                    "O CPF de CHEFE_CPF já é de um usuário que não é Chefe da Seção; "
+                    "nada foi alterado."
+                )
+                return 1
+            print("Já existe um Chefe da Seção com o CPF de CHEFE_CPF; nada foi alterado.")
             return 0
         except DadosInvalidos as erro:
             print(f"Não foi possível criar o Chefe da Seção: {erro.mensagem}")

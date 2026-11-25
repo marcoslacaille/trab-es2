@@ -19,10 +19,9 @@ from app.core.exceptions import (
     DadosInvalidos,
     NaoAutenticado,
     NaoEncontrado,
-    registrar_tratadores,
-    registro,
 )
 from app.core.validadores import cpf_valido, normalizar_cpf
+from app.core.web import registrar_tratadores
 
 ERROS_POR_TIPO = {
     "nao-autenticado": NaoAutenticado,
@@ -208,14 +207,8 @@ def test_integridade_e_traduzida_pelo_nome_da_restricao(cliente_de_erros):
     assert sem_nome.json()["erro"]["codigo"] == "CONFLITO_DE_DADOS"
 
 
-def test_excecao_inesperada_responde_500_sem_vazar_a_mensagem(
-    cliente_de_erros, caplog, monkeypatch
-):
+def test_excecao_inesperada_responde_500_sem_vazar_a_mensagem(cliente_de_erros, caplog):
     """Erros sem vazamento: a resposta é genérica e o detalhe fica só no log."""
-    # O migrations/env.py chama logging.config.fileConfig (fixture banco_migrado), que desliga
-    # os loggers já criados. Só o teste religa o logger; o app real nunca chama fileConfig.
-    monkeypatch.setattr(registro, "disabled", False)
-
     with caplog.at_level(logging.ERROR):
         resposta = cliente_de_erros.get("/falha")
 

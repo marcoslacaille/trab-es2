@@ -1,10 +1,32 @@
 import os
+from collections.abc import Mapping
+from pathlib import Path
 
+from dotenv import dotenv_values
 from sqlalchemy.engine import make_url
 
-URL_TESTE = os.environ.get(
-    "TEST_DATABASE_URL", "postgresql+psycopg://eleicao:eleicao@localhost:5433/eleicao_teste"
-)
+# O banco de teste do `docker compose` com os valores do `.env.example`.
+URL_PADRAO = "postgresql+psycopg://eleicao:eleicao@localhost:5433/eleicao_teste"
+ARQUIVO_ENV = Path(__file__).resolve().parents[1] / ".env"
+
+
+def url_do_banco_de_teste(ambiente: Mapping[str, str], arquivo_env: Path) -> str:
+    """O `TEST_DATABASE_URL` do ambiente; senão o do `.env` da raiz; senão o padrão do compose.
+
+    O ambiente vale mais porque é por ele que o CI informa o banco. O `.env` vale para quem
+    trocou a senha ou a porta, como o README sugere fora da demonstração: o `docker compose`
+    sobe o banco de teste com os valores do `.env`, e a suíte precisa usar os mesmos.
+    """
+    if ambiente.get("TEST_DATABASE_URL"):
+        return ambiente["TEST_DATABASE_URL"]
+    if arquivo_env.is_file():
+        do_arquivo = dotenv_values(arquivo_env).get("TEST_DATABASE_URL")
+        if do_arquivo:
+            return do_arquivo
+    return URL_PADRAO
+
+
+URL_TESTE = url_do_banco_de_teste(os.environ, ARQUIVO_ENV)
 
 
 def conferir_banco_de_teste(url: str) -> None:

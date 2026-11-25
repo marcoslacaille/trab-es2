@@ -1,4 +1,4 @@
-"""O roteiro da demonstração, de ponta a ponta."""
+"""Um roteiro completo pela API, de ponta a ponta (como a demonstração, com outros dados)."""
 
 from tests.auxiliares import (
     SENHA_CANDIDATO,
@@ -136,7 +136,7 @@ def _codigo(resposta) -> str:
 
 
 def test_roteiro_cadastros_e_abertura_da_eleicao(cliente, cabecalho_chefe):
-    """Parte 1 do roteiro (itens 1 a 10): cadastros, validações, 2º turno e abertura da eleição."""
+    """Primeira parte: cadastros, validações, 2º turno e abertura da eleição."""
     chefe = cabecalho_chefe
     _cadastrar_eleitores(cliente, chefe)
     eleicao_id = _montar_eleicao(cliente, chefe)
@@ -194,7 +194,7 @@ def test_roteiro_cadastros_e_abertura_da_eleicao(cliente, cabecalho_chefe):
 
 
 def test_roteiro_votacao_apuracao_e_resultado(cliente, cabecalho_chefe, relogio):
-    """Partes 2 a 4 do roteiro (itens 11 a 27): votação, parcial, encerramento e resultado."""
+    """Segunda parte: votação, parcial, encerramento e resultado."""
     chefe = cabecalho_chefe
     eleitores = _cadastrar_eleitores(cliente, chefe)
     eleicao_id = _montar_eleicao(cliente, chefe)

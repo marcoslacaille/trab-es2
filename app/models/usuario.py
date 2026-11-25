@@ -13,7 +13,7 @@ from app.core.database import Base
 class Usuario(Base):
     """Credencial de acesso. Todo eleitor, candidato e chefe da seção tem uma (RN-03).
 
-    Os nomes das restrições seguem a convenção do `banco.py` (ex.: `uq_usuarios_cpf`),
+    Os nomes das restrições seguem a convenção de `core/database.py` (ex.: `uq_usuarios_cpf`),
     para a aplicação traduzir uma violação em erro amigável.
     """
 

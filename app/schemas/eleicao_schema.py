@@ -8,7 +8,7 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstra
 
 from app.core.validadores import sem_caractere_nulo
 from app.dto.eleicao_dto import EleicaoResumo
-from app.models.enums import StatusEleicao
+from app.models.enums import Perfil, StatusEleicao
 
 
 def _sem_fuso(horario: time) -> time:
@@ -33,8 +33,8 @@ class NovaEleicao(BaseModel):
         extra="forbid",
         json_schema_extra={
             "example": {
-                "descricao": "Eleições Gerais 2026 — 1º turno",
-                "data": "2026-11-25",
+                "descricao": "Eleições Gerais 2030 — 1º turno",
+                "data": "2030-10-06",
                 "turno": 1,
                 "horario_abertura": "08:00",
                 "horario_encerramento": "17:00",
@@ -44,10 +44,10 @@ class NovaEleicao(BaseModel):
 
     descricao: Descricao = Field(
         description="Nome do pleito (1 a 120 caracteres).",
-        examples=["Eleições Gerais 2026 — 1º turno"],
+        examples=["Eleições Gerais 2030 — 1º turno"],
     )
     data: date = Field(
-        description="Dia da eleição; não pode ser anterior a hoje.", examples=["2026-11-25"]
+        description="Dia da eleição; não pode ser anterior a hoje.", examples=["2030-10-06"]
     )
     turno: int = Field(
         ge=1, le=2, description="1 ou 2. Cada turno é uma eleição separada.", examples=[1]
@@ -69,19 +69,13 @@ class AlteracaoEleicao(BaseModel):
     )
 
     descricao: Descricao | None = Field(default=None, examples=["Eleições Gerais 2026 — 1º turno"])
-    data: date | None = Field(default=None, examples=["2026-11-25"])
+    data: date | None = Field(default=None, examples=["2030-10-06"])
     turno: int | None = Field(default=None, ge=1, le=2, examples=[1])
     horario_abertura: Horario | None = Field(default=None, examples=["08:00"])
     horario_encerramento: Horario | None = Field(default=None, examples=["17:00"])
 
 
 PREFIXO_DA_API = "/api/v1"
-
-# Perfis como texto: `eleicoes` não importa `identidade`. O `Perfil` é um `StrEnum`, então
-# `links_da_eleicao` aceita um `Perfil` normalmente.
-CHEFE_SECAO = "CHEFE_SECAO"
-ELEITOR = "ELEITOR"
-CANDIDATO = "CANDIDATO"
 
 
 @dataclass(frozen=True)
@@ -93,18 +87,18 @@ class Link:
     href: str
 
 
-def links_da_eleicao(eleicao: EleicaoResumo, perfil: str) -> list[Link]:
+def links_da_eleicao(eleicao: EleicaoResumo, perfil: Perfil) -> list[Link]:
     """RN-19 (HATEOAS): as ações que o perfil pode fazer na eleição, dado o status dela.
 
-    `self` sempre aparece. O resto depende do perfil e do status: o Chefe edita, gerencia
-    candidaturas e abre a AGENDADA, e encerra a ABERTA; Eleitor e Candidato veem a apuração
-    parcial da ABERTA (o Eleitor também a cédula); todos veem o resultado da ENCERRADA.
+    `self` sempre aparece. O resto depende do perfil e do status: o Chefe vê as candidaturas
+    em qualquer status, edita, cria candidaturas e abre a AGENDADA e encerra a ABERTA; todos
+    veem a apuração parcial da ABERTA (o Eleitor também a cédula) e o resultado da ENCERRADA.
     """
     base = f"{PREFIXO_DA_API}/eleicoes/{eleicao.id}"
     apuracao = f"{PREFIXO_DA_API}/apuracao/eleicoes/{eleicao.id}"
     links = [Link("self", "GET", base)]
 
-    if eleicao.status == StatusEleicao.AGENDADA and perfil == CHEFE_SECAO:
+    if eleicao.status == StatusEleicao.AGENDADA and perfil == Perfil.CHEFE_SECAO:
         links += [
             Link("editar", "PATCH", base),
             Link("candidaturas", "GET", f"{base}/candidaturas"),
@@ -112,14 +106,17 @@ def links_da_eleicao(eleicao: EleicaoResumo, perfil: str) -> list[Link]:
             Link("abrir", "POST", f"{base}/abertura"),
         ]
     if eleicao.status == StatusEleicao.ABERTA:
-        if perfil == CHEFE_SECAO:
+        if perfil == Perfil.CHEFE_SECAO:
+            links.append(Link("candidaturas", "GET", f"{base}/candidaturas"))
             links.append(Link("encerrar", "POST", f"{base}/encerramento"))
-        if perfil == ELEITOR:
+        if perfil == Perfil.ELEITOR:
             cedula = f"{PREFIXO_DA_API}/votacao/eleicoes/{eleicao.id}/cedula"
             links.append(Link("cedula", "GET", cedula))
-        if perfil in (CHEFE_SECAO, ELEITOR, CANDIDATO):
+        if perfil in (Perfil.CHEFE_SECAO, Perfil.ELEITOR, Perfil.CANDIDATO):
             links.append(Link("apuracao-parcial", "GET", f"{apuracao}/parcial"))
     if eleicao.status == StatusEleicao.ENCERRADA:
+        if perfil == Perfil.CHEFE_SECAO:
+            links.append(Link("candidaturas", "GET", f"{base}/candidaturas"))
         links.append(Link("resultado", "GET", f"{apuracao}/resultado"))
     return links
 
@@ -144,23 +141,21 @@ class EleicaoResposta(BaseModel):
                 "turno": 1,
                 "horario_abertura": "08:00:00",
                 "horario_encerramento": "17:00:00",
-                "status": "AGENDADA",
-                "aberta_em": None,
-                "encerrada_em": None,
+                "status": "ENCERRADA",
+                "aberta_em": "2026-11-25T08:00:05-03:00",
+                "encerrada_em": "2026-11-25T17:00:10-03:00",
                 "links": [
                     {"rel": "self", "metodo": "GET", "href": "/api/v1/eleicoes/1"},
-                    {"rel": "editar", "metodo": "PATCH", "href": "/api/v1/eleicoes/1"},
                     {
                         "rel": "candidaturas",
                         "metodo": "GET",
                         "href": "/api/v1/eleicoes/1/candidaturas",
                     },
                     {
-                        "rel": "nova-candidatura",
-                        "metodo": "POST",
-                        "href": "/api/v1/eleicoes/1/candidaturas",
+                        "rel": "resultado",
+                        "metodo": "GET",
+                        "href": "/api/v1/apuracao/eleicoes/1/resultado",
                     },
-                    {"rel": "abrir", "metodo": "POST", "href": "/api/v1/eleicoes/1/abertura"},
                 ],
             }
         },

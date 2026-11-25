@@ -15,13 +15,13 @@ from app.controllers import (
     votacao_controller,
 )
 from app.core.database import obter_sessao
-from app.core.exceptions import registrar_tratadores
 from app.core.log_requisicoes import registrar_log_de_requisicoes
-from app.core.openapi import DESCRICAO_API, PARAMETROS_SWAGGER_UI, TAGS
+from app.core.openapi import DESCRICAO_API, PARAMETROS_SWAGGER_UI, TAGS, respostas_de_erro
+from app.core.web import registrar_tratadores
 
 app = FastAPI(
     title="API de Simulação de Eleição Eletrônica",
-    version="1.0.0",
+    version="2.0.0",
     description=DESCRICAO_API,
     openapi_tags=TAGS,
     swagger_ui_parameters=PARAMETROS_SWAGGER_UI,
@@ -42,7 +42,12 @@ app.include_router(votacao_controller.roteador, prefix=PREFIXO)
 app.include_router(apuracao_controller.roteador, prefix=PREFIXO)
 
 
-@app.get("/health", tags=["Sistema"], summary="Verifica se a API e o banco estão no ar")
+@app.get(
+    "/health",
+    tags=["Sistema"],
+    summary="Verifica se a API e o banco estão no ar",
+    responses=respostas_de_erro(),
+)
 def health(sessao: Annotated[Session, Depends(obter_sessao)]) -> dict:
     """Executa `SELECT 1` no banco. Responde 200 com `{"status": "ok"}` se tudo estiver no ar."""
     sessao.execute(text("SELECT 1"))

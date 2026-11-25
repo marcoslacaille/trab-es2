@@ -18,7 +18,8 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    """Cria `partidos` e `candidatos` com as restrições nomeadas pela convenção do banco.py."""
+    """Cria `partidos` e `candidatos`, com as restrições nomeadas pela convenção do projeto
+    (app/core/database.py)."""
     op.create_table(
         "partidos",
         sa.Column("id", sa.BigInteger(), sa.Identity(always=False), nullable=False),

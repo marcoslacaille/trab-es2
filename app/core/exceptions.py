@@ -1,16 +1,12 @@
-"""Erros de negócio e formato único de resposta de erro de toda a API."""
+"""Erros de negócio e a tradução das restrições do banco em erros da API.
 
-import logging
+Não depende de framework web: os services levantam estes erros sem conhecer HTTP. O formato da
+resposta de erro e os tratadores que o FastAPI chama ficam em `core/web.py`.
+"""
+
 from dataclasses import dataclass
 
-from fastapi import FastAPI, Request
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.exc import IntegrityError
-from starlette.exceptions import HTTPException as ErroHttpDoFramework
-
-registro = logging.getLogger(__name__)
 
 
 class ErroDeNegocio(Exception):
@@ -59,42 +55,6 @@ class DadosInvalidos(ErroDeNegocio):
     status_http = 422
 
 
-class CorpoDoErro(BaseModel):
-    """Conteúdo do erro: o que o cliente da API lê para decidir o que fazer."""
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "codigo": "ELEICAO_NAO_ABERTA",
-                "mensagem": "A eleição não está aberta.",
-                "detalhes": {"status": "AGENDADA"},
-            }
-        }
-    )
-
-    codigo: str = Field(description="Código estável do erro (catálogo da seção 10 do PLANO).")
-    mensagem: str = Field(description="Explicação legível para uma pessoa.")
-    detalhes: dict = Field(default_factory=dict, description="Dados extras; pode ser vazio.")
-
-
-class ErroResposta(BaseModel):
-    """Formato de erro de todas as rotas: `{"erro": {"codigo", "mensagem", "detalhes"}}`."""
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "erro": {
-                    "codigo": "ELEICAO_NAO_ABERTA",
-                    "mensagem": "A eleição não está aberta.",
-                    "detalhes": {"status": "AGENDADA"},
-                }
-            }
-        }
-    )
-
-    erro: CorpoDoErro
-
-
 @dataclass(frozen=True)
 class TraducaoDeRestricao:
     """Como uma restrição violada no banco aparece para o cliente da API."""
@@ -111,7 +71,7 @@ _PARTIDO_DUPLICADO = TraducaoDeRestricao(
     "PARTIDO_DUPLICADO", 409, "Já existe um partido com esta sigla, nome ou número."
 )
 
-# Tabela de tradução: nome da restrição (convenção de nomes do banco.py) -> erro da API.
+# Tabela de tradução: nome da restrição (convenção de nomes de core/database.py) -> erro da API.
 ERROS_POR_RESTRICAO: dict[str, TraducaoDeRestricao] = {
     "uq_usuarios_cpf": TraducaoDeRestricao(
         "CPF_JA_CADASTRADO", 409, "Já existe um usuário com este CPF."
@@ -145,93 +105,8 @@ CONFLITO_DE_DADOS = TraducaoDeRestricao(
     "CONFLITO_DE_DADOS", 409, "Os dados enviados conflitam com os já gravados."
 )
 
-# Erros que o próprio FastAPI levanta (rota inexistente, método não permitido): código e mensagem.
-ERROS_DO_FRAMEWORK = {
-    404: ("ROTA_NAO_ENCONTRADA", "Rota não encontrada."),
-    405: ("METODO_NAO_PERMITIDO", "Método não permitido para esta rota."),
-}
-
-# Primeiro item do `loc` do Pydantic: de onde veio o campo. Não interessa a quem usa a API.
-_ORIGENS_DO_CAMPO = {"body", "query", "path", "header", "cookie"}
-
 
 def nome_da_restricao(erro: IntegrityError) -> str | None:
     """Devolve o nome da restrição que o PostgreSQL acusou, ou None se ele não informou."""
     diagnostico = getattr(erro.orig, "diag", None)
     return getattr(diagnostico, "constraint_name", None)
-
-
-def _resposta_de_erro(
-    status_http: int,
-    codigo: str,
-    mensagem: str,
-    detalhes: dict | None = None,
-    cabecalhos: dict[str, str] | None = None,
-) -> JSONResponse:
-    """Monta a resposta HTTP no formato padrão de erro."""
-    conteudo = CorpoDoErro(codigo=codigo, mensagem=mensagem, detalhes=detalhes or {})
-    corpo = ErroResposta(erro=conteudo)
-    return JSONResponse(
-        status_code=status_http, content=corpo.model_dump(mode="json"), headers=cabecalhos
-    )
-
-
-def _nome_do_campo(localizacao: tuple) -> str:
-    """Transforma o `loc` do Pydantic (ex.: ('body', 'cpf')) em 'cpf'."""
-    partes = localizacao[1:] if localizacao and localizacao[0] in _ORIGENS_DO_CAMPO else localizacao
-    return ".".join(str(parte) for parte in partes)
-
-
-def registrar_tratadores(app: FastAPI) -> None:
-    """Registra no app os 5 tratadores de erro."""
-
-    @app.exception_handler(ErroDeNegocio)
-    async def tratar_erro_de_negocio(requisicao: Request, erro: ErroDeNegocio) -> JSONResponse:
-        # No 401, o cabeçalho diz ao cliente qual esquema de autenticação usar (RFC 6750).
-        cabecalhos = {"WWW-Authenticate": "Bearer"} if erro.status_http == 401 else None
-        return _resposta_de_erro(
-            erro.status_http, erro.codigo, erro.mensagem, erro.detalhes, cabecalhos
-        )
-
-    @app.exception_handler(RequestValidationError)
-    async def tratar_dados_invalidos(
-        requisicao: Request, erro: RequestValidationError
-    ) -> JSONResponse:
-        campos = [
-            {
-                "campo": _nome_do_campo(problema["loc"]),
-                # Validadores nossos levantam ValueError; o Pydantic põe esse prefixo na frente.
-                "mensagem": problema["msg"].removeprefix("Value error, "),
-            }
-            for problema in erro.errors()
-        ]
-        return _resposta_de_erro(
-            422, "DADOS_INVALIDOS", "Dados inválidos na requisição.", {"campos": campos}
-        )
-
-    @app.exception_handler(ErroHttpDoFramework)
-    async def tratar_erro_http_do_framework(
-        requisicao: Request, erro: ErroHttpDoFramework
-    ) -> JSONResponse:
-        # Cobre também a HTTPException do FastAPI (subclasse desta). O cabeçalho `Allow` do 405
-        # e outros cabeçalhos que o framework mandou são mantidos.
-        codigo, mensagem = ERROS_DO_FRAMEWORK.get(
-            erro.status_code, ("ERRO_HTTP", "Erro na requisição.")
-        )
-        return _resposta_de_erro(erro.status_code, codigo, mensagem, cabecalhos=erro.headers)
-
-    @app.exception_handler(IntegrityError)
-    async def tratar_erro_de_integridade(requisicao: Request, erro: IntegrityError) -> JSONResponse:
-        nome = nome_da_restricao(erro)
-        traducao = ERROS_POR_RESTRICAO.get(nome, CONFLITO_DE_DADOS) if nome else CONFLITO_DE_DADOS
-        # Só o nome da restrição vai para o log: os valores gravados podem ser dados pessoais.
-        registro.warning("Restrição do banco violada: %s", nome)
-        return _resposta_de_erro(traducao.status_http, traducao.codigo, traducao.mensagem)
-
-    @app.exception_handler(Exception)
-    async def tratar_erro_inesperado(requisicao: Request, erro: Exception) -> JSONResponse:
-        # O detalhe vai só para o log; a resposta não pode vazar nada do servidor.
-        registro.error(
-            "Erro inesperado em %s %s", requisicao.method, requisicao.url.path, exc_info=erro
-        )
-        return _resposta_de_erro(500, "ERRO_INTERNO", "Erro interno. Tente novamente mais tarde.")

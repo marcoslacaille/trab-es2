@@ -35,7 +35,7 @@ class NovoEleitor(BaseModel):
         description="Nome completo (3 a 120 caracteres).", examples=["Ana Beatriz Souza"]
     )
     # Só o tamanho é limitado aqui; o formato e os dígitos verificadores são conferidos pelo
-    # serviço de identidade, que responde `CPF_INVALIDO` (RN-07).
+    # `UsuarioService`, que responde `CPF_INVALIDO` (RN-07).
     cpf: str = Field(
         max_length=20, description="CPF com ou sem pontuação.", examples=["011.524.493-03"]
     )

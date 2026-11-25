@@ -187,7 +187,10 @@ class EleitorService:
         self.sessao.commit()
 
     def obter_eleitor_do_usuario(self, usuario_id: int) -> EleitorResumo | None:
-        """Devolve o eleitor dono desta credencial, ou `None` se não houver. Usada por `votacao`."""
+        """Devolve o eleitor dono desta credencial, ou `None` se não houver.
+
+        Usada pelo `VotacaoService`.
+        """
         eleitor = self.repository.buscar_por_usuario_id(usuario_id)
         if eleitor is None:
             return None
@@ -208,6 +211,6 @@ class EleitorService:
     def contar_aptos(self, ate: datetime) -> int:
         """Quantos eleitores estavam cadastrados até o instante `ate`, inclusive (RN-79).
 
-        Usada por `apuracao` com o instante da abertura da eleição.
+        Usada pelo `ApuracaoService` com o instante da abertura da eleição.
         """
         return self.repository.contar_cadastrados_ate(ate)

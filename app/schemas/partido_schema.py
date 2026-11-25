@@ -27,10 +27,12 @@ class NovoPartido(BaseModel):
     sigla: Sigla = Field(
         description="De 2 a 10 letras ou dígitos. Vira maiúscula.", examples=["PINO"]
     )
-    nome: Annotated[str, AfterValidator(sem_caractere_nulo)] = Field(
-        min_length=1,
-        max_length=100,
-        description="Nome do partido.",
+    nome: Annotated[
+        str,
+        StringConstraints(strip_whitespace=True, min_length=1, max_length=100),
+        AfterValidator(sem_caractere_nulo),
+    ] = Field(
+        description="Nome do partido (os espaços das pontas são tirados).",
         examples=["Partido da Inovação"],
     )
     numero: int = Field(ge=10, le=99, description="Número de 2 dígitos, de 10 a 99.", examples=[10])

@@ -6,6 +6,8 @@ from sqlalchemy import text
 from app.core.config import obter_configuracao
 from app.core.database import SessionLocal
 from app.core.exceptions import ConflitoDeEstado
+from app.core.relogio import agora
+from app.models.enums import Perfil
 from app.scripts.criar_chefe import criar_chefe
 from app.services.usuario_service import UsuarioService
 from tests.auxiliares import CPF_CHEFE
@@ -91,3 +93,18 @@ def test_executado_como_script_sai_com_o_codigo_da_funcao(configurar):
         runpy.run_module("app.scripts.criar_chefe", run_name="__main__")
 
     assert saida.value.code == 0 and _quantos_chefes() == 1
+
+
+def test_cpf_de_quem_nao_e_chefe_falha_sem_alterar(configurar, capsys):
+    """Se o CPF de CHEFE_CPF já é de um eleitor, o script sai com 1 e não cria nenhum Chefe."""
+    with SessionLocal() as sessao:
+        UsuarioService(sessao).criar_credencial(
+            CPF_CHEFE, "Eleitor Qualquer", "Eleitor@123", Perfil.ELEITOR, agora()
+        )
+        sessao.commit()
+    configurar(CHEFE_CPF=CPF_CHEFE, CHEFE_SENHA="Chefe@2026")
+
+    resultado = criar_chefe()
+
+    assert resultado == 1 and _quantos_chefes() == 0
+    assert "não é Chefe da Seção" in capsys.readouterr().out

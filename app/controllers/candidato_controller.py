@@ -7,9 +7,10 @@ from fastapi import APIRouter, Depends, Path, Query, Response
 from pydantic import AfterValidator
 
 from app.core.openapi import respostas_de_erro
-from app.core.paginacao import Pagina, Paginacao, obter_paginacao
+from app.core.paginacao import Paginacao
 from app.core.relogio import obter_agora
 from app.core.validadores import MAIOR_ID, sem_caractere_nulo
+from app.core.web import PaginaResposta, obter_paginacao
 from app.dependencies import CandidatoServiceDep, UsuarioAutenticado, exige_perfil
 from app.dto.candidato_dto import AlteracoesCandidato, NovoCandidatoDados
 from app.models.enums import Perfil
@@ -46,7 +47,7 @@ def cadastrar_candidato(
 
 @roteador.get(
     "/candidatos",
-    response_model=Pagina[CandidatoResposta],
+    response_model=PaginaResposta[CandidatoResposta],
     dependencies=somente_chefe,
     tags=["Candidatos"],
     summary="Lista os candidatos",
@@ -61,9 +62,9 @@ def listar_candidatos(
         Query(max_length=120, description="Parte do nome, sem diferenciar maiúsculas."),
         AfterValidator(sem_caractere_nulo),
     ] = None,
-) -> Pagina[CandidatoResposta]:
+) -> PaginaResposta[CandidatoResposta]:
     pagina = service.listar_candidatos(nome, paginacao)
-    return Pagina[CandidatoResposta](
+    return PaginaResposta[CandidatoResposta](
         itens=[CandidatoResposta.model_validate(candidato) for candidato in pagina.itens],
         pagina=pagina.pagina,
         tamanho=pagina.tamanho,
