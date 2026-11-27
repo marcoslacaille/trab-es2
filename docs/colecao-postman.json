@@ -1,23 +1,59 @@
 {
   "info": {
-    "name": "API de Simulação de Eleição Eletrônica — roteiro da demonstração",
-    "description": "Roteiro da apresentação (README, seção Demonstração), na ordem. Importe também docs/ambiente-postman.json, escolha esse ambiente e rode as requisições em sequência (ou o Collection Runner). Pré-requisito: banco limpo, migrações e `python -m app.scripts.seed_demo`. Os scripts de pós-resposta guardam os tokens no ambiente.",
+    "name": "API de Simulação de Eleição Eletrônica — demonstração",
+    "description": "Uma pasta por funcionalidade do enunciado, na ordem da apresentação. Cada requisição testa o status e, nos erros, o código da regra de negócio (RN-xx do README). Pré-requisito: banco limpo, `alembic upgrade head` e `python -m app.scripts.seed_demo` rodado no dia da apresentação. Importe também docs/ambiente-postman.json e selecione o ambiente. Rode em ordem (uma a uma ou no Collection Runner): os scripts guardam tokens e ids no ambiente.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "Parte 1: perfis e cadastros (Chefe da Seção)",
+      "name": "1. Login e perfis",
+      "description": "Enunciado, item 1: login dos três perfis e funcionalidades conforme o perfil. RN-01 a RN-06.",
       "item": [
         {
-          "name": "01. Login do Chefe",
+          "name": "1.01 API e banco no ar (/health)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.environment.set(\"token_chefe\", pm.response.json().access_token);"
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"status ok\", () => pm.expect(r.status).to.eql(\"ok\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url_raiz}}/health",
+              "host": [
+                "{{base_url_raiz}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Única rota pública, junto com o login e a documentação (RN-06)."
+          }
+        },
+        {
+          "name": "1.02 Login do Chefe da Seção",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Perfil CHEFE_SECAO\", () => pm.expect(r.usuario.perfil).to.eql(\"CHEFE_SECAO\"));",
+                  "pm.environment.set(\"token_chefe\", r.access_token);"
                 ]
               }
             }
@@ -52,343 +88,22 @@
                   "type": "text"
                 }
               ]
-            }
+            },
+            "description": "Login por CPF e senha (RN-01). O CPF aceita pontuação. O token vale 60 minutos."
           }
         },
         {
-          "name": "02. Cadastrar eleitor (Igor)",
+          "name": "1.03 Login da eleitora Ana",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/eleitores",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "eleitores"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_chefe}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nome\": \"Igor Barbosa\",\n  \"cpf\": \"081.836.584-66\",\n  \"titulo_eleitor\": \"100000000008\",\n  \"data_nascimento\": \"1999-09-09\",\n  \"senha\": \"Eleitor@123\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "03. Eleitor com CPF inválido",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 422\", function () { pm.response.to.have.status(422); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/eleitores",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "eleitores"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_chefe}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nome\": \"Eleitor Invalido\",\n  \"cpf\": \"111.111.111-11\",\n  \"titulo_eleitor\": \"100000000009\",\n  \"data_nascimento\": \"1990-01-01\",\n  \"senha\": \"Eleitor@123\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "04. Cadastrar candidato (Renata)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
-                  "pm.environment.set(\"candidato_renata_id\", pm.response.json().id);"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/candidatos",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "candidatos"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_chefe}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nome\": \"Renata Campos\",\n  \"nome_urna\": \"Renata Campos\",\n  \"cpf\": \"241.592.066-54\",\n  \"data_nascimento\": \"1977-01-20\",\n  \"senha\": \"Candidato@123\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "05. Criar eleição do 2º turno",
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "var d = new Date(); d.setDate(d.getDate() + 1); pm.environment.set(\"amanha\", d.toISOString().slice(0, 10));"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/eleicoes",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "eleicoes"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_chefe}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"descricao\": \"Eleições Gerais 2026 — 2º turno (simulação)\",\n  \"data\": \"{{amanha}}\",\n  \"turno\": 2,\n  \"horario_abertura\": \"08:00\",\n  \"horario_encerramento\": \"17:00\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "06. Consultar a eleição do seed",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/eleicoes/{{eleicao_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "eleicoes",
-                "{{eleicao_id}}"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_chefe}}",
-                  "type": "string"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "07. Abrir a eleição",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/eleicoes/{{eleicao_id}}/abertura",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "eleicoes",
-                "{{eleicao_id}}",
-                "abertura"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_chefe}}",
-                  "type": "string"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "08. Candidatura depois da abertura",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 409\", function () { pm.response.to.have.status(409); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/eleicoes/{{eleicao_id}}/candidaturas",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "eleicoes",
-                "{{eleicao_id}}",
-                "candidaturas"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_chefe}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"candidato_id\": \"{{candidato_renata_id}}\",\n  \"partido_id\": 1,\n  \"cargo\": \"SENADOR\",\n  \"numero\": \"404\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Parte 2: votação (Eleitor) e regras de negócio",
-      "item": [
-        {
-          "name": "09. Login de Ana",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.environment.set(\"token_eleitor\", pm.response.json().access_token);"
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Perfil ELEITOR\", () => pm.expect(r.usuario.perfil).to.eql(\"ELEITOR\"));",
+                  "pm.environment.set(\"token_ana\", r.access_token);"
                 ]
               }
             }
@@ -427,206 +142,17 @@
           }
         },
         {
-          "name": "10. Consultar a cédula",
+          "name": "1.04 Login do eleitor Bruno",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/votacao/eleicoes/{{eleicao_id}}/cedula",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "votacao",
-                "eleicoes",
-                "{{eleicao_id}}",
-                "cedula"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_eleitor}}",
-                  "type": "string"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "11. Registrar voto: Presidente 10",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.environment.set(\"token_cedula\", pm.response.json().token_cedula);"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/votacao/eleicoes/{{eleicao_id}}/votos/registro",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "votacao",
-                "eleicoes",
-                "{{eleicao_id}}",
-                "votos",
-                "registro"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_eleitor}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"cargo\": \"PRESIDENTE\",\n  \"modo\": \"NUMERO\",\n  \"numero\": \"10\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "12. Confirmar o voto",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/votacao/eleicoes/{{eleicao_id}}/votos/confirmacao",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "votacao",
-                "eleicoes",
-                "{{eleicao_id}}",
-                "votos",
-                "confirmacao"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_eleitor}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"token_cedula\": \"{{token_cedula}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "13. Confirmar de novo (mesmo token)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 409\", function () { pm.response.to.have.status(409); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/votacao/eleicoes/{{eleicao_id}}/votos/confirmacao",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "votacao",
-                "eleicoes",
-                "{{eleicao_id}}",
-                "votos",
-                "confirmacao"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_eleitor}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"token_cedula\": \"{{token_cedula}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "14. Login de Bruno",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.environment.set(\"token_eleitor\", pm.response.json().access_token);"
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Perfil ELEITOR\", () => pm.expect(r.usuario.perfil).to.eql(\"ELEITOR\"));",
+                  "pm.environment.set(\"token_bruno\", r.access_token);"
                 ]
               }
             }
@@ -665,171 +191,17 @@
           }
         },
         {
-          "name": "15. Bruno registra Presidente 20",
+          "name": "1.05 Login do candidato Carlos Lima",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.environment.set(\"token_cedula\", pm.response.json().token_cedula);"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/votacao/eleicoes/{{eleicao_id}}/votos/registro",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "votacao",
-                "eleicoes",
-                "{{eleicao_id}}",
-                "votos",
-                "registro"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_eleitor}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"cargo\": \"PRESIDENTE\",\n  \"modo\": \"NUMERO\",\n  \"numero\": \"20\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "16. Bruno confirma",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/votacao/eleicoes/{{eleicao_id}}/votos/confirmacao",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "votacao",
-                "eleicoes",
-                "{{eleicao_id}}",
-                "votos",
-                "confirmacao"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_eleitor}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"token_cedula\": \"{{token_cedula}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "17. Chefe tenta registrar voto",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 403\", function () { pm.response.to.have.status(403); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/votacao/eleicoes/{{eleicao_id}}/votos/registro",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "votacao",
-                "eleicoes",
-                "{{eleicao_id}}",
-                "votos",
-                "registro"
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{token_chefe}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"cargo\": \"PRESIDENTE\",\n  \"modo\": \"NUMERO\",\n  \"numero\": \"10\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Parte 3: acompanhamento da votação",
-      "item": [
-        {
-          "name": "18. Login de Carlos Lima",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.environment.set(\"token_candidato\", pm.response.json().access_token);"
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Perfil CANDIDATO\", () => pm.expect(r.usuario.perfil).to.eql(\"CANDIDATO\"));",
+                  "pm.environment.set(\"token_carlos\", r.access_token);"
                 ]
               }
             }
@@ -868,14 +240,2461 @@
           }
         },
         {
-          "name": "19. Apuração parcial (Candidato)",
+          "name": "1.06 Quem sou eu (token do Chefe)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Perfil CHEFE_SECAO\", () => pm.expect(r.perfil).to.eql(\"CHEFE_SECAO\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "O usuário é recarregado do banco a cada requisição (RN-02)."
+          }
+        },
+        {
+          "name": "1.07 Senha errada → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Erro CREDENCIAIS_INVALIDAS\", () => pm.expect(pm.response.json().erro.codigo).to.eql(\"CREDENCIAIS_INVALIDAS\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "username",
+                  "value": "011.524.493-03",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "senha-errada",
+                  "type": "text"
+                }
+              ]
+            },
+            "description": "CPF inexistente ou senha errada devolvem o mesmo 401 (RN-01)."
+          }
+        },
+        {
+          "name": "1.08 Rota protegida sem token → 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Erro NAO_AUTENTICADO\", () => pm.expect(pm.response.json().erro.codigo).to.eql(\"NAO_AUTENTICADO\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/eleitores",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "eleitores"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Toda rota exige login, exceto login, /health e documentação (RN-06)."
+          }
+        },
+        {
+          "name": "1.09 Eleitora tenta listar eleitores → 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"Erro PERFIL_NAO_AUTORIZADO\", () => pm.expect(pm.response.json().erro.codigo).to.eql(\"PERFIL_NAO_AUTORIZADO\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/eleitores",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "eleitores"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_ana}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Cada rota declara os perfis aceitos; gerenciar eleitores é só do Chefe (RN-03, RN-20)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Eleitores (Chefe: cadastra, consulta, altera e exclui)",
+      "description": "Enunciado, item 3. RN-20 a RN-24.",
+      "item": [
+        {
+          "name": "2.01 Cadastrar eleitor (Igor)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Resposta sem senha\", () => pm.expect(r).to.not.have.property(\"senha\"));",
+                  "pm.environment.set(\"igor_id\", r.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/eleitores",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "eleitores"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Igor Barbosa\",\n  \"cpf\": \"081.836.584-66\",\n  \"titulo_eleitor\": \"100000000008\",\n  \"data_nascimento\": \"1999-09-09\",\n  \"senha\": \"Eleitor@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "O cadastro cria o eleitor e a credencial dele. A senha nunca volta na resposta."
+          }
+        },
+        {
+          "name": "2.02 Listar eleitores filtrando por nome",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Acha só o Igor\", () => pm.expect(r.total).to.eql(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/eleitores?nome=Igor",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "eleitores"
+              ],
+              "query": [
+                {
+                  "key": "nome",
+                  "value": "Igor"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Lista paginada (pagina, tamanho, total) com filtro por nome."
+          }
+        },
+        {
+          "name": "2.03 Consultar eleitor por id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/eleitores/{{igor_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "eleitores",
+                "{{igor_id}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.04 Alterar o nome do eleitor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Nome alterado\", () => pm.expect(r.nome).to.eql(\"Igor Barbosa Lima\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/eleitores/{{igor_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "eleitores",
+                "{{igor_id}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Igor Barbosa Lima\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Nome e senha mudam; CPF e título, não (RN-23)."
+          }
+        },
+        {
+          "name": "2.05 CPF inválido → 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"Erro CPF_INVALIDO\", () => pm.expect(pm.response.json().erro.codigo).to.eql(\"CPF_INVALIDO\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/eleitores",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "eleitores"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Igor Barbosa\",\n  \"cpf\": \"111.111.111-11\",\n  \"titulo_eleitor\": \"100000000009\",\n  \"data_nascimento\": \"1999-09-09\",\n  \"senha\": \"Eleitor@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Os dígitos verificadores do CPF são conferidos (RN-07)."
+          }
+        },
+        {
+          "name": "2.06 Menor de 16 anos → 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"Erro IDADE_MINIMA\", () => pm.expect(pm.response.json().erro.codigo).to.eql(\"IDADE_MINIMA\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/eleitores",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "eleitores"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Pedro Menor\",\n  \"cpf\": \"987.654.320-29\",\n  \"titulo_eleitor\": \"100000000011\",\n  \"data_nascimento\": \"2015-01-01\",\n  \"senha\": \"Eleitor@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Idade mínima de 16 anos no cadastro (RN-22)."
+          }
+        },
+        {
+          "name": "2.07 Excluir eleitor que nunca votou",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/eleitores/{{igor_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "eleitores",
+                "{{igor_id}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Só se exclui quem nunca votou (RN-24); a credencial sai junto."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Candidatos e partidos (Chefe: cadastra, consulta, altera e exclui)",
+      "description": "Enunciado, item 4. RN-30 a RN-33.",
+      "item": [
+        {
+          "name": "3.01 Cadastrar partido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Sigla em maiúsculas\", () => pm.expect(r.sigla).to.eql(\"FUT\"));",
+                  "pm.environment.set(\"partido_id\", r.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/partidos",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "partidos"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sigla\": \"fut\",\n  \"nome\": \"Frente do Futuro\",\n  \"numero\": 40\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Sigla de 2 a 10 letras ou dígitos, gravada em maiúsculas; número de 10 a 99 (RN-32)."
+          }
+        },
+        {
+          "name": "3.02 Partido repetido → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Erro PARTIDO_DUPLICADO\", () => pm.expect(pm.response.json().erro.codigo).to.eql(\"PARTIDO_DUPLICADO\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/partidos",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "partidos"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sigla\": \"FUT\",\n  \"nome\": \"Frente do Futuro\",\n  \"numero\": 40\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Sigla, nome e número são únicos (RN-32)."
+          }
+        },
+        {
+          "name": "3.03 Cadastrar candidata (Renata)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const r = pm.response.json();",
+                  "pm.environment.set(\"renata_id\", r.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/candidatos",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "candidatos"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Renata Campos\",\n  \"nome_urna\": \"Renata Campos\",\n  \"cpf\": \"241.592.066-54\",\n  \"data_nascimento\": \"1977-01-20\",\n  \"senha\": \"Candidato@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Nome de urna de 3 a 30 caracteres; nascimento no passado (RN-31)."
+          }
+        },
+        {
+          "name": "3.04 Listar candidatos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Seed (10) + Renata\", () => pm.expect(r.total).to.eql(11));",
+                  "pm.environment.set(\"carlos_id\", r.itens.find(c => c.nome_urna === \"Carlos Lima\").id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/candidatos",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "candidatos"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.05 Alterar o nome de urna",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Nome de urna alterado\", () => pm.expect(r.nome_urna).to.eql(\"Renata\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/candidatos/{{renata_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "candidatos",
+                "{{renata_id}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome_urna\": \"Renata\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "3.06 Cadastrar candidato temporário (Otávio)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const r = pm.response.json();",
+                  "pm.environment.set(\"otavio_id\", r.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/candidatos",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "candidatos"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Otávio Prates\",\n  \"nome_urna\": \"Otávio\",\n  \"cpf\": \"456.123.780-17\",\n  \"data_nascimento\": \"1981-05-05\",\n  \"senha\": \"Candidato@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "3.07 Excluir candidato sem candidatura",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/candidatos/{{otavio_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "candidatos",
+                "{{otavio_id}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.08 Excluir candidato com candidatura → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Erro EXCLUSAO_BLOQUEADA\", () => pm.expect(pm.response.json().erro.codigo).to.eql(\"EXCLUSAO_BLOQUEADA\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/candidatos/{{carlos_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "candidatos",
+                "{{carlos_id}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Só se exclui candidato sem candidaturas (RN-33)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Eleições e candidaturas (Chefe: cadastra, abre e consulta a situação)",
+      "description": "Enunciado, itens 2 e 4 (candidato com número, partido e cargo, associado a uma eleição). RN-10 a RN-19 e RN-40 a RN-46.",
+      "item": [
+        {
+          "name": "4.01 Listar eleições (guarda a de hoje)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.environment.set(\"eleicao_id\", (r.itens || r).find(e => e.turno === 1 && e.status === \"AGENDADA\").id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/eleicoes",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "eleicoes"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "O seed_demo cria a eleição de hoje (00:00 às 23:59), AGENDADA. O script guarda o id dela no ambiente."
+          }
+        },
+        {
+          "name": "4.02 Consultar a situação da eleição (AGENDADA)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"AGENDADA\", () => pm.expect(r.status).to.eql(\"AGENDADA\"));",
+                  "pm.test(\"Link abrir\", () => pm.expect(r.links.map(l => l.rel)).to.include(\"abrir\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/eleicoes/{{eleicao_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicao_id}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Os links mostram só as ações que o perfil pode fazer no status atual (RN-19, HATEOAS)."
+          }
+        },
+        {
+          "name": "4.03 Cadastrar eleição do 2º turno (amanhã)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = new Date(); d.setDate(d.getDate() + 1); pm.environment.set(\"amanha\", d.toISOString().slice(0, 10));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Nasce AGENDADA\", () => pm.expect(r.status).to.eql(\"AGENDADA\"));",
+                  "pm.environment.set(\"eleicao_2t_id\", r.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/eleicoes",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "eleicoes"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"Eleições Gerais 2026 — 2º turno (simulação)\",\n  \"data\": \"{{amanha}}\",\n  \"turno\": 2,\n  \"horario_abertura\": \"08:00\",\n  \"horario_encerramento\": \"17:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Data, turno e horários de abertura e encerramento (enunciado, item 2)."
+          }
+        },
+        {
+          "name": "4.04 Eleição com data no passado → 422",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = new Date(); d.setDate(d.getDate() - 1); pm.environment.set(\"ontem\", d.toISOString().slice(0, 10));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"Erro DATA_NO_PASSADO\", () => pm.expect(pm.response.json().erro.codigo).to.eql(\"DATA_NO_PASSADO\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/eleicoes",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "eleicoes"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"Eleição de ontem\",\n  \"data\": \"{{ontem}}\",\n  \"turno\": 1,\n  \"horario_abertura\": \"08:00\",\n  \"horario_encerramento\": \"17:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "A data não pode ser anterior a hoje (RN-11)."
+          }
+        },
+        {
+          "name": "4.05 Alterar a eleição agendada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Encerramento 18:00\", () => pm.expect(r.horario_encerramento).to.eql(\"18:00:00\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/eleicoes/{{eleicao_2t_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicao_2t_id}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"horario_encerramento\": \"18:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Só a eleição AGENDADA pode ser editada (RN-14)."
+          }
+        },
+        {
+          "name": "4.06 Candidatura: Renata para Senador, número 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const r = pm.response.json();",
+                  "pm.environment.set(\"candidatura_renata_id\", r.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/eleicoes/{{eleicao_id}}/candidaturas",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicao_id}}",
+                "candidaturas"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"candidato_id\": \"{{renata_id}}\",\n  \"partido_id\": \"{{partido_id}}\",\n  \"cargo\": \"SENADOR\",\n  \"numero\": \"404\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Candidatura liga candidato, eleição, cargo, partido e número (RN-40)."
+          }
+        },
+        {
+          "name": "4.07 Número com dígitos errados para o cargo → 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"Erro NUMERO_INVALIDO_PARA_CARGO\", () => pm.expect(pm.response.json().erro.codigo).to.eql(\"NUMERO_INVALIDO_PARA_CARGO\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/eleicoes/{{eleicao_id}}/candidaturas",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicao_id}}",
+                "candidaturas"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"candidato_id\": \"{{renata_id}}\",\n  \"partido_id\": \"{{partido_id}}\",\n  \"cargo\": \"SENADOR\",\n  \"numero\": \"40\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "2 dígitos para presidente e governador, 3 para senador, 4 para deputado federal, 5 para estadual (RN-42)."
+          }
+        },
+        {
+          "name": "4.08 Número já usado no cargo → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Erro NUMERO_JA_UTILIZADO\", () => pm.expect(pm.response.json().erro.codigo).to.eql(\"NUMERO_JA_UTILIZADO\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/eleicoes/{{eleicao_id}}/candidaturas",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicao_id}}",
+                "candidaturas"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"candidato_id\": \"{{renata_id}}\",\n  \"partido_id\": \"{{partido_id}}\",\n  \"cargo\": \"SENADOR\",\n  \"numero\": \"202\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Número único por cargo na eleição (RN-43). O 202 é do Paulo Mendes."
+          }
+        },
+        {
+          "name": "4.09 Senador no 2º turno → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Erro CARGO_NAO_PERMITIDO_NO_TURNO\", () => pm.expect(pm.response.json().erro.codigo).to.eql(\"CARGO_NAO_PERMITIDO_NO_TURNO\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/eleicoes/{{eleicao_2t_id}}/candidaturas",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicao_2t_id}}",
+                "candidaturas"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"candidato_id\": \"{{renata_id}}\",\n  \"partido_id\": \"{{partido_id}}\",\n  \"cargo\": \"SENADOR\",\n  \"numero\": \"404\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "No 2º turno, só governador e presidente (RN-45)."
+          }
+        },
+        {
+          "name": "4.10 Listar as candidaturas da eleição",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Seed (10) + Renata\", () => pm.expect(r.length).to.eql(11));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/eleicoes/{{eleicao_id}}/candidaturas",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicao_id}}",
+                "candidaturas"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "4.11 Abrir a votação",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"ABERTA\", () => pm.expect(r.status).to.eql(\"ABERTA\"));",
+                  "pm.test(\"Link encerrar\", () => pm.expect(r.links.map(l => l.rel)).to.include(\"encerrar\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/eleicoes/{{eleicao_id}}/abertura",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicao_id}}",
+                "abertura"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Exige o dia da eleição, o horário dentro da janela e ao menos uma candidatura (RN-15)."
+          }
+        },
+        {
+          "name": "4.12 Abrir de novo → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Erro TRANSICAO_INVALIDA\", () => pm.expect(pm.response.json().erro.codigo).to.eql(\"TRANSICAO_INVALIDA\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/eleicoes/{{eleicao_id}}/abertura",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicao_id}}",
+                "abertura"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Ciclo só de ida: AGENDADA → ABERTA → ENCERRADA (RN-13)."
+          }
+        },
+        {
+          "name": "4.13 Candidatura com a votação aberta → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Erro ELEICAO_NAO_EDITAVEL\", () => pm.expect(pm.response.json().erro.codigo).to.eql(\"ELEICAO_NAO_EDITAVEL\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/eleicoes/{{eleicao_id}}/candidaturas",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicao_id}}",
+                "candidaturas"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"candidato_id\": \"{{renata_id}}\",\n  \"partido_id\": \"{{partido_id}}\",\n  \"cargo\": \"GOVERNADOR\",\n  \"numero\": \"40\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Candidaturas só mudam com a eleição AGENDADA (RN-40)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Votação (Eleitor: consulta os candidatos, registra e confirma)",
+      "description": "Enunciado, item 5. RN-50 a RN-61.",
+      "item": [
+        {
+          "name": "5.01 Ana consulta os próprios dados",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.environment.set(\"ana_id\", r.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/eleitores/eu",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "eleitores",
+                "eu"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_ana}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "O eleitor vê só os próprios dados (RN-25)."
+          }
+        },
+        {
+          "name": "5.02 Ana consulta a cédula (candidatos por cargo)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Cinco cargos\", () => pm.expect(r.cargos.length).to.eql(5));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/votacao/eleicoes/{{eleicao_id}}/cedula",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "votacao",
+                "eleicoes",
+                "{{eleicao_id}}",
+                "cedula"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_ana}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Candidatos de cada cargo, na ordem da urna."
+          }
+        },
+        {
+          "name": "5.03 Ana registra: Presidente 10",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Prévia NOMINAL\", () => pm.expect(r.tipo_voto).to.eql(\"NOMINAL\"));",
+                  "pm.environment.set(\"token_cedula\", r.token_cedula);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/votacao/eleicoes/{{eleicao_id}}/votos/registro",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "votacao",
+                "eleicoes",
+                "{{eleicao_id}}",
+                "votos",
+                "registro"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_ana}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cargo\": \"PRESIDENTE\",\n  \"modo\": \"NUMERO\",\n  \"numero\": \"10\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Etapa 1: devolve a prévia e a cédula cifrada; não grava nada (RN-56)."
+          }
+        },
+        {
+          "name": "5.04 Parcial ainda sem votos (o registro não grava)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Zero votos\", () => pm.expect(r.cargos[0].total_votos).to.eql(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/apuracao/eleicoes/{{eleicao_id}}/parcial?cargo=PRESIDENTE",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "apuracao",
+                "eleicoes",
+                "{{eleicao_id}}",
+                "parcial"
+              ],
+              "query": [
+                {
+                  "key": "cargo",
+                  "value": "PRESIDENTE"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_ana}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Prova que a etapa 1 não grava nada (RN-56)."
+          }
+        },
+        {
+          "name": "5.05 Ana confirma o voto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Comprovante sem a escolha\", () => { pm.expect(r).to.not.have.property(\"numero\"); pm.expect(r).to.not.have.property(\"candidato\"); pm.expect(r).to.not.have.property(\"tipo_voto\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/votacao/eleicoes/{{eleicao_id}}/votos/confirmacao",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "votacao",
+                "eleicoes",
+                "{{eleicao_id}}",
+                "votos",
+                "confirmacao"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_ana}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token_cedula\": \"{{token_cedula}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Etapa 2: grava o voto, definitivo. O comprovante não traz a escolha (sigilo, RN-60). Confirme em até 5 minutos depois do registro (RN-57)."
+          }
+        },
+        {
+          "name": "5.06 Ana tenta mudar o voto para Presidente 20 → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Erro VOTO_JA_REGISTRADO\", () => pm.expect(pm.response.json().erro.codigo).to.eql(\"VOTO_JA_REGISTRADO\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/votacao/eleicoes/{{eleicao_id}}/votos/registro",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "votacao",
+                "eleicoes",
+                "{{eleicao_id}}",
+                "votos",
+                "registro"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_ana}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cargo\": \"PRESIDENTE\",\n  \"modo\": \"NUMERO\",\n  \"numero\": \"20\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Um voto por cargo (RN-54); voto confirmado não se altera (RN-59)."
+          }
+        },
+        {
+          "name": "5.07 Ana reenvia a mesma cédula → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Erro VOTO_JA_REGISTRADO\", () => pm.expect(pm.response.json().erro.codigo).to.eql(\"VOTO_JA_REGISTRADO\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/votacao/eleicoes/{{eleicao_id}}/votos/confirmacao",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "votacao",
+                "eleicoes",
+                "{{eleicao_id}}",
+                "votos",
+                "confirmacao"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_ana}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token_cedula\": \"{{token_cedula}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "A chave primária (eleitor, eleição, cargo) de registros_votacao barra o voto duplo."
+          }
+        },
+        {
+          "name": "5.08 Ana registra: Governador em branco",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Prévia BRANCO\", () => pm.expect(r.tipo_voto).to.eql(\"BRANCO\"));",
+                  "pm.environment.set(\"token_cedula\", r.token_cedula);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/votacao/eleicoes/{{eleicao_id}}/votos/registro",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "votacao",
+                "eleicoes",
+                "{{eleicao_id}}",
+                "votos",
+                "registro"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_ana}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cargo\": \"GOVERNADOR\",\n  \"modo\": \"BRANCO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Etapa 1: devolve a prévia e a cédula cifrada; não grava nada (RN-56)."
+          }
+        },
+        {
+          "name": "5.09 Ana confirma o branco",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Comprovante sem a escolha\", () => { pm.expect(r).to.not.have.property(\"numero\"); pm.expect(r).to.not.have.property(\"candidato\"); pm.expect(r).to.not.have.property(\"tipo_voto\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/votacao/eleicoes/{{eleicao_id}}/votos/confirmacao",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "votacao",
+                "eleicoes",
+                "{{eleicao_id}}",
+                "votos",
+                "confirmacao"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_ana}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token_cedula\": \"{{token_cedula}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Etapa 2: grava o voto, definitivo. O comprovante não traz a escolha (sigilo, RN-60). Confirme em até 5 minutos depois do registro (RN-57)."
+          }
+        },
+        {
+          "name": "5.10 Ana consulta em quais cargos já votou",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Votou em 2 cargos\", () => pm.expect(r.cargos.filter(c => c.ja_votou).length).to.eql(2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/votacao/eleicoes/{{eleicao_id}}/participacao",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "votacao",
+                "eleicoes",
+                "{{eleicao_id}}",
+                "participacao"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_ana}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Diz em quais cargos votou, nunca em quem (RN-61)."
+          }
+        },
+        {
+          "name": "5.11 Bruno registra: Presidente 20",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Prévia NOMINAL\", () => pm.expect(r.tipo_voto).to.eql(\"NOMINAL\"));",
+                  "pm.environment.set(\"token_cedula\", r.token_cedula);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/votacao/eleicoes/{{eleicao_id}}/votos/registro",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "votacao",
+                "eleicoes",
+                "{{eleicao_id}}",
+                "votos",
+                "registro"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_bruno}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cargo\": \"PRESIDENTE\",\n  \"modo\": \"NUMERO\",\n  \"numero\": \"20\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Etapa 1: devolve a prévia e a cédula cifrada; não grava nada (RN-56)."
+          }
+        },
+        {
+          "name": "5.12 Bruno confirma",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Comprovante sem a escolha\", () => { pm.expect(r).to.not.have.property(\"numero\"); pm.expect(r).to.not.have.property(\"candidato\"); pm.expect(r).to.not.have.property(\"tipo_voto\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/votacao/eleicoes/{{eleicao_id}}/votos/confirmacao",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "votacao",
+                "eleicoes",
+                "{{eleicao_id}}",
+                "votos",
+                "confirmacao"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_bruno}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token_cedula\": \"{{token_cedula}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Etapa 2: grava o voto, definitivo. O comprovante não traz a escolha (sigilo, RN-60). Confirme em até 5 minutos depois do registro (RN-57)."
+          }
+        },
+        {
+          "name": "5.13 Bruno registra: Senador 999 (sem candidato)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Prévia NULO\", () => pm.expect(r.tipo_voto).to.eql(\"NULO\"));",
+                  "pm.environment.set(\"token_cedula\", r.token_cedula);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/votacao/eleicoes/{{eleicao_id}}/votos/registro",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "votacao",
+                "eleicoes",
+                "{{eleicao_id}}",
+                "votos",
+                "registro"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_bruno}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cargo\": \"SENADOR\",\n  \"modo\": \"NUMERO\",\n  \"numero\": \"999\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Número sem candidatura no cargo vira voto NULO (RN-58)."
+          }
+        },
+        {
+          "name": "5.14 Bruno confirma o nulo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Comprovante sem a escolha\", () => { pm.expect(r).to.not.have.property(\"numero\"); pm.expect(r).to.not.have.property(\"candidato\"); pm.expect(r).to.not.have.property(\"tipo_voto\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/votacao/eleicoes/{{eleicao_id}}/votos/confirmacao",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "votacao",
+                "eleicoes",
+                "{{eleicao_id}}",
+                "votos",
+                "confirmacao"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_bruno}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token_cedula\": \"{{token_cedula}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Etapa 2: grava o voto, definitivo. O comprovante não traz a escolha (sigilo, RN-60). Confirme em até 5 minutos depois do registro (RN-57)."
+          }
+        },
+        {
+          "name": "5.15 Chefe tenta votar → 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"Erro PERFIL_NAO_AUTORIZADO\", () => pm.expect(pm.response.json().erro.codigo).to.eql(\"PERFIL_NAO_AUTORIZADO\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/votacao/eleicoes/{{eleicao_id}}/votos/registro",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "votacao",
+                "eleicoes",
+                "{{eleicao_id}}",
+                "votos",
+                "registro"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cargo\": \"PRESIDENTE\",\n  \"modo\": \"NUMERO\",\n  \"numero\": \"10\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Só o perfil ELEITOR vota (RN-50)."
+          }
+        },
+        {
+          "name": "5.16 Chefe cadastra eleitora depois da abertura (Júlia)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/eleitores",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "eleitores"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Júlia Mendes\",\n  \"cpf\": \"123.456.780-62\",\n  \"titulo_eleitor\": \"100000000010\",\n  \"data_nascimento\": \"2000-03-03\",\n  \"senha\": \"Eleitor@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "5.17 Login da Júlia",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Perfil ELEITOR\", () => pm.expect(r.usuario.perfil).to.eql(\"ELEITOR\"));",
+                  "pm.environment.set(\"token_julia\", r.access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "username",
+                  "value": "123.456.780-62",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "Eleitor@123",
+                  "type": "text"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "5.18 Júlia tenta votar → 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"Erro ELEITOR_NAO_APTO\", () => pm.expect(pm.response.json().erro.codigo).to.eql(\"ELEITOR_NAO_APTO\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/votacao/eleicoes/{{eleicao_id}}/votos/registro",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "votacao",
+                "eleicoes",
+                "{{eleicao_id}}",
+                "votos",
+                "registro"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_julia}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cargo\": \"PRESIDENTE\",\n  \"modo\": \"NUMERO\",\n  \"numero\": \"10\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Só vota quem foi cadastrado antes da abertura (RN-53)."
+          }
+        },
+        {
+          "name": "5.19 Chefe tenta excluir Ana, que já votou → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Erro EXCLUSAO_BLOQUEADA\", () => pm.expect(pm.response.json().erro.codigo).to.eql(\"EXCLUSAO_BLOQUEADA\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/eleitores/{{ana_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "eleitores",
+                "{{ana_id}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Só se exclui eleitor que nunca votou (RN-24)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Acompanhamento da votação (apuração parcial)",
+      "description": "Enunciado, item 6. RN-70 a RN-76.",
+      "item": [
+        {
+          "name": "6.01 Ana acompanha todos os cargos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Cinco cargos\", () => pm.expect(r.cargos.length).to.eql(5));",
+                  "const p = r.cargos.find(c => c.cargo === \"PRESIDENTE\");",
+                  "pm.test(\"Presidente com 2 votos (atualizada a cada voto)\", () => pm.expect(p.total_votos).to.eql(2));",
+                  "pm.test(\"Votantes 2\", () => pm.expect(r.comparecimento.votantes).to.eql(2));"
                 ]
               }
             }
@@ -900,22 +2719,67 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{token_candidato}}",
+                  "value": "{{token_ana}}",
                   "type": "string"
                 }
               ]
-            }
+            },
+            "description": "Eleitor e Chefe veem todos os cargos (RN-71). A contagem é feita a cada consulta (RN-74)."
           }
         },
         {
-          "name": "20. Candidato pede outro cargo",
+          "name": "6.02 Carlos Lima acompanha o cargo dele",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 403\", function () { pm.response.to.have.status(403); });"
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Só PRESIDENTE\", () => pm.expect(r.cargos.map(c => c.cargo)).to.eql([\"PRESIDENTE\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/apuracao/eleicoes/{{eleicao_id}}/parcial",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "apuracao",
+                "eleicoes",
+                "{{eleicao_id}}",
+                "parcial"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_carlos}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "O candidato vê só o cargo da candidatura dele (RN-72)."
+          }
+        },
+        {
+          "name": "6.03 Carlos Lima pede outro cargo → 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"Erro CARGO_NAO_PERMITIDO\", () => pm.expect(pm.response.json().erro.codigo).to.eql(\"CARGO_NAO_PERMITIDO\"));"
                 ]
               }
             }
@@ -946,27 +2810,113 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{token_candidato}}",
+                  "value": "{{token_carlos}}",
                   "type": "string"
                 }
               ]
             }
           }
-        }
-      ]
-    },
-    {
-      "name": "Parte 4: encerramento e resultado final",
-      "item": [
+        },
         {
-          "name": "21. Encerrar a eleição",
+          "name": "6.04 Resultado final antes do encerramento → 409",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Erro APURACAO_INDISPONIVEL\", () => pm.expect(pm.response.json().erro.codigo).to.eql(\"APURACAO_INDISPONIVEL\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/apuracao/eleicoes/{{eleicao_id}}/resultado",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "apuracao",
+                "eleicoes",
+                "{{eleicao_id}}",
+                "resultado"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_chefe}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Parcial só com a eleição ABERTA; resultado final só com ENCERRADA (RN-70)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Encerramento e resultado final",
+      "description": "Enunciado, itens 2 (encerrar) e 7 (resultado). RN-18, RN-70, RN-73, RN-75 a RN-79.",
+      "item": [
+        {
+          "name": "7.01 Candidato tenta encerrar → 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"Erro PERFIL_NAO_AUTORIZADO\", () => pm.expect(pm.response.json().erro.codigo).to.eql(\"PERFIL_NAO_AUTORIZADO\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/eleicoes/{{eleicao_id}}/encerramento",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "eleicoes",
+                "{{eleicao_id}}",
+                "encerramento"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_carlos}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Só o Chefe abre e encerra a votação (RN-10)."
+          }
+        },
+        {
+          "name": "7.02 Chefe encerra a votação",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"ENCERRADA\", () => pm.expect(r.status).to.eql(\"ENCERRADA\"));"
                 ]
               }
             }
@@ -998,14 +2948,15 @@
           }
         },
         {
-          "name": "22. Bruno tenta registrar voto depois do encerramento",
+          "name": "7.03 Bruno tenta votar depois do encerramento → 409",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 409\", function () { pm.response.to.have.status(409); });"
+                  "pm.test(\"Status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Erro ELEICAO_NAO_ABERTA\", () => pm.expect(pm.response.json().erro.codigo).to.eql(\"ELEICAO_NAO_ABERTA\"));"
                 ]
               }
             }
@@ -1031,31 +2982,42 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{token_eleitor}}",
+                  "value": "{{token_bruno}}",
                   "type": "string"
                 }
               ]
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"cargo\": \"PRESIDENTE\",\n  \"modo\": \"NUMERO\",\n  \"numero\": \"10\"\n}",
+              "raw": "{\n  \"cargo\": \"GOVERNADOR\",\n  \"modo\": \"NUMERO\",\n  \"numero\": \"10\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
-            }
+            },
+            "description": "Encerrada a eleição, nenhum voto entra (RN-18, RN-51)."
           }
         },
         {
-          "name": "23. Resultado final",
+          "name": "7.04 Resultado final",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });"
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "const p = r.cargos.find(c => c.cargo === \"PRESIDENTE\");",
+                  "pm.test(\"FINAL\", () => pm.expect(r.tipo).to.eql(\"FINAL\"));",
+                  "pm.test(\"Empate 1 a 1: vence o mais idoso, Carlos Lima\", () => pm.expect(p.mais_votado.nome_urna).to.eql(\"Carlos Lima\"));",
+                  "pm.test(\"Percentual sobre os válidos\", () => pm.expect(p.candidatos[0].percentual_validos).to.eql(\"50.00\"));",
+                  "const g = r.cargos.find(c => c.cargo === \"GOVERNADOR\");",
+                  "pm.test(\"Governador: 1 branco, sem mais votado\", () => { pm.expect(g.brancos).to.eql(1); pm.expect(g.situacao).to.eql(\"SEM_VOTOS_VALIDOS\"); });",
+                  "const s = r.cargos.find(c => c.cargo === \"SENADOR\");",
+                  "pm.test(\"Senador: 1 nulo\", () => pm.expect(s.nulos).to.eql(1));",
+                  "pm.test(\"Comparecimento: 2 votantes de 6 aptos\", () => { pm.expect(r.comparecimento.votantes).to.eql(2); pm.expect(r.comparecimento.eleitores_aptos).to.eql(6); });"
                 ]
               }
             }
@@ -1084,7 +3046,51 @@
                   "type": "string"
                 }
               ]
+            },
+            "description": "Candidatos, cargos, votos e o mais votado de cada cargo (enunciado, item 7). Empate decidido pelo mais idoso (RN-77); brancos e nulos à parte (RN-76)."
+          }
+        },
+        {
+          "name": "7.05 Candidato também vê o resultado final",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"Todos os cargos\", () => pm.expect(r.cargos.length).to.eql(5));"
+                ]
+              }
             }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/apuracao/eleicoes/{{eleicao_id}}/resultado",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "apuracao",
+                "eleicoes",
+                "{{eleicao_id}}",
+                "resultado"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_carlos}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "O resultado final é aberto a todos os perfis (RN-73)."
           }
         }
       ]
