@@ -8,37 +8,103 @@
       "enabled": true
     },
     {
+      "key": "base_url_raiz",
+      "value": "http://localhost:8000",
+      "type": "default",
+      "enabled": true
+    },
+    {
       "key": "eleicao_id",
-      "value": "1",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "eleicao_2t_id",
+      "value": "",
       "type": "default",
       "enabled": true
     },
     {
       "key": "token_chefe",
       "value": "",
-      "type": "default",
+      "type": "secret",
       "enabled": true
     },
     {
-      "key": "token_eleitor",
+      "key": "token_ana",
       "value": "",
-      "type": "default",
+      "type": "secret",
       "enabled": true
     },
     {
-      "key": "token_candidato",
+      "key": "token_bruno",
       "value": "",
-      "type": "default",
+      "type": "secret",
+      "enabled": true
+    },
+    {
+      "key": "token_carlos",
+      "value": "",
+      "type": "secret",
+      "enabled": true
+    },
+    {
+      "key": "token_julia",
+      "value": "",
+      "type": "secret",
       "enabled": true
     },
     {
       "key": "token_cedula",
       "value": "",
+      "type": "secret",
+      "enabled": true
+    },
+    {
+      "key": "igor_id",
+      "value": "",
       "type": "default",
       "enabled": true
     },
     {
-      "key": "candidato_renata_id",
+      "key": "partido_id",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "renata_id",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "otavio_id",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "carlos_id",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "candidatura_renata_id",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "ana_id",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "ontem",
       "value": "",
       "type": "default",
       "enabled": true
