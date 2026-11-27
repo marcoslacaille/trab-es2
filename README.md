@@ -15,8 +15,7 @@ Trabalho de Engenharia de Software II, UNIRIO (Prof. Marcelo Soares Loutfi). Int
 
 1. Marcos Lacaille
 2. Pedro Bartkevihi
-3. Guilherme Bretas
-4. Jonathas Soares
+3. Jonathas Soares
 
 ## 1. Visão geral
 
